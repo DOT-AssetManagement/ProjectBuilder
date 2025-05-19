@@ -1,0 +1,30 @@
+﻿@model ErrorViewModel
+@{
+    ViewData["Title"] = "Error";
+}
+<div class="error_main-container">
+    @switch(Model.Type)
+    {
+        case ErrorType.Error:
+            <i class="fa-solid fa-circle-exclamation fa-10x" style="color: #EA676D;"></i>
+            break;
+        case ErrorType.Info:
+            <i class="fa-solid fa-circle-info fa-10x" style="color: #097cf6;"></i>
+            break;
+        case ErrorType.BadRequest:
+            <i class="fa-solid fa-triangle-exclamation fa-10x" style="color: #f66809;"></i>
+            break;
+        case ErrorType.Unknown:
+            <i class="fa-solid fa-bug fa-10x" style="color: #193562;"></i>
+            break;
+    }
+<h1>@Model.Title</h1>
+<h2>@Model.SubTitle</h2>
+<p>
+ @Model.ErrorMessage
+</p>
+    @if (Model.HasBackBtn)
+    {
+        <a class="btn btn-primary" href="@Model.BtnUrl">@Model.BtnContent</a>        
+    }
+</div>  

@@ -1,0 +1,247 @@
+﻿@model AdminUsersViewModel
+
+@{
+    ViewData["Title"] = "Users";
+}
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+
+
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+
+<h2>Users</h2>
+<div class="card">
+    <div class="card-body">
+        <h5>View Users</h5>
+
+        <div class="row align-content-center  m-2">
+
+            <div class="table-responsive">
+
+                <table class="table table-bordered table-hover table-striped" id="usersTable">
+                    <thead class="bg-success text-white">
+                        <tr>
+                            <th>
+                                ID
+                            </th>
+                            <th>
+                                Name
+                            </th>
+                            <th>
+                                Email
+                            </th>
+                            <th>
+                                IsActive
+                            </th>
+                            <th>
+                                B2CUserId
+                            </th>
+                            <th>
+
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Users)
+                        {
+                            <tr>
+                                <td>
+                                    @Html.DisplayFor(model => item.EntityId)
+                                </td>
+                                <td>
+                                    @Html.DisplayFor(model => item.Name)
+                                </td>
+                                <td>
+                                    @Html.DisplayFor(model => item.Email)
+                                </td>
+                                <td>
+                                    @Html.DisplayFor(model => item.IsActive)
+                                </td>
+                                <td>
+                                    @Html.DisplayFor(model => item.B2CUserId)
+                                </td>
+                                <td>
+                                    <button onclick="oneditingUser.bind(this)()" value="@item.EntityId" class="btn btn-primary mb-1">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                    <button type="button" value="@item.EntityId" data-id="@item.EntityId" onclick="ondeletinguser.bind(this)()" class="btn btn-danger mb-1" data-bs-toggle="modal" data-bs-target="#deletealert">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@*Delete Popup*@
+
+<div class="modal fade" id="deletealert" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="deletealertLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deletealertLabel">Delete User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span>
+                    Are you sure you want to delete the selected User ?
+                </span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <form id="deleteform" asp-antiforgery="true" asp-action="DeleteUser" asp-controller="User" method="post">
+                    <input asp-for="@Model.EntityId" hidden name="userId" />
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@*Update Form*@
+
+<div class="modal fade" id="EditUserForm" tabindex="-1" role="dialog" aria-labelledby="EditUserFormLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="EditUserFormLabel">Edit User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="d-flex justify-content-evenly mx-1 mx-sm-3 mb-0 pb-0 border-0">
+                <div class="tabs active" id="tab01">
+                    <h6 class="text-muted">User Details</h6>
+                </div>
+                <div class="tabs" id="tab02">
+                    <h6 class="text-muted">User Roles</h6>
+                </div>
+            </div>
+            <fieldset id="tab011">
+                <form id="editUser" class="needs-validation" asp-controller="User" asp-action="EditUser" method="post">
+                    <div class="modal-body">
+                        <input asp-for="EntityId" id="userId" name="EntityId" hidden />
+                        <div class="mb-3">
+                            <label for="userName" class="form-label">Name</label>
+                            <input asp-for="Name" id="userName" type="text" name="Name" class="form-control" required />
+                            <div class="invalid-feedback">Field is required</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success">Update User</button>
+                    </div>
+                </form>
+            </fieldset>
+            <fieldset class="show" id="tab021">
+                <form id="editUser" class="needs-validation" asp-controller="User" asp-action="EditRole" method="post">
+                    <div class="modal-body">
+                        <input asp-for="EntityId" id="userRoleId" name="EntityId" hidden />
+                        <input asp-for="RoleName" id="roleName" name="RoleName" hidden />
+                        <div role="tabpanel" class="tab-pane animated fadeIn" id="edit-user-roles">
+                            <div class="row">
+                                <div class="col-sm-12 ">
+                                    @foreach (var role in Model.Roles)
+                                    {
+                                        <div class="row clearfix">
+                                            <div class="col-sm-12">
+                                                <div class="form-group form-float">
+                                                    <div class="custom-control custom-checkbox">
+
+                                                        <input type="checkbox" asp-for="UpdatedRole" name="UpdatedRole" value="@role.Name" title="@role.Name" class="filled-in" id="role">
+                                                        <label class="custom-control-label" title="@role.Name" for="role">@role.Name</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success">Update Role</button>
+                    </div>
+                </form>
+            </fieldset>
+        </div>
+    </div>
+</div>
+
+<script>
+
+    $(document).ready(function () {
+
+        $(".tabs").click(function () {
+
+            $(".tabs").removeClass("active");
+            $(".tabs h6").removeClass("font-weight-bold");
+            $(".tabs h6").addClass("text-muted");
+            $(this).children("h6").removeClass("text-muted");
+            $(this).children("h6").addClass("font-weight-bold");
+            $(this).addClass("active");
+
+            current_fs = $(".active");
+
+            next_fs = $(this).attr('id');
+            next_fs = "#" + next_fs + "1";
+
+            $("fieldset").removeClass("show");
+            $(next_fs).addClass("show");
+
+            current_fs.animate({}, {
+                step: function () {
+                    current_fs.css({
+                        'display': 'none',
+                        'position': 'relative'
+                    });
+                    next_fs.css({
+                        'display': 'block'
+                    });
+                }
+            });
+        });
+
+    });
+
+
+    function oneditingUser() {
+        $.ajax(
+            {
+                type: 'Get',
+                dataType: 'JSON',
+                url: '/User/GetUser',
+                data: { id: this.value },
+                success:
+                    function (response) {
+                        debugger;
+                        var form = document.getElementById('editUser');
+                        $('#userName').val(response.name);
+                        $('#userId').val(response.entityId);
+                        $('#userRoleId').val(response.entityId);
+                        debugger;
+                        $('#roleName').val(response.roleName);
+                        var model = document.getElementById('EditUserForm');
+                        var formModel = bootstrap.Modal.getOrCreateInstance(model);
+                        formModel.show();
+                    },
+                error:
+                    function (response) {
+
+                    }
+            });
+    }
+
+
+    function ondeletinguser() {
+        var form = document.getElementById('deleteform');
+        form.userId.value = this.getAttribute('data-id');
+    }
+</script>

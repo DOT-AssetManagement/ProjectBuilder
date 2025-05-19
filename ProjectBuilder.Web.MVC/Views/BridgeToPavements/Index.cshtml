@@ -1,0 +1,157 @@
+﻿@model BridgeToPavementsViewModel
+@{
+    ViewData["Title"] = "BridgeToPavements";
+}
+
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css" />
+
+
+<script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<partial name="~/Views/Shared/navbarshared/_SetupsSidebar.cshtml" />
+<div class="container-fluid" style="height:730px;margin-top:50px;overflow-y:auto;">
+
+
+<div class="card">
+    <div class="card-body">
+        <h5>View Bridge To Pavements</h5>
+
+        <div class="row align-content-center  m-2">
+
+            <div class="table-responsive">
+
+                    <table class="table table-bordered table-hover table-striped" id="BridgeTable">
+                    <thead class="bg-success text-white">
+                        <tr>
+                            <th>
+                                BrKey
+                            </th>
+                            <th>
+                                District
+                            </th>
+                            <th>
+                                County
+                            </th>
+                            <th>
+                                BridgeId
+                            </th>
+                            <th>
+                                CountyCode
+                            </th>
+                            <th>
+                                Route
+                            </th>
+                            <th>
+                                Segment
+                            </th>
+                            <th>
+                                Offset
+                            </th>
+                            <th>
+                                CreatedBy
+                            </th>
+                            <th>
+                                CreatedAt
+                            </th>
+                            <th>
+
+                            </th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+
+
+
+<script>
+    $(document).ready(function () {
+     
+
+        $('#BridgeTable').DataTable({
+            "processing": true,
+            "serverSide": true,
+            "bSearchable": true,
+            "order": [[1, 'asc']],
+             "language": {
+                        "emptyTable": "No record found.",
+                        "processing":
+                            '<i class="fa fa-spinner fa-spin fa-3x fa-fw" style="color:#2a2b2b;"></i><span class="sr-only">Loading...</span> '
+                    },
+            "sAjaxSource": "/BridgeToPavements/ApplyPagination",
+            "columns": [
+                {
+                    "data": "brKey",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "district",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "county",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "bridgeId",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "countyCode",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "route",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "segment",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "offSet",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "createdBy",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "createdAt",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+               
+                {
+                        "data": null,
+                        title: "Actions",
+                        orderable: false,
+                        defaultContent: '',
+                        render: function (data, type, row) {
+                        var inner = `<button onclick="oneditingproject.bind(this)()" value="` + row.projectId + `" class="btn btn-primary mb-1" disabled>
+    <i class="bi bi-pencil-square"></i>
+</button>
+   
+                                `;
+                            return inner;
+                        }
+                }
+            ]
+        });
+
+    });
+</script>

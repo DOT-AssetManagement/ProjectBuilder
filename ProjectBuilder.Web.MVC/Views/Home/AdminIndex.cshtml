@@ -1,0 +1,16 @@
+﻿@{
+    ViewData["Title"] = "Home";
+}
+
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <partial name="~/Views/Shared/navbarshared/_SetupsSidebar.cshtml" />
+
+
+    <div class="d-flex flex-row justify-content-between">
+    <h2 class="bottom-50"></h2>
+     <div class="col-md-2 d-flex justify-content-end align-items-center">
+        
+         </div>
+         </div>
+}

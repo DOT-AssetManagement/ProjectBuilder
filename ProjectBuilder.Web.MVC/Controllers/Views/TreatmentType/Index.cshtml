@@ -1,0 +1,168 @@
+﻿@model TreatmentTypeViewModel
+@{
+    ViewData["Title"] = "Treatment Types";
+}
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+
+
+<h2>Treatment Types</h2>
+<div class="card">
+    <div class="card-body">
+        <h5>View Treatment Types</h5>
+
+        <div class="row align-content-center  m-2">
+
+            <div class="table-responsive">
+
+                <table class="table table-bordered table-hover table-striped" id="treatmentTypeTable">
+                    <thead class="bg-success text-white">
+                        <tr>
+                            <th>
+                                Treatment
+                            </th>
+                            <th>
+                                MoveEarlierBufferOverride
+                            </th>
+                            <th>
+                                MoveLaterBufferOverride
+                            </th>
+                            <th>
+                                AssetType
+                            </th>
+                            <th>
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@*Edit Modal*@
+
+<div class="modal fade" id="EditTreatmentTypeForm" tabindex="-1" role="dialog" aria-labelledby="EditParameterFormLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="EditParameterFormLabel">Edit Parameter</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="editTreatmentType" class="needs-validation" asp-controller="TreatmentType" asp-action="EditTreatmentType" method="post">
+                <div class="modal-body">
+                    <input asp-for="TreatmentName" id="treatmentName" name="TreatmentName" hidden />
+                    <div class="mb-3">
+                        <label for="MoveEarlier" class="form-label">MoveEarlier</label>
+                        <input asp-for="MoveEarlier" id="moveEarlier" type="text" name="MoveEarlier" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="MoveLater" class="form-label">MoveLater</label>
+                        <input asp-for="MoveLater" id="moveLater" type="text" name="MoveLater" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="AssetType" class="form-label">AssetType</label>
+                        <input asp-for="AssetType" id="assetType" type="text" name="AssetType" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<script>
+
+    $(document).ready(function () {
+        $('#treatmentTypeTable').DataTable({
+            "processing": true,
+            "serverSide": true,
+            "bSearchable": true,
+            "order": [[1, 'asc']],
+            "language": {
+                "emptyTable": "No record found.",
+                "processing":
+                    '<i class="fa fa-spinner fa-spin fa-3x fa-fw" style="color:#2a2b2b;"></i><span class="sr-only">Loading...</span> '
+            },
+            "sAjaxSource": "/TreatmentType/ApplyPagination",
+            "columns": [
+                {
+                    "data": "treatmentName",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "moveEarlier",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "moveLater",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "assetType",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": null,
+                    title: "Actions",
+                    orderable: false,
+                    defaultContent: '',
+                    render: function (data, type, row) {
+                        var inner = `<button onclick="oneditingTreatmentType.bind(this)()" value="` + row.treatmentName + `" class="btn btn-primary mb-1">
+                            <i class="bi bi-pencil-square"></i>
+                        </button>
+                                    <button type="button" value="` + row.parameterId + `"onclick="oneditingParam.bind(this)()" class="btn btn-danger mb-1" data-bs-toggle="modal" data-bs-target="#deletealert">
+                            <i class="bi bi-trash"></i>
+                        </button>`;
+                        return inner;
+                    }
+                }
+            ]
+        });
+
+    });
+
+    function oneditingTreatmentType() {
+        $.ajax(
+            {
+                type: 'Get',
+                dataType: 'JSON',
+                url: '/TreatmentType/GetTreatmentType',
+                data: { id: this.value },
+                success:
+                    function (response) {
+                        debugger;
+                        var form = document.getElementById('editTreatmenttype');
+                        $('#moveEarlier').val(response.moveEarlier);
+                        $('#moveLater').val(response.moveLater);
+                        $('#assetType').val(response.assetType);
+                        $('#treatmentName').val(response.treatmentName);
+                        var model = document.getElementById('EditTreatmentTypeForm');
+                        var formModel = bootstrap.Modal.getOrCreateInstance(model);
+                        formModel.show();
+                    },
+                error:
+                    function (response) {
+
+                    }
+            });
+    }
+
+
+</script>

@@ -1,0 +1,229 @@
+﻿@model TreatmentCancellationMatrixViewModel
+@{
+    ViewData["Title"] = "Treatment Cancellation Matrix";
+}
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+
+<partial name="~/Views/Shared/navbarshared/_SetupsSidebar.cshtml" />
+<div class="container-fluid" style="height:730px;margin-top:50px;overflow-y:auto;">
+
+
+
+
+<h2>Treatment Cancellation Matrix</h2>
+<div class="card">
+    <div class="card-body">
+        <h5>View Treatment Cancellation Matrix</h5>
+
+        <div class="row align-content-center  m-2">
+
+            <div class="table-responsive">
+
+                <table class="table table-bordered table-hover table-striped" id="treatmentCancellationMatrixTable">
+                    <thead class="bg-success text-white">
+                        <tr>
+                            <th>
+                                AssetTypeA
+                            </th>
+                            <th>
+                                TreatmentA
+                            </th>
+                            <th>
+                                AssetTypeB
+                            </th>
+                            <th>
+                                TreatmentB
+                            </th>
+                            <th>
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+
+
+
+
+@*Delete Modal*@
+
+<div class="modal fade" id="deletealert" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="deletealertLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deletealertLabel">Delete Treatment Cancellation Matrix</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span>
+                    Are you sure you want to delete the selected Treatment Cancellation Matrix ?
+                </span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <form id="deleteform" asp-antiforgery="true" asp-action="DeleteTreatmentCancellationMatrix" asp-controller="TreatmentCancellationMatrix" method="post">
+                    <input asp-for="AssetTypeA" id="assetTypeA" name="AssetTypeA" hidden />
+                    <input asp-for="TreatmentA" id="treatmentA" name="TreatmentA" hidden />
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@*Edit Modal*@
+
+<div class="modal fade" id="EditTreatmentCancelationMatrixForm" tabindex="-1" role="dialog" aria-labelledby="EditParameterFormLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="EditParameterFormLabel">Edit Parameter</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="editTreatmentCancelationMatrix" class="needs-validation" asp-controller="TreatmentCancellationMatrix" asp-action="EditTreatmentCancellationMatrix" method="post">
+                <div class="modal-body">
+                    <input asp-for="AssetTypeA" id="assetTypeAE" name="AssetTypeA" hidden />
+                    <input asp-for="TreatmentA" id="treatmentAE" name="TreatmentA" hidden />
+                    <div class="mb-3">
+                        <label for="UserTreatmentBenefitWeight" class="form-label">UserTreatmentBenefitWeight</label>
+                        <input asp-for="AssetTypeB" id="assetTypeB" type="text" name="AssetTypeB" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="UserTreatmentBenefitWeight" class="form-label">UserTreatmentBenefitWeight</label>
+                        <input asp-for="TreatmentB" id="treatmentB" type="text" name="TreatmentB" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+
+    $(document).ready(function () {
+        $('#treatmentCancellationMatrixTable').DataTable({
+            "processing": true,
+            "serverSide": true,
+            "bSearchable": true,
+            "order": [[1, 'asc']],
+            "language": {
+                "emptyTable": "No record found.",
+                "processing":
+                    '<i class="fa fa-spinner fa-spin fa-3x fa-fw" style="color:#2a2b2b;"></i><span class="sr-only">Loading...</span> '
+            },
+            "sAjaxSource": "/TreatmentCancellationMatrix/ApplyPagination",
+            "columns": [
+                {
+                    "data": "assetTypeA",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "treatmentA",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "assetTypeB",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "treatmentB",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": null,
+                    title: "Actions",
+                    orderable: false,
+                    defaultContent: '',
+                    render: function (data, type, row) {
+                        var inner = `<button onclick="oneditingTreatmentCancelationMatrix.bind(this)()" data-asset-A="${row.assetTypeA}" data-treatment-a="${row.treatmentA}" value="` + row.parameterId + `" class="btn btn-primary mb-1">
+                            <i class="bi bi-pencil-square"></i>
+                        </button>
+                                            <button type="button" value="` + row.parameterId + `"onclick="ondeletingCancelationMatrix.bind(this)()" data-asset-A="${row.assetTypeA}" data-treatment-a="${row.treatmentA}" class="btn btn-danger mb-1" data-bs-toggle="modal" data-bs-target="#deletealert">
+                            <i class="bi bi-trash"></i>
+                        </button>`;
+                        return inner;
+                    }
+                }
+            ]
+        });
+
+    });
+
+    function oneditingTreatmentCancelationMatrix() {
+        var assetTypeA = this.getAttribute('data-asset-A');
+        var treatmentA = this.getAttribute('data-treatment-a');
+        $.ajax(
+            {
+                type: 'Get',
+                dataType: 'JSON',
+                url: '/TreatmentCancellationMatrix/GetTreatmentCancellationMatrix',
+                 data: {
+                 assetType: assetTypeA,
+                 treatment: treatmentA
+                },
+                success:
+                    function (response) {
+                        debugger;
+                        var form = document.getElementById('editTreatmentCancelationMatrix');
+                        $('#assetTypeAE').val(response.assetTypeA);
+                        $('#assetTypeB').val(response.assetTypeB);
+                        $('#treatmentB').val(response.treatmentB);
+                        $('#treatmentAE').val(response.treatmentA);
+                        var model = document.getElementById('EditTreatmentCancelationMatrixForm');
+                        var formModel = bootstrap.Modal.getOrCreateInstance(model);
+                        formModel.show();
+                    },
+                error:
+                    function (response) {
+
+                    }
+            });
+    }
+
+    function ondeletingCancelationMatrix() {
+        var assetTypeA = this.getAttribute('data-asset-A');
+        var treatmentA = this.getAttribute('data-treatment-a');
+        $.ajax(
+            {
+                type: 'Get',
+                dataType: 'JSON',
+                url: '/TreatmentCancellationMatrix/GetTreatmentCancellationMatrix',
+                data: {
+                    assetType: assetTypeA,
+                    treatment: treatmentA
+                },
+                success:
+                    function (response) {
+                        var form = document.getElementById('deleteform');
+                        $('#assetTypeA').val(response.assetTypeA);
+                        $('#treatmentA').val(response.treatmentA);
+                    },
+                error:
+                    function (response) {
+
+                    }
+            });
+    }
+
+</script>

@@ -1,0 +1,138 @@
+﻿@model UserTreatmentsViewModel
+@{
+    ViewData["Title"] = "User Treatments";
+}
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+
+
+<h2>User Treatments</h2>
+<div class="card">
+    <div class="card-body">
+        <h5>View User Treatments</h5>
+
+        <div class="row align-content-center  m-2">
+
+            <div class="table-responsive">
+
+                <table class="table table-bordered table-hover table-striped" id="userTreatmentsTable">
+                    <thead class="bg-success text-white">
+                        <tr>
+                            <th>
+                                UserTreatmentTypeNo
+                            </th>
+                            <th>
+                                UserTreatmentName
+                            </th>
+                            <th>
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@*Edit Modal*@
+
+<div class="modal fade" id="EditUserTreatmentForm" tabindex="-1" role="dialog" aria-labelledby="EditParameterFormLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="EditParameterFormLabel">Edit Parameter</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="editUserTreatment" class="needs-validation" asp-controller="UserTreatments" asp-action="EditUserTreatments" method="post">
+                <div class="modal-body">
+                    <input asp-for="UserTreatmentsId" id="userTreatmentsId" name="UserTreatmentsId" hidden />
+                    <div class="mb-3">
+                        <label for="UserTreatmentName" class="form-label">UserTreatmentName</label>
+                        <input asp-for="UserTreatmentName" id="userTreatmentName" type="text" name="UserTreatmentName" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+
+    $(document).ready(function () {
+        $('#userTreatmentsTable').DataTable({
+            "processing": true,
+            "serverSide": true,
+            "bSearchable": true,
+            "order": [[1, 'asc']],
+            "language": {
+                "emptyTable": "No record found.",
+                "processing":
+                    '<i class="fa fa-spinner fa-spin fa-3x fa-fw" style="color:#2a2b2b;"></i><span class="sr-only">Loading...</span> '
+            },
+            "sAjaxSource": "/UserTreatments/ApplyPagination",
+            "columns": [
+                {
+                    "data": "userTreatmentsId",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "userTreatmentName",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": null,
+                    title: "Actions",
+                    orderable: false,
+                    defaultContent: '',
+                    render: function (data, type, row) {
+                        var inner = `<button onclick="oneditingUserTreatment.bind(this)()" value="` + row.userTreatmentsId + `" class="btn btn-primary mb-1">
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+                                <button type="button" value="` + row.parameterId + `"onclick="oneditingParam.bind(this)()" class="btn btn-danger mb-1" data-bs-toggle="modal" data-bs-target="#deletealert">
+                        <i class="bi bi-trash"></i>
+                    </button>`;
+                        return inner;
+                    }
+                }
+            ]
+        });
+
+    });
+
+    function oneditingUserTreatment() {
+        $.ajax(
+            {
+                type: 'Get',
+                dataType: 'JSON',
+                url: '/UserTreatments/GetUserTreatment',
+                data: { id: this.value },
+                success:
+                    function (response) {
+                        debugger;
+                        var form = document.getElementById('editUserTreatment');
+                        $('#userTreatmentName').val(response.userTreatmentName);
+                        $('#userTreatmentsId').val(response.userTreatmentsId);
+                        var model = document.getElementById('EditUserTreatmentForm');
+                        var formModel = bootstrap.Modal.getOrCreateInstance(model);
+                        formModel.show();
+                    },
+                error:
+                    function (response) {
+
+                    }
+            });
+    }
+
+</script>

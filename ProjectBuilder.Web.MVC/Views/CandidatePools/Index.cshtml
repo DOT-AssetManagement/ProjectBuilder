@@ -1,0 +1,737 @@
+﻿@using ProjectBuilder.Web.MVC.Models;
+@model CandidatePoolViewModel
+
+@{
+    ViewData["Title"] = "Candidate Pools";
+    string currentUserName = ViewData["CurrentUserName"]?.ToString();
+}
+
+<style>
+    .loading-overlay {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 9999;
+    }
+
+</style>
+
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+<div class="candidatepools_maincontainer">
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <i class="fa fa-spinner fa-spin fa-3x fa-fw" style="color:#2a2b2b;"></i>
+        <span class="sr-only">Loading...</span>
+    </div>
+    <nav class="sidenavbar"></nav>
+    <div class="candidatepools_maincontent-container">
+
+        <div class="candidatepools_header">
+            <div class="scenarios_options-searchcontainer">
+                <label>Search in Candidate Pools</label>
+                <form>
+                    <div class="scenarios_options-search">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" name="SearchString" value="@Model.SearchString" />
+                        <button type="submit" class="btn btn-primary m-1">Search</button>
+                        <a asp-controller="CandidatePools"
+                           asp-action="Index" class="btn btn-warning m-1" style="background-color:#3099cf;color:#fff;">Reset</a>
+                    </div>
+
+                </form>
+            </div>
+            <button id="createnewlibrarybut" type="button" class="btn btn-primary m-1" data-bs-toggle="modal"
+                    data-bs-target="#CreateNewLibraryForm">
+                Create New Candidate Pool
+            </button>
+        </div>
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <div class="alert alert-success" style="width:100%;">
+                @TempData["SuccessMessage"]
+            </div>
+        }
+
+        <div class="candidatepools_maincontent">
+            <input id="userRole" type="hidden" value='@Context.Session.GetString("RoleName")' />
+            @if (Model.Libraries.Count() > 0)
+            {
+                <div class="card">
+                    <div class="card-body">
+                        <div>
+                            <table id="candidatepoolstable" class="table table-bordered table-hover table-striped">
+                                <thead class="bg-success text-white">
+                                    <tr>
+                                        <th>
+                                            @Html.DisplayNameFor(model => model.Name)
+                                        </th>
+                                        <th>
+                                            @Html.DisplayNameFor(model => model.Description)
+                                        </th>
+                                        <th>
+                                            Number of<br />
+                                            Treatments
+                                        </th>
+
+                                        <th>
+                                            Pavement Count
+                                        </th>
+                                        <th>
+                                            Bridge Count
+                                        </th>
+                                        <th>
+                                            Is Imported
+                                        </th>
+                                        <th>
+                                            Shared
+                                        </th>
+                                        <th>
+                                            Owner
+                                        </th>
+                                        <th>
+                                            Import Date
+                                        </th>
+                                        <th>
+                                            Source
+                                        </th>
+                                        <th>
+                                            Actions
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in Model.Libraries)
+                                    {
+                                        var fullText = item.Description ?? "";
+                                        var words = fullText.Split(' ');
+                                        var preview = string.Join(" ", words.Take(2));
+                                        if (words.Length > 2)
+                                        {
+                                            preview += "...";
+                                        }
+
+                                        var style = Model.FromScenario && Model.Id == item.CandidatePoolId ? "style=background-color:#ececec;color:#000;" : "";
+                                        <tr @style>
+                                            <td>
+                                                @Html.DisplayFor(modelItem => item.Name)
+                                            </td>
+                                            <td>
+                                                <span title="@fullText" style="cursor: help;">
+                                                    @preview
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @String.Format("{0:#,##0}", item.TreatmentsCount)
+                                            </td>
+
+                                            <td>
+                                                @Html.DisplayFor(a => item.PavementTreatmentsCount)
+                                            </td>
+                                            <td>
+                                                @Html.DisplayFor(a => item.BridgeTreatmentsCount)
+                                            </td>
+                                            <td>
+                                                @if (Model.IsImporting)
+                                                {
+                                                    @Html.Raw("Yes")
+                                                }
+                                                else
+                                                {
+                                                    @Html.Raw("No")
+                                                }
+                                            </td>
+
+                                            <td>
+                                                @if (item.IsShared)
+                                                {
+                                                    @Html.DisplayName("Yes")
+                                                }
+                                                else
+                                                {
+                                                    @Html.DisplayName("No")
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (item.Owner != currentUserName)
+                                                {
+                                                    @Html.DisplayFor(modelitem => item.Owner)
+
+                                                }
+                                            </td>
+                                            <td>
+                                                @Html.DisplayFor(modelItem => item.FormattedPopulatedAt)
+                                            </td>
+                                            <td>
+                                                @Html.DisplayFor(modelItem => item.Source)
+                                            </td>
+                                            <td>
+                                                <div class="dropdown">
+
+                                                    @if (Model.FromScenario && Model.Id == item.CandidatePoolId)
+                                                    {
+                                                        <button class="btn btn-secondary dropdown-toggle circlebutton" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">
+                                                            <i class="fa-solid fa-ellipsis-vertical"></i>
+                                                        </button>
+
+                                                    }
+                                                    else if (!Model.FromScenario)
+                                                    {
+                                                        <button class="btn btn-secondary dropdown-toggle circlebutton" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">
+                                                            <i class="fa-solid fa-ellipsis-vertical"></i>
+                                                        </button>
+                                                    }
+                                                    else
+                                                    {
+                                                        <button class="btn btn-secondary dropdown-toggle circlebutton" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false"
+                                                                disabled style="opacity:0.3;">
+                                                            <i class="fa-solid fa-ellipsis-vertical"></i>
+                                                        </button>
+                                                    }
+                                                    <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
+                                                        @if (item.Owner == currentUserName)
+                                                        {
+                                                            <li>
+                                                                <a class="dropdown-item editCandidatePool" href="#" value="@item.CandidatePoolId">
+                                                                    <i class="fa-regular fa-pen-to-square"></i>
+                                                                    <span>Edit</span>
+                                                                </a>
+                                                                <hr>
+                                                            </li>
+                                                            <li>
+                                                                <a class="dropdown-item importTreatments" href="#" name="@item.Name" value="@item.CandidatePoolId">
+                                                                    <i class="fa-solid fa-file-import"></i>
+                                                                    <span>Import</span>
+                                                                </a><hr>
+                                                            </li>
+                                                            <li>
+                                                                <a class="dropdown-item deleteCandidatePool disabled" href="#" value="@item.CandidatePoolId" data-bs-toggle="modal" data-bs-target="@($"#deletealert{(item.IsDeleteable ? "true" : "false")}")">
+                                                                    <i class="fa-regular fa-trash-can"></i>
+                                                                    <span>Delete</span>
+                                                                </a>
+                                                                <hr>
+                                                            </li>
+                                                        }
+                                                        else
+                                                        {
+                                                            <li>
+                                                                <a class="dropdown-item editCandidatePool disabled" href="#" value="@item.CandidatePoolId">
+                                                                    <i class="fa-regular fa-pen-to-square"></i>
+                                                                    <span>Edit</span>
+                                                                </a>
+                                                                <hr>
+                                                            </li>
+                                                            <li>
+                                                                <a class="dropdown-item importTreatments disabled" href="#" name="@item.Name" value="@item.CandidatePoolId">
+                                                                    <i class="fa-solid fa-file-import"></i>
+                                                                    <span>Import</span>
+                                                                </a><hr>
+                                                            </li>
+                                                            <li>
+                                                                <a class="dropdown-item deleteCandidatePool disabled" href="#" value="@item.CandidatePoolId">
+                                                                    <i class="fa-regular fa-trash-can"></i>
+                                                                    <span>Delete</span>
+                                                                </a>
+                                                            </li>
+                                                        }
+
+                                                        <li>
+                                                            <a class="dropdown-item copyCandidatePool" href="#" value="@item.CandidatePoolId">
+                                                                <i class="fa-solid fa-copy"></i>
+                                                                <span>Copy</span>
+                                                            </a><hr>
+                                                        </li>
+                                                        <li>
+                                                            <a class="dropdown-item" href="/Treatments/Index/@item.CandidatePoolId" value="@item.CandidatePoolId">
+                                                                <i class="fa-regular fa-pen-to-square"></i>
+                                                                <span>Treatments</span>
+                                                            </a>
+                                                            <hr>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <h5 class="ms-2">you dont have any candidate pool yet, you can create one using the create button.</h5>
+            }
+        </div>
+        <div class="modal fade" id="CreateNewLibraryForm" tabindex="-1" role="dialog"
+             aria-labelledby="CreateNewLibraryFormlabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="CreateNewLibraryFormlabel">Create Empty Candidate Pool</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <form id="createlibrary" class="needs-validation" asp-controller="CandidatePools"
+                          asp-action="CreateLibrary" method="post" novalidate>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label for="libraryName" class="form-label">Candidate Pool Name</label>
+                                <input asp-for="@Model.Name" type="text" name="libraryname" class="form-control"
+                                       required oninput="validateExistingPoolName()" />
+                                <div id="namefeedback" class="invalid-feedback">Field is required</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="libraryDescription" class="form-label">Candidate Pool Description</label>
+                                <input asp-for="@Model.Description" name="librarydescription" type="text"
+                                       class="form-control" required />
+                                <div id="descriptionfeedback" class="invalid-feedback">Field is required</div>
+                            </div>
+                            <div class="form-check mb-3 d-none">
+                                <input class="form-check-input" asp-for="@Model.IsEmptyLibrary" type="radio"
+                                       name="isemptylibrary" id="isemptylibrary" value="true" checked>
+                                <label class="form-check-label" for="isemptylibrary">
+                                    Create an empty candidate pool
+                                </label>
+                            </div>
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" asp-for="@Model.IsShared" type="checkbox"
+                                           name="isshared" id="isshared">
+                                    <label class="form-check-label" for="isshared">Shared</label>
+                                </div>
+                            </div>
+
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-success">Create</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade" id="EditLibraryForm" tabindex="-1" role="dialog" aria-labelledby="editlibraryheader"
+             aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editlibraryheader">Edit Candidate Pool</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <form id="editlibrary" class="needs-validation" asp-controller="CandidatePools"
+                          asp-action="EditLibrary" method="post" novalidate>
+                        <div class="modal-body">
+                            <input asp-for="@Model.Id" type="text" name="libraryId" hidden />
+                            <div class="mb-3">
+                                <label for="libraryName" class="form-label">Candidate Pool Name</label>
+                                <input asp-for="@Model.Name" type="text" name="libraryname" class="form-control"
+                                       required />
+                                <div id="editnamefeedback" class="invalid-feedback">Field is required</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="libraryDescription" class="form-label">Candidate Pool Description</label>
+                                <input asp-for="@Model.Description" name="librarydescription" type="text"
+                                       class="form-control" required />
+                                <div id="editdescriptionfeedback" class="invalid-feedback">Field is required</div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" asp-for="@Model.IsShared" type="checkbox"
+                                           name="isshared" id="isshared">
+                                    <label class="form-check-label" for="isshared">Is Shared</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button name="submitbtn" type="submit" class="btn btn-success">Update</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade" id="CopyLibraryForm" tabindex="-1" role="dialog" aria-labelledby="copylibraryheader"
+             aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="copylibraryheader">Create Candidate Pool</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <form id="copylibrary" class="needs-validation" asp-controller="CandidatePools"
+                          asp-action="CreateSharedLibrary" method="post" novalidate>
+                        <div class="modal-body">
+                            <input asp-for="@Model.Id" type="text" name="libraryId" hidden />
+                            <div class="mb-3">
+                                <label for="libraryName" class="form-label">Candidate Pool Name</label>
+                                <input asp-for="@Model.Name" type="text" name="libraryname" oninput="CandidatePoolNameExists()" class="form-control"
+                                       required />
+                                <div id="CopynNamefeedback" class="invalid-feedback">Field is required</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="libraryDescription" class="form-label">Candidate Pool Description</label>
+                                <input asp-for="@Model.Description" name="librarydescription" type="text"
+                                       class="form-control" required />
+                                <div id="descriptionfeedback" class="invalid-feedback">Field is required</div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" asp-for="@Model.IsShared" type="checkbox"
+                                           name="isshared" id="isshared">
+                                    <label class="form-check-label" for="isshared">Is Shared</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button name="submitbtn" type="submit" class="btn btn-success">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="modal fade" id="deletealerttrue" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+             aria-labelledby="deletealertLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="deletealertLabel">Delete Candidate Pool</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body d-flex align-items-center">
+                        <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                        <span>
+
+                            Scenario is Attached to CandidatePool unable to Delete
+                        </span>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <form id="deleteformtrue" asp-antiforgery="true" asp-action="DeleteLibrary"
+                              asp-controller="CandidatePools" method="post">
+                            <input asp-for="@Model.Id" hidden name="libraryid" />
+                            @* <button type="submit" class="btn btn-danger disabled">Delete</button> *@
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="deletealertfalse" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+             aria-labelledby="deletealertLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="deletealertLabel">Delete Candidate Pool</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body d-flex align-items-center">
+                        <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                        <span>
+                            Are you sure you want to delete the selected candidate pool ?
+                        </span>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <form id="deleteformfalse" asp-antiforgery="true" asp-action="DeleteLibrary"
+                              asp-controller="CandidatePools" method="post">
+                            <input asp-for="@Model.Id" hidden name="libraryid" />
+                            <button type="submit" class="btn btn-danger">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="importtreatment" tabindex="-1" role="dialog" aria-labelledby="importtreatmentlabel"
+             aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editlibraryheader">Import</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <form id="treatmentimportform" class="needs-validation" asp-controller="CandidatePools"
+                          asp-action="ImportTreatments" method="post" enctype="multipart/form-data" novalidate>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label for="libraries" class="form-label">Candidate Pool</label>
+                                <input class="form-control" type="text" name="candidatepool_name" id="candidatepool_name" readonly>
+                                <input class="form-control" type="hidden" name="candidatepoolid" id="candidatepoolid">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-check-label mb-2" for="importbridge">
+                                    Import What?
+                                </label>
+                                <select class="form-select" name="importtype">
+                                    <option value="B" selected>BAMS</option>
+                                    <option value="P">PAMS</option>
+                                    <option value="D">DecisionSpace</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label>
+                                    <input type="radio" name="option" value="deleteAll" checked onchange="updateFromScratch()"> Delete All
+                                    <input type="checkbox" id="fromScratch" name="fromScratch" checked value="true" hidden />
+                                </label> &nbsp;&nbsp;
+                                <label>
+                                    <input type="radio" name="option" value="keepUserCreated" onchange="updateFromScratch()"> Keep User Created
+                                </label>  &nbsp;&nbsp;
+                                <label>
+                                    <input type="radio" name="option" value="keepAll" onchange="updateFromScratch()"> Keep All
+                                    <input type="checkbox" id="keepAll" name="keepAll" value="false" hidden />
+
+                                </label>
+
+                            </div>
+                            <div class="mb-3">
+                                <label for="formFile" class="form-label">Excel File</label>
+                                <input class="form-control" type="file" id="excelfile" name="excelfile" required
+                                       accept=".xlsx,.xls">
+                                <div id="excelvalidation" class="invalid-feedback">Field is required</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="formFile" class="form-label">Tab Name</label>
+                                <input class="form-control" type="text" name="tabname">
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-success">Import</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        @* <div class="modal fade" id="createlibraryalert" data-bs-keyboard="false" tabindex="-1"
+        aria-labelledby="createlibraryalertlabel" aria-hidden="true">
+        <div class="modal-dialog">
+        <div class="modal-content">
+        <div class="modal-header">
+        <h5 class="modal-title" id="createlibraryalertlabel">Create Library</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body d-flex align-items-center">
+        <i class="bi bi-info-circle-fill text-primary fa-2x me-3"></i>
+        <span>
+        you dont have any library for now, do you want to create a new one ?
+        </span>
+        </div>
+        <div class="modal-footer">
+        <button id="closealert" type="button" class="btn btn-secondary"
+        data-bs-dismiss="modal">Close</button>
+        <button id="createlibrarywhenempty" type="button" class="btn btn-primary">Create</button>
+        </div>
+        </div>
+        </div>
+        </div> *@
+    </div>
+    @section Styles {
+        <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+        <link rel="stylesheet" href="~/css/candidatepools_styles.css" />
+        <link href="~/css/searchstring.css" rel="stylesheet" />
+    }
+    <script>
+        $(document).ready(function () {
+            $('#CreateNewLibraryForm').on('show.bs.modal', function () {
+                var form = document.getElementById('createlibrary');
+                console.log(form);
+                form.libraryname.value = '';
+            });
+
+
+            $('#CreateNewLibraryForm').on('hidden.bs.modal', function () {
+                debugger;
+                // Reset the form
+                $('#createlibrary').trigger('reset');
+                // Reset any validation styles and messages
+                $('.needs-validation').removeClass('was-validated');
+            });
+        });
+
+                 $(document).on('click', '.dropdown-item[href*="/Treatments/Index/"]', function (e) {
+            $('#loadingOverlay').show();
+        });
+
+
+        $(document).ready(function () {
+            $('#EditLibraryForm').on('hidden.bs.modal', function () {
+                debugger;
+                // Reset the form
+                $('#editlibrary').trigger('reset');
+                // Reset any validation styles and messages
+                $('.needs-validation').removeClass('was-validated');
+
+                var form = document.getElementById('editlibrary');
+                form.libraryname.classList.remove('is-invalid');
+            });
+        });
+        $(function () {
+            $(document).on('click', '.deleteCandidatePool', function (e) {
+                e.preventDefault();
+                value = $(this).attr("value");
+                ondeletinglibrary(value);
+            });
+
+            $(document).on('click', '.copyCandidatePool', function (e) {
+                debugger;
+                e.preventDefault();
+                value = $(this).attr("value");
+                onsharinglibrary(value);
+            });
+
+            $(document).on('click', '.editCandidatePool', function (e) {
+                e.preventDefault();
+                value = $(this).attr("value");
+                oneditinglibrary(value);
+            });
+
+            $(document).on('click', '.importTreatments', function (e) {
+                e.preventDefault();
+                name = $(this).attr("name");
+                value = $(this).attr("value");
+
+                $("#candidatepool_name").val(name);
+                $("#candidatepoolid").val(value);
+                $('#treatmentimportform').removeClass('was-validated');
+                $("#importtreatment").modal("show");
+            });
+            var table = $('#candidatepoolstable').DataTable({
+                searching: false
+            });
+            var importing = ("@Model.IsImporting".toLowerCase() === 'true');
+            var fromscenario = ("@Model.FromScenario".toLowerCase() === 'true');
+            importcandidatepoolfromscenario(importing, fromscenario, "@Model.Id", "@Model.Name");
+        });
+        function updateFromScratch() {
+            var fromScratchValue = document.querySelector('input[name="option"]:checked').value;
+            var fromSccheckbox = document.getElementById("fromScratch");
+            var Deletecheckbox = document.getElementById("keepAll");
+            // Update the variables based on the selected value
+            if (fromScratchValue === "deleteAll") {
+                fromSccheckbox.checked = true;
+                fromSccheckbox.value = true;
+                Deletecheckbox.value = false;
+                Deletecheckbox.checked = false;
+                fromScratch = true;
+                keepAll = false;
+            } else if (fromScratchValue === "keepUserCreated") {
+                fromSccheckbox.value = true;
+                Deletecheckbox.value = true;
+                fromSccheckbox.checked = true;
+                Deletecheckbox.checked = true;
+                fromScratch = true;
+                keepAll = true;
+            } else if (fromScratchValue === "keepAll") {
+                fromSccheckbox.value = false;
+                Deletecheckbox.value = true;
+                fromSccheckbox.checked = false;
+                Deletecheckbox.checked = true;
+                fromScratch = false;
+                keepAll = true;
+            }
+
+            // You can now use the updated values as needed
+            console.log("fromScratch:", fromScratch);
+            console.log("keepAll:", keepAll);
+        }
+
+        function validateExistingPoolName() {
+
+            var form = document.getElementById('createlibrary');
+            form.libraryname.classList.remove('is-invalid');
+
+            var libraryname = form.libraryname.value;
+            var libraryid = '';
+            if (form.libraryId !== undefined) {
+                libraryid = form.libraryId.value;
+            }
+
+
+            $.ajax({
+                type: 'POST',
+                dataType: 'JSON',
+                url: '/CandidatePools/CheckLibraryName',
+                data: { libraryname: libraryname, libraryid: libraryid },
+                success:
+                    function (response) { },
+                error:
+                    function (response) {
+                        check = false;
+                        form.libraryname.classList.add('is-invalid');
+                        document.getElementById('namefeedback').innerText = response.responseText;
+                        document.getElementById('editnamefeedback').innerText = "Name already exist";
+
+                    }
+            });
+
+        }
+
+
+        function CandidatePoolNameExists() {
+            debugger;
+            var form = document.getElementById('copylibrary');
+            console.log(form);
+            var libraryname = form.libraryname.value;
+            console.log(libraryname);
+            var libraryid = '';
+
+            $.ajax({
+                type: 'POST',
+                dataType: 'JSON',
+                url: '/CandidatePools/CheckLibraryName',
+                data: { libraryname: libraryname, libraryid: libraryid },
+                success: function (response) {
+                    form.libraryname.classList.remove('is-invalid');
+                },
+                error:
+                    function (response) {
+                        check = false;
+
+                        form.libraryname.classList.add('is-invalid');
+                        document.getElementById('CopynNamefeedback').innerText = response.responseText;
+                        document.getElementById('editnamefeedback').innerText = "Name already exist";
+                    }
+            });
+        }
+
+        @* $("#createlibrarywhenempty").click(function () {
+            var emptymodel = document.getElementById('createlibraryalert');
+            bootstrap.Modal.getOrCreateInstance(emptymodel).hide();
+            var model = document.getElementById('CreateNewLibraryForm');
+            var formModel = bootstrap.Modal.getOrCreateInstance(model);
+            formModel.show();
+            });
+            var librariescount = $('#userlibrariescount').val();
+            var userRoleValue = $('#userRole').val();
+            if (librariescount < 1 && userRoleValue != "Guest") {
+            var model = document.getElementById('createlibraryalert');
+            var formModel = bootstrap.Modal.getOrCreateInstance(model);
+            formModel.show();
+            } *@
+
+    </script>
+
+
+
+
+
+    <style>
+        hr {
+            margin: 0.25rem 0;
+        }
+
+        .dropdown-toggle::after {
+            content: unset;
+        }
+    </style>

@@ -1,0 +1,52 @@
+﻿@model ImportMASAndB2PViewModel
+
+@{
+    ViewData["Title"] = "Import MAS";
+}
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+
+
+<partial name="~/Views/Shared/navbarshared/_ImportSideBar.cshtml" />
+<div class="container-fluid" style="height:561px;margin-top:50px;overflow-y:auto;">
+
+
+
+<h2>Import Maintainable Asset Segmentation</h2>
+<div class="card">
+    <div class="card-body">
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+
+            <div class="row justify-content-start">
+                <div class="col-md-3 d-flex justify-content-start align-items-center">
+
+                    <form id="importform" class="needs-validation" asp-controller="Libraries" asp-action="ImportMASAndB2P" method="post" enctype="multipart/form-data" novalidate>
+                        <div class="modal-body">
+                            @Html.HiddenFor(m=>m.IsMAS, new { @Value = true, @Name = "ismas" })
+                            <div class="mb-3">
+                                <label for="formFile" class="form-label">Excel File</label>
+                                <input class="form-control" type="file" id="excelfile" name="excelfile" required accept=".xlsx,.xls">
+                                <div id="excelvalidation" class="invalid-feedback">Field is required</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="formFile" class="form-label">Tab Name</label>
+                                <input class="form-control" name="tabname">
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-success">Import</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+
+
+</div>

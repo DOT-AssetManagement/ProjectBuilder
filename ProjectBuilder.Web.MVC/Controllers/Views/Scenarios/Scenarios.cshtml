@@ -1,0 +1,162 @@
+﻿@model ScenarioViewModel
+
+@{
+    ViewData["Title"] = "Scenarios";
+}
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+
+<h2>Scenarios</h2>
+
+<div class="row align-content-center">
+    <div class="card">
+        <div class="card-body">
+          
+    <div class="table-responsive ">
+
+                <table class="table table-bordered table-hover table-striped" id="scenariosTable">
+    <thead class="bg-success text-white">
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.ScenarioId)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.ScenarioName)
+            </th>
+            <th>
+                @Html.DisplayName("Locked")
+            </th>
+            <th>
+                @Html.DisplayName("Comments")
+            </th>
+            <th>
+                @Html.DisplayName("Created By")
+            </th>
+            <th>
+                @Html.DisplayName("Created At")
+            </th>
+            <th>
+                @Html.DisplayName("Last Run By")
+            </th>
+            <th>
+                @Html.DisplayName("last Run At")
+            </th>
+            <th>
+                @Html.DisplayName("Last Started")
+            </th>
+            <th>
+                @Html.DisplayName("last Finished")
+            </th> 
+            <th>
+                @Html.DisplayName("Candidate Pool")
+            </th>
+            <th>
+                 @Html.DisplayText("Actions")
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model.Scenarios) {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.ScenarioId)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.ScenarioName)
+            </td>
+            <td>
+               @item.Locked
+            </td>
+             <td>
+                 @Html.DisplayFor(modelItem => item.Notes)
+             </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.CreatedBy)
+            </td>
+            <td>
+                 @Html.DisplayFor(modelItem => item.CreatedAt)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.LastRunBy)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.LastRunAt)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.LastStarted)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.LastFinished)
+            </td>  
+            <td>
+                @Html.DisplayFor(modelItem => item.CandidatePool)
+            </td>      
+            <td>
+                <button type="button" value="@item.LibraryId" onclick="ondeletinglibray.bind(this)()" class="btn btn-danger mb-1" data-bs-toggle="modal" data-bs-target="#deletealert">
+                          <i class="bi bi-trash"></i>
+                 </button>
+            </td>
+        </tr>
+}
+    </tbody>
+</table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row align-items-baseline mt-5">
+    <div class="col-auto">
+        <button type="button" class="btn btn-primary m-1" data-bs-toggle="modal" data-bs-target="#createscenariowrapper">Create Scenario</button>
+    </div>
+</div>
+<div class="modal fade" id="createscenariowrapper" tabindex="-1" role="dialog" aria-labelledby="CreateNewScenarioFormlabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="CreateNewScenarioFormlabel">Create Scenario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="createscenario" class="needs-validation" asp-controller="Scenarios" asp-action="CreateScenario" method="post" novalidate>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="scenarioname" class="form-label">Scenario Name</label>
+                        <input asp-for="@Model.ScenarioName" type="text" id="scenarioname" name="scenarioname" class="form-control" required />
+                        <div id="namefeedback" class="invalid-feedback">Field is required</div>
+                        <label for="minyear" class="form-label">First Year</label>
+                        <input asp-for="@Model.FirstYear" type="number" name="minyear" id="minyear" class="form-control" required placeholder="2020"/>
+                        <div id="minyearfeedback" class="invalid-feedback">Field is required</div>
+                        <label for="maxyear" class="form-label">Last Year</label>
+                        <input asp-for="@Model.LastYear" type="text" name="maxyear" id="maxyear" class="form-control" required placeholder="2054"/>
+                        <div id="maxyearfeedback" class="invalid-feedback">Field is required</div>
+                    </div> 
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-success">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function () {
+
+    var table = $('#scenariosTable').DataTable({
+        searching: false
+    });
+
+});
+</script>
+<style>
+    table tr th {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>

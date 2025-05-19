@@ -1,0 +1,222 @@
+﻿@model AdminRoleViewModel
+
+@{
+    ViewData["Title"] = "Roles";
+}
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+<nav id="sidebarMenu" class="sidenavbar">
+</nav>
+<div class="container-fluid" style="height:561px;margin-top:50px;overflow-y:auto;margin-left:10px;">
+
+  
+
+    <h2 style="margin-left:10px;">Roles</h2>
+
+    <div style="height:500px;overflow-y:auto;">
+
+    <div class="card">
+        <div class="card-body">
+                <h5 class="margin-left:-10px;">View Roles</h5>
+
+            <div class="row align-content-center  m-2">
+
+                <div class="table-responsive" style="margin-left:-20px;">
+
+                    <table class="table table-bordered table-hover table-striped" id="usersTable">
+                        <thead class="bg-success text-white">
+                            <tr>
+                                <th>
+                                    Role Id
+                                </th>
+                                <th>
+                                    Name
+                                </th>
+                                <th>
+                                    Actions
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                int x = 0;
+                                @foreach (var item in Model.Roles)
+                            {
+                                    x++;
+                                    <tr>
+                                    <td>
+                                    @x
+                                    </td>
+                                    <td>
+                                        @Html.DisplayFor(model => item.Name)
+                                    </td>
+                                    <td>
+                                            <div class="dropdown">
+                                                <button class="btn btn-secondary circlebutton" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </button>
+                                                <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
+                                                    <li>
+                                                        <button onclick="oneditingRole.bind(this)()" value="@item.EntityId" class="btn mb-1">
+                                                            <i class="bi bi-pencil-square"> </i> Edit
+                                                        </button>
+                                                    </li>
+                                                    <li>
+                                                    @if (!item.IsDeleteable)
+                                                            {
+                                                                <button type="button" value="@item.EntityId" data-id="@item.EntityId" onclick="ondeletingRole.bind(this)()" class="btn mb-1" data-bs-toggle="modal" data-bs-target="#deletealert">
+                                                                    <i class="bi bi-trash"> </i> Delete
+                                                                </button>
+                                                            }
+                                                            else
+                                                            {
+                                                                <button type="button" value="@item.EntityId" data-id="@item.EntityId" disabled class="btn mb-1" data-bs-toggle="modal" data-bs-target="#deletealert">
+                                                                    <i class="bi bi-trash"> </i> Delete
+                                                                </button>
+
+                                                            }
+
+                                                    </li>
+                                                </ul>
+
+                                            </div>
+                                    </td>
+                                </tr>
+                            }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+        <div class="col-auto mt-2" style="margin-left:5px;">
+            <button id="createnewRole" type="button" class="btn btn-primary m-1" data-bs-toggle="modal" data-bs-target="#CreateNewRoleForm">Create Roles</button>
+        </div>
+    </div>
+</div>
+
+@*Delete Modal*@
+<div class="modal fade" id="deletealert" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="deletealertLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deletealertLabel">Delete Role</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span>
+                    Are you sure you want to delete the selected Role ?
+                </span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <form id="deleteform" asp-antiforgery="true" asp-action="DeleteRole" asp-controller="Roles" method="post">
+                    <input asp-for="@Model.RoleId" hidden name="roleId" />
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@*Edit Modal*@
+
+<div class="modal fade" id="EditRoleForm" tabindex="-1" role="dialog" aria-labelledby="EditRoleFormLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="EditRoleFormLabel">Edit Role</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="editRole" class="needs-validation" asp-controller="Roles" asp-action="EditRole" method="post">
+                <div class="modal-body">
+                    <input asp-for="RoleId" id="roleId" name="RoleId" hidden />
+                    <div class="mb-3">
+                        <label for="userName" class="form-label">Name</label>
+                        <input asp-for="Name" id="roleName" type="text" name="Name" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@*Create Modal*@
+
+<div class="modal fade" id="CreateNewRoleForm" tabindex="-1" role="dialog" aria-labelledby="CreateNewRoleFormlabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="CreateNewRoleFormlabel">Create Role</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="createRole" class="needs-validation" asp-controller="Roles" asp-action="CreateRole" method="post" novalidate>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="Name" class="form-label">Name</label>
+                        <input asp-for="@Model.Name" type="text" name="Name" class="form-control" required />
+                        <div id="namefeedback" class="invalid-feedback">Field is required</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+
+    $(function () {
+        $("#createnewRole").click(function () {
+            var model = document.getElementById('CreateNewRoleForm');
+            var formModel = bootstrap.Modal.getOrCreateInstance(model);
+            formModel.show();
+        });
+    });
+
+    function oneditingRole() {
+        $.ajax(
+            {
+                type: 'Get',
+                dataType: 'JSON',
+                url: '/Roles/GetRole',
+                data: { id: this.value },
+                success:
+                    function (response) {
+                        debugger;
+                        var form = document.getElementById('editRole');
+                        $('#roleName').val(response.name);
+                        $('#roleId').val(response.roleId);
+                        var model = document.getElementById('EditRoleForm');
+                        var formModel = bootstrap.Modal.getOrCreateInstance(model);
+                        formModel.show();
+                    },
+                error:
+                    function (response) {
+
+                    }
+            });
+    }
+
+
+    function ondeletingRole() {
+        var form = document.getElementById('deleteform');
+        form.roleId.value = this.getAttribute('data-id');
+    }
+</script>

@@ -1,0 +1,183 @@
+﻿@model DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+@if (User.Identity?.IsAuthenticated == true)
+{
+ 
+   <div class="d-flex flex-row justify-content-between">
+    <h2 class="bottom-50">Dashboard</h2>
+     <div class="col-md-2 d-flex justify-content-end align-items-center">
+                    
+@*                    <div class="dropdown">
+                      <select class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenu2" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                          @foreach(var item in @ViewBag.Libraries)
+                          {
+                                <option value="@item.LibraryNumber" selected>@item.Name</option>
+                          }
+                   
+                      </select>
+                    </div>*@
+         </div>
+    </div>
+    <div class="row">   
+        <section class="content">
+            <div class="container-fluid mt-5">
+                <!-- Small boxes (Stat box) -->
+                <div class="row">
+                    <div class="col-lg-1 col-6">
+                    </div>
+                    <div class="col-lg-5 col-6">
+                        <!-- small box -->
+                        <div class="small-box" style="border:2px solid #1c305c;padding:20px;border-radius: 20px;">
+
+                            <div class="inner">
+                                <div class="row">
+                                    <div class="col-md-3 mb-3">
+                                        <img src="/images/c-pavement.svg" width="50px" style="float: right;" />
+                                    </div>
+                                    <div class="col-md-6 text-center">
+                                        <h3>@Model.PavementsCount</h3>
+                                    </div>
+                                    <div class="col-md-3">
+                                        
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12 text-center">
+                                        <h3>Pavement Treatments </h3>
+                                    </div>
+                                </div>
+
+
+                            </div>
+                        </div>
+                        <div class="col-lg-6 col-6">
+                        </div>
+                    </div>
+                </div>
+                <!-- ./col -->
+                <div class="row">
+                    <div class="col-lg-6 col-6">
+                    </div>
+                    <div class="col-lg-5 col-6" style="    margin-top:-3%;
+    margin-left: -7%;">
+                        <!-- small box -->
+                        <!-- small box -->
+                        <div class="small-box " style="border:2px solid #1c305c;padding:20px;border-radius: 20px;">
+
+                            <div class="inner">
+                                <div class="row">
+                                    <div class="col-md-3  mb-3">
+                                        <img src="/images/c-bridge.svg" width="50px" style="float: right;" />
+                                    </div>
+                                    <div class="col-md-6 text-center">
+                                        <h3>@Model.BridgesCount</h3>
+                                    </div>
+                                    <div class="col-md-3">
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12 text-center">
+                                <h3>Bridge Treatments </h3>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                        <div class="col-lg-1 col-6">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-lg-1 col-6">
+                    </div>
+                    <div class="col-lg-5 col-6" style="    margin-top: -3%;">
+                        <!-- small box -->
+                        <div class="small-box" style="border:2px solid #1c305c;padding:20px;border-radius: 20px;">
+
+                            <div class="inner">
+                                <div class="row">
+                                    <div class="col-md-3  mb-3">
+                                        <img src="/images/c-scenario.svg" width="50px" style="float: right;" />
+                                    </div>
+                                    <div class="col-md-6 text-center">
+                                        <h3>@Model.ScenariosCount</h3>
+                                    </div>
+                                    <div class="col-md-3">
+                                    </div>
+                                </div>
+                                        <div class="row">
+                                    <div class="col-md-12 text-center">
+                                <h3>Scenarios </h3>
+                                            </div>
+                                        </div>
+
+                            </div>
+                        </div>
+                        <div class="col-lg-6 col-6">
+                        </div>
+                    </div>
+                </div>
+                <!-- ./col -->
+                <div class="row">
+                    <div class="col-lg-6 col-6">
+                    </div>
+                    <div class="col-lg-5 col-6" style="    margin-top: -3%;
+    margin-left: -7%;">
+                        <!-- small box -->
+                        <!-- small box -->
+                        <div class="small-box" style="border:2px solid #1c305c;padding:20px;border-radius: 20px;">
+
+                            <div class="inner">
+                                <div class="row">
+                                    <div class="col-md-3  mb-3">
+                                        <img src="/images/c-project.svg" width="50px" style="float: right;" />
+                                    </div>
+                                    <div class="col-md-6 text-center">
+                                        <h3>@Model.ProjectsCount</h3>
+                                    </div>
+                                    <div class="col-md-3">
+                                    </div>
+                                </div>
+                                                <div class="row">
+                                    <div class="col-md-12 text-center">
+                                <h3>Projects </h3>
+                                                    </div>
+                                                </div>
+
+                            </div>
+                        </div>
+                        <div class="col-lg-1 col-6">
+                        </div>
+                    </div>
+                </div>
+                <!-- ./col -->
+
+            </div>
+        </section>
+
+         
+
+    
+    </div>
+}
+else
+{
+
+
+    <section class="body-section bg-lite">
+        <div class="overlay-bg">
+            <div class="">
+                <div class="row" style="--bs-gutter-x:0;">
+                    <div class="text-center pt-5 mt-5 text-white" style="">
+                        <h1 class="display-4">Welcome</h1>
+                        <p>Please login to your account.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+}

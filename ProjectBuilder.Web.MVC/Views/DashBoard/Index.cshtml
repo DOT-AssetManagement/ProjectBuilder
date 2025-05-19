@@ -1,0 +1,270 @@
+﻿@using System.Security.Claims
+
+
+@{
+    var email = User.FindFirstValue("emails");
+    var name = User.FindFirstValue("name");
+}
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Static Content Layout</title>
+    <style>
+        body{
+            /*background: url('/images/bg.jpg') no-repeat center center fixed;*/
+            background-size: cover;
+            color: white;
+        }
+        main{
+            background-color: unset !important;
+        }
+
+        #main-navbar {
+            background: #3399cc !important;
+        }
+
+        /*.card-body {
+            height: 170px;
+        }
+
+        .card {
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        #card-1 {
+            background-color: #2263d2;
+        }
+
+        #card-2{
+            background-color: #9fb9e5;
+        }
+
+        #card-3{
+            background-color: #5f7fa7;
+        }
+
+        .container {
+            justify-content: center;
+            align-items: center;
+            height: 100vh; 
+        }
+
+        h1 {
+            text-align: center;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .card-1 {
+            margin-top: 10px;
+            text-align: center;
+            color: #fff;
+            font-size: 15px;
+            font-weight: bold;
+            letter-spacing: 3px;
+        }
+
+        .image {
+            height: 100%;
+            width: 100%;
+        }
+
+        p {
+            text-align: center;
+            color: #fff;
+        }
+
+        .card-body-image {
+            padding: 0px !important;
+        }
+
+        .card {
+            background-color: rgba(0, 50, 100, 0.6);
+            border: none;
+            border-radius: 1rem;
+            color: white;
+            padding: 4rem !important;
+        }
+
+        .flow-line {
+            height: 30px;
+            width: 2px;
+            background: white;
+            margin: 0 auto;
+        }*/
+
+        .module-btn {
+            width: 200px;
+            background-color: #29b6f6;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 1rem;
+            box-shadow: 2px 4px 8px rgba(0,0,0,0.15);
+            position: relative;
+        }
+
+            .module-btn:hover {
+                background-color: #0288d1;
+            }
+
+        .tooltip-box {
+            background-color: #0288d1;
+            color: #fff;
+            padding: 1rem;
+            border-radius: 10px;
+            width: 300px;
+            position: absolute;
+            top: -130px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            z-index: 10;
+        }
+
+        .module-wrapper:hover .tooltip-box {
+            display: block;
+        }
+
+        .circle-icon {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .contact-box {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #0288d1;
+            color: white;
+            padding: 1rem;
+            border-radius: 10px;
+            box-shadow: 2px 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .top-bar {
+            background-color: #fff;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #ccc;
+        }
+
+            .top-bar img {
+                height: 50px;
+            }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        #bg-video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            min-width: 100%;
+            min-height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container-fluid text-center mt-5 maintextdiv" style="padding-top:250px;display:none;">
+        <div class="row justify-content-center">
+            
+            <div class="col-md-3 module-wrapper position-relative mb-4">
+                <a href="https://pb.dssanalysis.net/" target="_blank">
+                    <button class="module-btn">DECISION SPACE</button>
+                    <div class="tooltip-box">
+
+                        A powerful suite to support infrastructure planning and decision-making workflows.
+                    </div>
+                </a>
+            </div>           
+            
+            <div class="col-md-3 module-wrapper position-relative mb-4">
+                <a href="https://map.pbweb.info/" target="_blank">
+                    <button class="module-btn">MAPPER</button>
+                    <div class="tooltip-box">
+
+                        Interactive mapping tool for visualizing transportation projects and data layers.
+                    </div>
+                </a>
+            </div>
+            
+        </div>
+
+        <div class="world-map my-4 d-flex justify-content-center align-items-center">
+            <a href="/Scenarios">
+            <div class="module-wrapper position-relative">
+                <button class="module-btn">PROJECT BUILDER</button>
+                <div class="tooltip-box">
+
+                    Build, track, and manage infrastructure projects with real-time collaboration tools.
+                </div>
+            </div>
+            </a>
+        </div>
+
+        <div class="row justify-content-center">
+            
+            <div class="col-md-3 module-wrapper position-relative mt-4">
+                <a href="https://bamstest.com/" target="_blank">
+                    <button class="module-btn">BAMS</button>
+                    <div class="tooltip-box">
+
+                        Bridge and Asset Management System for lifecycle planning and maintenance tracking.
+                    </div>
+                </a>
+            </div>
+            
+            <div class="col-md-3 module-wrapper position-relative mt-4">
+                <a href="https://bamstest.com/" target="_blank">
+                    <button class="module-btn">PAMS</button>
+                    <div class="tooltip-box">
+
+                        Pavement Analysis and Management System to optimize road maintenance strategies.
+                    </div>
+                </a>
+            </div>
+            
+        </div>
+    </div>
+
+    <div class="contact-box maintextdiv" style="display:none;">
+        Contact us<br>
+        <a href="mailto:info@mail.com" class="text-white text-decoration-none">info@mail.com</a>
+    </div>
+
+    <div class="container-fluid text-center mt-5 videodiv" style="">
+        <div class="row justify-content-center">
+            <video id="bg-video" autoplay muted style="padding:0px;">
+                <source src="/images/Project-Builder-landing-page.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+
+        </div>
+    </div>
+
+
+</body>
+
+<script>
+    $('#bg-video').on('ended', function () {
+      $(this).remove();
+      $(".videodiv").remove();
+      $(".maintextdiv").show();
+      $('body').css('background', 'url("/images/bg.jpg") no-repeat center center fixed');
+      $('body').css('background-size', 'cover');
+    });
+</script>

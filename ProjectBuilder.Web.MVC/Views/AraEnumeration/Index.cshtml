@@ -1,0 +1,74 @@
+﻿@model AraEnumerationViewModel
+@{
+    ViewData["Title"] = "AraEnumeration";
+}
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+    <partial name="~/Views/Shared/navbarshared/_SetupsSidebar.cshtml" />
+<div class="container-fluid" style="margin-top:30px;overflow-y:auto;">
+
+   
+
+
+<div class="card">
+    <div class="card-body">
+        <h5>View AraEnumerations</h5>
+
+        <div class="row align-content-center  m-2">
+
+            <div class="table-responsive">
+                    <div id="partial">
+                    </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</div>
+
+
+
+<div class="modal fade" id="deletealert" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="deletealertLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deletealertLabel">Delete User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span>
+                    Are you sure you want to delete the selected User ?
+                </span>
+            </div>
+            @*<div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <form id="deleteform" asp-antiforgery="true" asp-action="DeleteUser" asp-controller="User" method="post">
+                    <input asp-for="@Model.EntityId" hidden name="userId" />
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>*@
+        </div>
+    </div>
+</div>
+<script>
+    $(document).ready(function () {
+        $.ajax({
+            url: '/AraEnumeration/Display',
+            type: 'GET',
+            success: function (data) {
+                $("#partial").html(data);
+                console.log(data);
+            },
+            error: function (xhr, status, error) {
+                // Handle errors
+                console.error('AJAX request failed: ' + status + ', ' + error);
+            }
+        });
+    });
+</script>

@@ -1,0 +1,112 @@
+.projects_main-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+.projects_maincontent {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  margin-top: 20px;
+  margin-right: 0px;
+  width: 100%;
+  height: 100%;
+  padding:20px;
+}
+.projects_header {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+.projects_header h1 {
+  font-size: 20px;
+  font-weight: 800;
+  color: #193562;
+}
+.projects_body {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  width: 100%;
+  margin-top: 20px;
+  margin-bottom: 30px;
+  height: 100%;
+  box-shadow: rgba(0, 0, 0, 0.15) 0px 2px 8px;
+}
+.card {
+  width: 100%;
+  height: 100%;
+  overflow-x: scroll;
+  overflow-y: auto;
+  overflow: hidden;
+}
+.projects_filter-content {
+  margin-top: 10px;
+  width: 100%;
+}
+.projects_filter-content form {
+  display: flex;
+  align-items: center;
+  justify-content: normal;
+  width: 100%;
+  margin-bottom: 20px;
+}
+.projects_form-body {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+.projects_form-body select {
+  margin-right: 10px;
+  width: auto;
+}
+.projects_body-tablecontainer {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  max-width: 100%;
+  margin-bottom:50px;
+  overflow: auto;
+  position: relative;
+}
+.card-body {
+  position: absolute;
+  width: 100%;
+  top: 0;
+  left: 0;
+  bottom: 0;
+}
+.projects_body-tablecontainer table {
+  height: auto;
+
+  text-overflow: ellipsis;
+}
+th {
+  word-spacing: 30000px;
+}
+table tr th {
+  text-overflow: ellipsis;
+}
+
+
+.successMessage{
+    color:green;
+}
+
+.errorMessage {
+    color: red;
+}
+
+
+
+@media (min-height: 900px) {
+    .dataTables_scrollBody {
+        max-height: 500px !important;
+        height: 500px !important;
+    }
+}

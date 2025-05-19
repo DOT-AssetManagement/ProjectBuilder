@@ -1,0 +1,530 @@
+﻿@model TreatmentViewModel
+
+@{
+    ViewData["Title"] = "Treatments";
+}
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+
+
+<h2>Treatments</h2>
+<div class="card">
+    <div class="card-body">
+      
+
+        <div class="row align-content-center">
+                @using (Html.BeginForm("Index", "Treatments", FormMethod.Get))
+                {
+                    <div class="row mb-3">
+                        <div class="col-auto">
+                    @*         @Html.DropDownListFor(model => model.AssetType,new SelectList(Model.Assets,"Value","Text"),"AssetType",new { @class = "form-select"}) *@
+                        </div>
+                        <div class="col-auto">
+                            @*@Html.DropDownListFor(model => model.District,Model.Districts.Select(s => new SelectListItem() {Text = s.ToString()}),"District",new { @class = "form-select", })*@
+                            <select class="form-select" asp-for="@Model.District"  name="district" data-filter="district">
+                                <option value="" selected>Select District</option>
+                          @*      @foreach (var item in Model.Districts)
+                                {
+                                    <option value="@item">@item</option>
+                                }*@
+                            </select>
+                        </div>
+                    <div class="col-auto">
+                            @*@Html.DropDownListFor(model => model.County, Model.Counties.Select(s => new SelectListItem() { Value = s.CountyId.ToString(), Text = s.CountyFullName }), "County", new { @class = "form-select" })*@
+                            <select class="form-select" asp-for="@Model.County"  name="county" data-filter="county">
+                                <option value="" selected>Select County</option>
+                            </select>                        
+                        </div>
+                    <div class="col-auto">
+                           @* @Html.DropDownListFor(model => model.Route,Model.Routes.Select(s => new SelectListItem() {Text = s.ToString()}),"Route",new {@class = "form-select"})*@
+                            <select class="form-select"  asp-for="@Model.Route" name="route" data-filter="route">
+                                <option value="" selected>Select Route</option>
+                            </select>
+                        </div>
+                      <div class="col-auto">
+                            <select class="form-select" asp-for="@Model.Section" name="section" data-filter="section">
+                                <option value="" selected>Select Section</option>
+                            </select>
+                        </div>
+                    <div class="col-auto">
+                        <select class="form-select" asp-for="@Model.FilterDirection" name="filterdirection">
+                                 <option value="" selected>Select Direction</option>
+                                 <option value="false">0</option>
+                                 <option value="true">1</option>
+                            </select>
+                        </div>
+                    <div class="col-auto">
+                            <input type="submit" value="Filter" class="btn btn-success"/>
+                        </div>
+                    </div>
+                }
+
+                <div class="table-responsive">
+                <table class="table table-bordered table-hover table-striped" id="treatmentsTable" style="overflow-x: auto; overflow-y: hidden;">
+                <thead class="bg-success text-white">
+                <tr>
+                    <th>
+                       Asset Type
+                    </th>
+                    <th>
+                        District
+                    </th>
+                    <th>
+                        County
+                    </th>
+                    <th>
+                        Route
+                    </th>
+                    <th>
+                        Section
+                    </th>
+                    <th>
+                        BR-Key
+                    </th>
+                    <th>
+                        Bridge Id
+                    </th>
+                     <th>
+                       Treatment
+                    </th>
+                    <th>
+                       Interstate
+                    </th>
+                     <th>
+                        Direction
+                     </th>
+                     <th>
+                        Cost ($M)
+                    </th>
+                     <th>
+                       Benefit ($M)
+                    </th>
+                     <th>
+                       Risk
+                    </th>
+                    <th>
+                       Preferred Year
+                    </th>
+                    <th>
+                       Min.Year
+                    </th>
+                    <th>
+                      Max.Year
+                    </th>
+                    <th>
+                       User Treatment Type
+                    </th>
+                  <th>
+                       Indirect Cost Design
+                    </th>
+                    <th>
+                      Indirect Cost Row
+                    </th>
+                    <th>
+                       Indirect Cost Utilities
+                    </th>
+                     <th>
+                       Indirect Cost Other
+                     </th>
+                    <th>
+                        Actions
+                    </th>
+                </tr>
+            </thead>         
+        </table>
+              </div>
+        </div>
+    </div>
+</div>
+<div class="row align-items-baseline mt-5">
+    <div class="col-auto">
+        <button id="createtreatmentbtn" type="button" class="btn btn-primary m-1" data-bs-toggle="modal" data-bs-target="#createtreatmentdialog">Create Treatment</button>
+    </div>
+</div>
+<div div class="modal fade" id="createtreatmentdialog" tabindex="-1" role="dialog" aria-labelledby="createtreatmentlabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createtreatmentlabel">Create new Treatment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="createtreatment" class="needs-validation" asp-controller="Treatments" asp-action="CreateTreatment" method="post" novalidate>
+                <div class="modal-body row g-3 align-items-center">
+                    <input name="treatmentid" asp-for="@Model.TreatmentId" hidden/>
+                    <div class="col-sm-4 mb-1">
+                        <label for="assettype" class="form-label">Asset Type</label>
+                        <select asp-for="@Model.AssetType" name="assettype" id="assettype" class="form-select" required>
+                            <option value="" selected disabled>Select Asset Type</option>
+                            <option value="B">Bridge</option>
+                            <option value="P">Pavement</option>
+                            <option value="O">Others</option>
+                        </select>
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="treatment" class="form-label">Treatment</label>
+                        <input type="text" asp-for="@Model.Treatment" name="treatment" id="treatment" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1 mt-5">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" asp-for="@Model.IsCommitted" type="checkbox" name="iscommitted" id="iscommitted">
+                            <label class="form-check-label" for="iscommitted">Is Committed</label>
+                        </div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="district" class="form-label">District</label>
+                        <select class="form-select" asp-for="@Model.District" id="district" name="district" required>
+                            <option value="" selected>Select District</option>
+                            @for (int i = 1; i <= 12; i++)
+                            {
+                                <option value="@i">@i</option>
+                            }
+                        </select>
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="preferredyear" class="form-label">Preferred Year</label>
+                        <select class="form-select" asp-for="@Model.PreferredYear" name="preferredyear" id="preferredyear" required>
+                            <option value="" selected>Select Preferred Year</option>
+                            @for (int i = DateTime.Today.Year; i <= 2050; i++)
+                            {
+                                <option value="@i">@i</option>
+                            }
+                        </select>
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="pariorityorder" class="form-label">Pariority Order</label>
+                        <select class="form-select" asp-for="@Model.PriorityOrder" name="pariorityorder" id="pariorityorder" required>
+                            <option value="">Select Pariority Order</option>
+                            <option value="0">0</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4" selected>4</option>
+                        </select>
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="county" class="form-label">County</label>
+                        <select class="form-select" asp-for="@Model.County" id="county" name="county" required data-clear="yes">
+                            <option value="" selected>Select County</option>
+                        </select>
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="minyear" class="form-label">Minimum Year</label>
+                        <input type="number" name="minyear" id="minyear" asp-for="@Model.MinYear" class="form-control" required />
+                        <div id="minyearfeedback" class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="cost" class="form-label">Cost</label>
+                        <input type="number" step="any" name="cost" id="cost" asp-for="@Model.Cost" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="route" class="form-label">Route</label>
+                        <select class="form-select" id="route" asp-for="@Model.Route" name="route" required data-clear="yes">
+                            <option value="" selected>Select Route</option>
+                        </select>
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="maxyear" class="form-label">Maximum Year</label>
+                        <input type="number" name="maxyear" id="maxyear" asp-for="@Model.MaxYear" class="form-control" required />
+                        <div id="maxyearfeedback" class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="benefit" class="form-label">Benefit</label>
+                        <input type="number" step="any" name="benefit" asp-for="@Model.Benefit" id="benefit" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="section" class="form-label">Section</label>
+                        <select class="form-select" asp-for="@Model.Section" id="section" name="section" required data-clear="yes">
+                            <option value="" selected>Select Section</option>
+                        </select>
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-md-4 mb-1">
+                        <label for="treatmenttype" class="form-label">Treatment Type</label>
+                        <select class="form-select" asp-for="@Model.TreatmentType" id="treatmenttype" name="treatmenttype" required>
+                            <option value="" selected>Select Treatment Type</option>
+                            <option value="1">Safety</option>
+                            <option value="2">Mobility</option>
+                            <option value="3">Capacity adding</option>
+                            <option value="4">Under clearance</option>
+                            <option value="5">Congestion</option>
+                            <option value="6">Preservation</option>
+                            <option value="7">Rehabilitation</option>
+                            <option value="8">Maintenanace</option>
+                        </select>
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="risk" class="form-label">Risk</label>
+                        <input type="number" step="any" name="risk" id="risk" asp-for="@Model.Risk" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <div class="form-check">
+                            <input class="form-check-input" name="interstate" asp-for="@Model.Interstate" type="checkbox" id="interstate" disabled style="opacity:1.0;">
+                            <label class="form-check-label" for="interstate" style="opacity:1.0;">Interstate</label>
+                        </div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="indirectcostdesign" class="form-label">Indirect Cost Design</label>
+                        <input type="number" step="any" name="indirectcostdesign" asp-for="@Model.IndirectCostDesign" id="indirectcostdesign" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="indirectcostrow" class="form-label">Indirect Cost Row</label>
+                        <input type="number" step="any" name="indirectcostrow" asp-for="@Model.IndirectCostRow" id="indirectcostrow" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <div class="form-check">
+                            <input class="form-check-input" name="direction" asp-for="@Model.Direction" type="checkbox" id="direction" disabled style="opacity:1.0;">
+                            <label class="form-check-label" for="direction" style="opacity:1.0;">Direction</label>
+                        </div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="indirectcostutilities" class="form-label">Indirect Cost Utilities</label>
+                        <input type="number" step="any" name="indirectcostutilities" asp-for="@Model.IndirectCostUtilities" id="indirectcostutilities" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="indirectcostothers" class="form-label">Indirect Cost Others</label>
+                        <input type="number" step="any" name="indirectcostothers" asp-for="@Model.IndirectCostOthers" id="indirectcostothers" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <hr class="dropdown-divider" />
+                    <div id="brkeyparent" class="col-sm-4" style="display: none;">
+                        <label for="brkey" class="form-label">BR-Key</label>
+                        <input type="text" name="brkey" id="brkey" asp-for="@Model.Brkey" class="form-control"/>
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-8">
+                    </div>
+                    <div id="bridgeidparent" class="col-sm-4" style="display: none;">
+                        <label for="bridgeid" class="form-label">Bridge Id</label>
+                        <input type="number" name="bridgeid" asp-for="@Model.BridgeId" id="bridgeid" class="form-control"/>
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button id="createtrtBtn" type="submit" class="btn btn-success">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="deletealert" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="deletealertLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deletealertLabel">Delete Treatment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span>
+                    Are you sure you want to delete the selected Treatment ?
+                </span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <form id="deleteform" asp-antiforgery="true" asp-action="DeleteTreatment" asp-controller="Treatments" method="post">
+                    <input hidden name="treatmentid"/>
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+     $(document).ready(function (){
+         var assetType = $("#AssetType").text();
+        $('#treatmentsTable').DataTable({
+            "processing": true,
+            "serverSide": true,
+            "bSearchable": true,
+            "order": [[1, 'asc']],
+            "language": {
+                        "emptyTable": "No record found.",
+                        "processing":
+                            '<i class="fa fa-spinner fa-spin fa-3x fa-fw" style="color:#2a2b2b;"></i><span class="sr-only">Loading...</span> '
+                    },
+            "sAjaxSource": "/Treatments/ApplyPagination",
+             "columns": [                   
+                    {
+                        "data": "assetType",
+                        "autoWidth": true,
+                        "searchable": true,
+                        render: function (data, type, row) {
+                           switch (row.assetType) {
+                            case 'B':
+                                return 'Bridge';
+                            case 'P':
+                                return 'Pavement';
+                            default:
+                                return 'Others';
+                           }
+                        }
+                    },
+                    {
+                        "data": "district",
+                        "autoWidth": true,
+                        "searchable": true
+                    },
+                    {
+                        "data": "county",
+                        "autoWidth": true,
+                        "searchable": true
+                    }, 
+                    {
+                        "data": "route",
+                        "autoWidth": true,
+                        "searchable": true
+                    }, 
+                    {
+                        "data": "section",
+                        "autoWidth": true,
+                        "searchable": true
+                    },
+                    {
+                        "data": "brkey",
+                        "autoWidth": true,
+                        "searchable": true
+                    },
+                    {
+                        "data": "bridgeId",
+                        "autoWidth": true,
+                        "searchable": true
+                    },
+                    {
+                        "data": "treatment",
+                        "autoWidth": true,
+                        "searchable": true,   
+                    },               
+                    {
+                      "data": "interstate",
+                      "autoWidth": true,
+                      "searchable": true, 
+                      render: function (data, type, row) {
+                        return row.interstate ? "Y" : "N"
+                    }
+                    },
+                    {
+                      "data": "direction",
+                      "autoWidth": true,
+                      "searchable": true
+                    },
+                    {
+                        "data": "cost",
+                        "autoWidth": true,
+                        "searchable": true,
+                        render: function (data, type, row) {
+                            return (row.cost / 1000000).toFixed(2)
+                        }
+                    },
+                    {
+                        "data": "benefit",
+                        "autoWidth": true,
+                        "searchable": true,
+                        render: function (data, type, row) {
+                            return (row.benefit / 1000000).toFixed(2)
+                        }
+                    },
+                    {
+                        "data": "risk",
+                        "autoWidth": true,
+                        "searchable": true,
+                       render: function (data, type, row) {
+                           if(row.risk !== null){
+                                return row.risk.toFixed(2)
+                           }
+                           return row.risk
+                       }
+                    },
+                    {
+                        "data": "preferredYear",
+                        "autoWidth": true,
+                        "searchable": true
+                    },
+                    {
+                        "data": "minYear",
+                        "autoWidth": true,
+                        "searchable": true
+                },
+                {
+                    "data": "maxYear",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "userTreatmentName",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "indirectCostDesign",
+                        "autoWidth": true,
+                        "searchable": true
+                },
+                {
+                    "data": "indirectCostRow",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "indirectCostUtilities",
+                    "autoWidth": true,
+                   "searchable": true
+                },
+                {
+                  "data": "indirectCostOther",
+                  "autoWidth": true,
+                   "searchable": true
+                },
+                    {
+                        "data": null,
+                        title: "Actions",
+                        orderable: false,
+                        defaultContent: '',
+                        render: function (data, type, row) {
+                        var inner = `<button type="button" onclick="editingtreatment.bind(this)()" value="` + row.importTimeGeneratedId + `" class="btn btn-primary mb-1">
+                                        <i class="bi bi-pencil-square"></i>
+                                     </button>
+                                     <button type="button" value="` + row.importTimeGeneratedId + `" onclick="ondeletingtreatment.bind(this)()" class="btn btn-danger mb-1" data-bs-toggle="modal" data-bs-target="#deletealert">
+                                           <i class="bi bi-trash"></i>
+                                    </button>
+                                `;
+                            return inner;
+                        }
+                    }
+
+                ]
+        });
+    });
+    function ondeletingtreatment() {
+        var form = document.getElementById('deleteform');
+        form.treatmentid.value = this.value;
+    }
+
+</script>
+
+
+<style>
+    table tr th {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>

@@ -1,0 +1,214 @@
+﻿@model ParameterViewModel
+@{
+    ViewData["Title"] = "Parameters";
+}
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+
+
+<h2>Parameters</h2>
+<div class="card">
+    <div class="card-body">
+        <h5>View Parameters</h5>
+
+        <div class="row align-content-center  m-2">
+
+            <div class="table-responsive">
+
+                <table class="table table-bordered table-hover table-striped" id="parameterTable">
+                    <thead class="bg-success text-white">
+                        <tr>
+                            <th>
+                                ParamFamily
+                            </th>
+                            <th>
+                                ParamID
+                            </th>
+                            <th>
+                                ParamName
+                            </th>
+                            <th>
+                                ParamDescription
+                            </th>
+                            <th>
+                                DefaultValue
+                            </th>
+                            <th>
+                                
+                            </th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@*Delete Modal*@
+@*<div class="modal fade" id="deletealert" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="deletealertLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deletealertLabel">Delete Role</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span>
+                    Are you sure you want to delete the selected Role ?
+                </span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <form id="deleteform" asp-antiforgery="true" asp-action="DeleteRole" asp-controller="Roles" method="post">
+                    <input asp-for="@Model.RoleId" hidden name="roleId" />
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>*@
+
+@*Edit Modal*@
+
+<div class="modal fade" id="EditParameterForm" tabindex="-1" role="dialog" aria-labelledby="EditParameterFormLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="EditParameterFormLabel">Edit Parameter</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="editParameter" class="needs-validation" asp-controller="Parameter" asp-action="EditParameter" method="post">
+                <div class="modal-body">
+                    <input asp-for="ParameterId" id="paramId" name="ParameterId" hidden />
+                    <input asp-for="Parmfamily" id="parmfamily" name="Parmfamily" hidden />
+                    <div class="mb-3">
+                        <label for="ParmName" class="form-label">ParmName</label>
+                        <input asp-for="ParmName" id="ParmName" type="text" name="ParmName" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="ParmDescription" class="form-label">ParmDescription</label>
+                        <input asp-for="ParmDescription" id="ParmDescription" type="text" name="ParmDescription" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="DefaultValue" class="form-label">DefaultValue</label>
+                        <input asp-for="DefaultValue" id="DefaultValue" type="text" name="DefaultValue" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div> 
+
+<script>
+
+    $(document).ready(function () {
+        $('#parameterTable').DataTable({
+            "processing": true,
+            "serverSide": true,
+            "bSearchable": true,
+            "order": [[1, 'asc']],
+            "language": {
+                "emptyTable": "No record found.",
+                "processing":
+                    '<i class="fa fa-spinner fa-spin fa-3x fa-fw" style="color:#2a2b2b;"></i><span class="sr-only">Loading...</span> '
+            },
+            "sAjaxSource": "/Parameter/ApplyPagination",
+            "columns": [
+                {
+                    "data": "parmfamily",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "parameterId",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "parmName",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "parmDescription",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+
+                {
+                    "data": "defaultValue",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+
+                {
+                    "data": null,
+                    title: "Actions",
+                    orderable: false,
+                    defaultContent: '',
+                    render: function (data, type, row) {
+                        var inner = `<button onclick="oneditingParam.bind(this)()" data-parameter-id="${row.parameterId}" data-parameter-family="${row.parmfamily}" value="` + row.parameterId + row.parmfamily + `" class="btn btn-primary mb-1">
+                    <i class="bi bi-pencil-square"></i>
+                </button>
+                            <button type="button" value="` + row.parameterId + `"onclick="oneditingParam.bind(this)()" class="btn btn-danger mb-1" data-bs-toggle="modal" data-bs-target="#deletealert">
+                    <i class="bi bi-trash"></i>
+                </button>`;
+                        return inner;
+                    }
+                }
+            ]
+        });
+        
+    });
+
+    function oneditingParam() {
+        debugger;
+        var parameterId = this.getAttribute('data-parameter-id');
+        var parmfamily = this.getAttribute('data-parameter-family');
+        $.ajax(
+            {
+                type: 'Get',
+                dataType: 'JSON',
+                url: '/Parameter/GetParameter',
+                data: {
+                    parameterId: parameterId,
+                    parmfamily: parmfamily
+                },
+                success:
+                    function (response) {
+                        debugger;
+                        var form = document.getElementById('editParameter');
+                        $('#ParmName').val(response.parmName);
+                        $('#ParmDescription').val(response.parmDescription);
+                        $('#DefaultValue').val(response.defaultValue);
+                        $('#parmfamily').val(response.parmfamily);
+                        $('#paramId').val(response.parameterId);
+                        var model = document.getElementById('EditParameterForm');
+                        var formModel = bootstrap.Modal.getOrCreateInstance(model);
+                        formModel.show();
+                    },
+                error:
+                    function (response) {
+
+                    }
+            });
+    }
+
+
+        //function ondeletingRole() {
+        //    var form = document.getElementById('deleteform');
+        //    form.roleId.value = this.getAttribute('data-id');
+        //}
+</script>

@@ -1,0 +1,326 @@
+﻿@model AdminUsersViewModel
+
+@{
+    ViewData["Title"] = "Users";
+}
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+
+
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+<nav id="sidebarMenu" class="sidenavbar">
+</nav>
+
+<div class="container-fluid" style="height:561px;margin-top:50px;overflow-y:auto;">
+
+<h2 style="margin-left:10px;">Users</h2>
+<div class="card">
+    <div class="card-body">
+        <h5>View Users</h5>
+
+        <div class="row align-content-center  m-2">
+
+            <div class="table-responsive" style="margin-left:-20px;">
+
+                <table class="table table-bordered table-hover table-striped" id="usersTable">
+                    <thead class="bg-success text-white">
+                        <tr>
+                            <th>
+                                ID
+                            </th>
+                            <th>
+                                Name
+                            </th>
+                            <th>
+                                Email
+                            </th>
+                            <th>
+                                IsActive
+                            </th>
+                            <th>
+                                IsMapActive
+                            </th>
+                            <th>
+                                Role
+                            </th>
+                            <th>
+
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Users)
+                        {
+                            <tr>
+                                <td>
+                                    @Html.DisplayFor(model => item.EntityId)
+                                </td>
+                                <td>
+                                    @Html.DisplayFor(model => item.Name)
+                                </td>
+                                <td>
+                                    @Html.DisplayFor(model => item.Email)
+                                </td>
+                                <td>
+                                    @Html.DisplayFor(model => item.IsActive)
+                                </td>
+                                <td>
+                                        <input type="checkbox" data-userid="@item.EntityId" @(item.IsMapActive ? "checked" : "") onclick="toggleIsMapActive(this)" />
+                                </td>
+                                <td>
+                                    @Html.DisplayFor(model => item.RoleName)
+                                </td>
+                                <td>
+                                        <div class="dropdown">
+                                            <button class="btn btn-secondary circlebutton" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                            </button>
+                                            <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
+                                                <li>
+
+                                    <button onclick="oneditingUser.bind(this)()" value="@item.EntityId" class="btn mb-1">
+                                        <i class="bi bi-pencil-square"></i> Edit
+                                    </button>
+                                     </li>
+                                                    <li>
+                                    <button type="button" value="@item.EntityId" data-id="@item.EntityId" onclick="ondeletinguser.bind(this)()" class="btn mb-1" data-bs-toggle="modal" data-bs-target="#deletealert">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                                </li>
+
+                                            </ul>
+
+                                        </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+</div>
+
+
+@*Delete Popup*@
+
+<div class="modal fade" id="deletealert" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="deletealertLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deletealertLabel">Delete User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span>
+                    Are you sure you want to delete the selected User ?
+                </span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <form id="deleteform" asp-antiforgery="true" asp-action="DeleteUser" asp-controller="User" method="post">
+                    <input asp-for="@Model.EntityId" hidden name="userId" />
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@*Update Form*@
+
+<div class="modal fade" id="EditUserForm" tabindex="-1" role="dialog" aria-labelledby="EditUserFormLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="EditUserFormLabel">Edit User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+
+            <div class="useraccordian" style="padding:20px;">
+            <ul class="nav nav-tabs" id="myTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="home-tab" data-bs-toggle="tab" data-bs-target="#home" type="button" role="tab" aria-controls="home" aria-selected="true">User Details</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile" type="button" role="tab" aria-controls="profile" aria-selected="false">User Roles</button>
+                </li>
+            </ul>
+            <div class="tab-content" id="myTabContent">
+                <div class="tab-pane fade show active" id="home" role="tabpanel" aria-labelledby="home-tab">
+                    <form id="editUser" class="needs-validation" asp-controller="User" asp-action="EditUser" method="post">
+                        <div class="modal-body">
+                            <input asp-for="EntityId" id="userId" name="EntityId" hidden />
+                            <div class="mb-3">
+                                <label for="userName" class="form-label">Name</label>
+                                <input asp-for="Name" id="userName" type="text" name="Name" class="form-control" required />
+                                <div class="invalid-feedback">Field is required</div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-success">Update User</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="tab-pane fade" id="profile" role="tabpanel" aria-labelledby="profile-tab">
+                    <form id="editUser" class="needs-validation" asp-controller="User" asp-action="EditRole" method="post">
+                        <div class="modal-body">
+                            <input asp-for="EntityId" id="userRoleId" name="EntityId" hidden />
+                            <input asp-for="RoleName" id="roleName" name="RoleName" hidden />
+                            <div role="tabpanel" class="tab-pane animated fadeIn" id="edit-user-roles">
+                                <div class="row">
+                                    <div class="col-sm-12 rolesdiv">
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-success">Update Role</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            </div>
+
+
+            
+        </div>
+    </div>
+</div>
+
+<script>
+
+    $(document).ready(function () {
+
+        $(".tabs").click(function () {
+
+            $(".tabs").removeClass("active");
+            $(".tabs h6").removeClass("font-weight-bold");
+            $(".tabs h6").addClass("text-muted");
+            $(this).children("h6").removeClass("text-muted");
+            $(this).children("h6").addClass("font-weight-bold");
+            $(this).addClass("active");
+
+            current_fs = $(".active");
+
+            next_fs = $(this).attr('id');
+            next_fs = "#" + next_fs + "1";
+
+            $("fieldset").removeClass("show");
+            $(next_fs).addClass("show");
+
+            current_fs.animate({}, {
+                step: function () {
+                    current_fs.css({
+                        'display': 'none',
+                        'position': 'relative'
+                    });
+                    next_fs.css({
+                        'display': 'block'
+                    });
+                }
+            });
+        });
+
+    });
+
+    function toggleIsMapActive(checkbox) {
+        var userId = $(checkbox).data("userid");
+        var isActive = checkbox.checked;
+
+        $.ajax({
+            url: '/User/UpdateIsMapActive', 
+            type: 'GET',
+            data: { userId: userId, isActive: isActive },
+            success: function(response) {
+                alert("Updated successfully!");
+            },
+            error: function(error) {
+                alert("Error updating status!");
+                checkbox.checked = !isActive; 
+            }
+        });
+    }
+
+
+    function oneditingUser() {
+        $.ajax(
+            {
+                type: 'Get',
+                dataType: 'JSON',
+                url: '/User/GetUser',
+                data: { id: this.value },
+                success:
+                    function (response) {
+                        var form = document.getElementById('editUser');
+                        $('#userName').val(response.name);
+                        $('#userId').val(response.entityId);
+                        $('#userRoleId').val(response.entityId);
+                        $('#roleName').val(response.roleName);
+                        var model = document.getElementById('EditUserForm');
+                        var formModel = bootstrap.Modal.getOrCreateInstance(model);
+
+                        $(".tabs#tab01").addClass("active");
+
+                            //role
+                            $.ajax({
+                                type: 'Get',
+                                dataType: 'JSON',
+                                url: '/User/GetRoles',
+                                data: {},
+                                success:
+                                    function (data) {
+                                        $(".rolesdiv").html("");
+                                        $.each(data, function (id, val) {
+
+                                            radio = ` <div class="row clearfix">
+                                                                <div class="col-sm-12">
+                                                                    <div class="form-group form-float">
+                                                                        <div class="custom-control custom-checkbox">
+                                                                              <label class="custom-control-label">
+                                                                              <input class="form-check-input" type="radio" name="updatedrole" `+(response.roleName == val.name?'checked':'')+` value="` + val.name + `" id="">
+                                                                              ` + val.name + `</label>
+                                                                        </div>
+                                                                     </div>
+                                                                </div>
+                                                      </div>`;
+
+                                            $(".rolesdiv").append(radio);
+                                        });
+                                    },
+                                error:
+                                    function (response) {
+
+                                    }
+                            });
+                        //role
+
+
+                        formModel.show();
+                    },
+                error:
+                    function (response) {
+
+                    }
+            });
+    }
+
+    $(document).on("click", "#tab02",function(){
+        
+    });
+
+
+    function ondeletinguser() {
+        var form = document.getElementById('deleteform');
+        form.userId.value = this.getAttribute('data-id');
+    }
+</script>

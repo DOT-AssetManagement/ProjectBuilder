@@ -1,0 +1,286 @@
+﻿@using System.Security.Principal
+@using Microsoft.AspNetCore.Authentication.OpenIdConnect
+@using Microsoft.Extensions.Options
+@using Microsoft.Identity.Web
+@using Microsoft.AspNetCore.Http;
+
+@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+    var isDashboardPage = string.Equals(currentController, "Dashboard", StringComparison.OrdinalIgnoreCase) &&
+                          string.Equals(currentAction, "Index", StringComparison.OrdinalIgnoreCase);
+}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
+    <link rel="stylesheet" href="~/ProjectBuilder.Web.MVC.styles.css" asp-append-version="true" />
+    <link rel="icon" type="image/svg" href="~/images/Logo.svg">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css"
+        integrity="sha512-SzlrxWUlpfuzQ+pcUCosxcglQRNAq/DZjVsC0lE40xsADsfeQoEypE+enwcOiGjk/bSuGGKHEyjSoQ1zVisanQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400&display=swap" rel="stylesheet">
+    @RenderSection("Styles",false)
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+</head>
+
+<body>
+    <header>
+        <nav id="main-navbar" class="navbar navbar-expand-lg navbar-light fixed-top">
+            <div class="navbar_maincontainer">
+                <div class="navbar_brand">
+                    <button class="navbar-toggler me-2 mt-2" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false"
+                        style="height:40px;" aria-label="Toggle navigation">
+                        <i class="fas fa-bars"></i>
+                    </button>
+
+                    @if (Context.Session.GetString("RoleName") == "Guest")
+                    {
+                        <a class="navbar-brand align-content-start justify-content-start align-items-center" asp-controller="Home" asp-action="Index">
+                            <div class="logos-container">
+                                <img src="~/images/PennDOTwhiteLogo.png" alt="Project Builder" class="img-fluid"
+                                     loading="lazy" width="60" height="45" style=" width: 60%; " />
+                                <div class="verticalline"></div>
+                                <img src="~/images/SVG/SecondaryLogo.svg" alt="Project Builder" loading="lazy" width="200"
+                                     height="85" />
+                                <div class="verticalline"></div>
+                            </div>
+                        </a>
+                    }
+                    else if (isDashboardPage)
+                    {
+                        <a class="navbar-brand align-content-start justify-content-start align-items-center" asp-controller="Dashboard" asp-action="Index">
+                            <div class="logos-container">
+                                <img src="~/images/PennDOTwhiteLogo.png" alt="Project Builder" class="img-fluid"
+                                     loading="lazy" width="60" height="45" style=" width: 60%;" />
+                                <div class="verticalline"></div>
+                                
+                                <img src="~/images/SVG/SecondaryLogo.svg" alt="Project Builder" loading="lazy" width="200"
+                                     height="85" />
+                                <div class="verticalline"></div>
+                            </div>
+                        </a>
+                    }else{
+                        <a class="navbar-brand align-content-start justify-content-start align-items-center" asp-controller="Dashboard" asp-action="Index">
+                            <div class="logos-container">
+                                <img src="~/images/head.png" alt="Project Builder" class="img-fluid"
+                                     loading="lazy" width="60" height="45" style=" width: 50%;  margin-top: 10px;" />
+                                <div class="verticalline"></div>
+
+                                <img src="~/images/SVG/SecondaryLogo.svg" alt="Project Builder" loading="lazy" width="200"
+                                     height="85" />
+                                <div class="verticalline"></div>
+                            </div>
+                        </a>
+                    }
+
+                        
+                </div>
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    if (Context.Session.GetString("RoleName") == "Admin")
+                    {
+                        <div class="navbar_navigation-container">
+                            <div class="navbar_navigation-links">
+                                <a asp-controller="AraEnumeration" asp-action="Index" class="navbar_navigation-link">
+                                    <div id="scenarios" class="navbar_navigation-link_item notactive">
+                                        <span>Setup</span>
+                                    </div>
+                                </a>
+                                  <a asp-controller="User" asp-action="Index" class="navbar_navigation-link">
+                                    <div id="scenarios" class="navbar_navigation-link_item notactive">
+                                        <span>Users</span>
+                                    </div>
+                                </a>
+                                <a asp-controller="Roles" asp-action="Index" class="navbar_navigation-link">
+                                    <div id="scenarios" class="navbar_navigation-link_item notactive">
+                                        <span>Roles</span>
+                                    </div>
+                                </a>
+                                <a asp-controller="CandidatePools" asp-action="ImportMAS" class="navbar_navigation-link">
+                                    <div id="scenarios" class="navbar_navigation-link_item notactive">
+                                        <span>Import</span>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="navbar_userinfo-container">
+                                <i class="fa-solid fa-bell"></i>
+                                <div class="verticalline"></div>
+                                <i class="fa-solid fa-user"></i>
+                                <p>@User.Identity?.Name</p>
+                                <a class="circle" asp-area="MicrosoftIdentity" asp-controller="Account" asp-action="SignOut"
+                                   data-toggle="tooltip" data-placement="bottom" title="Logout">
+                                    <i class="fa-solid fa-right-from-bracket"></i>
+                                </a>
+                            </div>
+                        </div>
+                    }
+                    else if (Context.Session.GetString("RoleName") == "Guest")
+                    {
+                        <div class="navbar_navigation-container">
+                            <div class="navbar_navigation-links">
+                                <a asp-controller="CandidatePools" asp-action="Index" class="navbar_navigation-link">
+                                    <div id="scenarios" class="navbar_navigation-link_item notactive">
+                                        <span>Candidate Pools</span>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="navbar_userinfo-container">
+                                <i class="fa-solid fa-bell"></i>
+                                <div class="verticalline"></div>
+                                <i class="fa-solid fa-user"></i>
+                                <p>@User.Identity?.Name</p>
+                                <a class="circle" asp-area="MicrosoftIdentity" asp-controller="Account" asp-action="SignOut"
+                                   data-toggle="tooltip" data-placement="bottom" title="Logout">
+                                    <i class="fa-solid fa-right-from-bracket"></i>
+                                </a>
+                            </div>
+                        </div>
+                    }
+                    else if (Context.Session.GetString("RoleName") == "Operator")
+                    {
+                        <div class="navbar_navigation-container">
+                            <div class="navbar_navigation-links">
+
+                                @if (!isDashboardPage)
+                                {
+                                 @*    <a asp-controller="DashBoard" asp-action="Index" class="navbar_navigation-link">
+                                        <div id="dashboard" class="navbar_navigation-link_item notactive" suburl="">
+                                            <span>Dashboard</span>
+                                        </div>
+                                    </a> *@
+                                    <a asp-controller="Scenarios" asp-action="Index" class="navbar_navigation-link">
+                                        <div id="scenarios" class="navbar_navigation-link_item notactive" suburl="editscenario">
+                                            <span>Scenarios</span>
+                                        </div>
+                                    </a>
+                                    <a asp-controller="CandidatePools" asp-action="Index" class="navbar_navigation-link">
+                                        <div id="candidatepools" class="navbar_navigation-link_item notactive" suburl="">
+                                            <span>Treatment Candidates</span>
+                                        </div>
+                                    </a>
+                                    <a asp-action="" asp-controller="Projects" class="navbar_navigation-link">
+                                        <div id="outputs" class="navbar_navigation-link_item notactive" suburl="charts;projects;reports;projecttreatments">
+                                            <span>Analysis</span>
+                                        </div>
+                                    </a>
+                            
+                                }
+
+                            </div>
+                            <div class="navbar_userinfo-container">
+                                <i class="fa-solid fa-bell"></i>
+                                <div class="verticalline"></div>
+                                <i class="fa-solid fa-user"></i>
+                                <p>@User.Identity?.Name</p>
+                                <a class="circle" asp-area="MicrosoftIdentity" asp-controller="Account" asp-action="SignOut"
+                                   data-toggle="tooltip" data-placement="bottom" title="Logout">
+                                    <i class="fa-solid fa-right-from-bracket"></i>
+                                </a>
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="navbar_signout">
+                        <a class="btn btn-success" asp-area="MicrosoftIdentity" asp-controller="Account"
+                            asp-action="SignIn">Sign in</a>
+                    </div>
+                }
+            </div>
+
+            @* </div> *@
+        </nav>
+    </header>
+
+
+
+
+
+
+
+    @if (User.Identity?.IsAuthenticated == true && Context.Session.GetString("RoleName") != null)
+    {
+        <main class="">
+            @RenderBody()
+        </main>
+    }
+    else
+    {
+        <div class="pt-4 topPadding" style="width:100%;">
+            @RenderBody()
+        </div>
+    }
+
+    @if (Context.Request.Path == "/MicrosoftIdentity/Account/SignedOut")
+    {
+        <script>
+            setTimeout(function () {
+                window.location.href = '/';
+            }, 5000); 
+        </script>
+    }
+
+
+    <div class="position-fixed top-0 end-0 p-3" style="z-index:10;margin-top:80px;" id="notecontainer">
+        <div id="mainnotificationmessage" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header text-white bg-primary">
+                <i class="bi bi-info-circle-fill fa-lg me-2"></i>
+                <strong class="me-auto"></strong>
+                <small>now</small>
+                <button type="button" class="btn-close text-white" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+            </div>
+        </div>
+    </div>
+    <!--
+    <footer class="fixed" style="height:60px;">
+        <div class="rights">
+            <div class="copyright">
+                <span>
+                    <h6>ProjectBuilder v3.0.0</h6>
+                </span>
+            </div>
+            <div class="rrm-sm">
+                <span>
+                   
+                </span>
+            </div>
+        </div>
+    </footer>
+    -->
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+    <script>
+        $(document).ready(function () {
+            var controller = "@currentController".toLowerCase();
+            $('.navbar_navigation-links div').each(function () {
+                $(this).removeClass('active').addClass("noactive");
+                var suburls = $(this).attr('suburl');
+                if ((suburls !== null || suburls !== undefined) && suburls.includes(controller)) {
+                    $(this).removeClass('noactive').addClass('active');
+                }
+            })
+            if (controller === '' ) {
+                $('#scenarios').removeClass('noactive').addClass('active');
+            } else {
+                $(`#${controller}`).removeClass('noactive').addClass('active');
+            }
+        });
+    </script>
+</body>
+
+</html>

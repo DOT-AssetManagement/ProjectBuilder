@@ -1,0 +1,164 @@
+﻿
+@{
+    ViewData["Title"] = "ImportSessions";
+}
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+<partial name="~/Views/Shared/navbarshared/_SetupsSidebar.cshtml" />
+<div class="container-fluid" style="height:561px;margin-top:50px;overflow-y:auto;">
+
+
+
+
+<h2>Import Sessions</h2>
+<div class="card">
+    <div class="card-body">
+        <h5>View Import Sessions</h5>
+
+        <div class="row align-content-center  m-2">
+
+            <div class="table-responsive">
+
+                <table class="table table-bordered table-hover table-striped" id="usersTable">
+                    <thead class="bg-success text-white">
+                        <tr>
+                            <th>
+                                NoId
+                            </th>
+                            <th>
+                                Id
+                            </th>
+                            <th>
+                                ImportSource
+                            </th>
+                            <th>
+                                DataSourceType
+                            </th>
+                            <th>
+                                DataSourceName
+                            </th>
+                            <th>
+                                CreatedBy
+                            </th>
+                            <th>
+                                CreatedAt
+                            </th>
+                            <th>
+                                CompletedAt
+                            </th>
+                            <th>
+                                CompletedStatus
+                            </th>
+                            <th>
+                                Notes
+                            </th>
+                            <th>
+
+                            </th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+</div>
+
+
+
+<script>
+    $(document).ready(function () {
+        $('#usersTable').DataTable({
+            "processing": true,
+            "serverSide": true,
+            "bSearchable": true,
+            "order": [[1, 'asc']],
+            "scroller": true,
+            "fixedHeader": {
+                "header": true
+            },
+            "scrollX": true,
+            "scrollY": 300,
+            "language": {
+                "emptyTable": "No record found.",
+                "processing":
+                    '<i class="fa fa-spinner fa-spin fa-3x fa-fw" style="color:#2a2b2b;"></i><span class="sr-only">Loading...</span> '
+            },
+            "sAjaxSource": "/ImportSessions/ApplyPagination",
+            "columns": [
+                {
+                    "data": "noId",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "id",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "importSource",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "dataSourceType",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "dataSourceName",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "createdBy",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "createdAt",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "completedAt",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "completedStatus",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "notes",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                
+
+                {
+                    "data": null,
+                    title: "Actions",
+                    orderable: false,
+                    defaultContent: '',
+                    render: function (data, type, row) {
+                        var inner = `<button onclick="oneditingproject.bind(this)()" value="` + row.projectId + `" class="btn btn-primary mb-1" disabled>
+        <i class="bi bi-pencil-square"></i>
+    </button>
+       
+                                    `;
+                        return inner;
+                    }
+                }
+            ]
+        });
+
+    });
+</script>
+

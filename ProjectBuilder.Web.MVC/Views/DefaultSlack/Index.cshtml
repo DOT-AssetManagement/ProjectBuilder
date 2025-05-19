@@ -1,0 +1,198 @@
+﻿@model DefaultSlackViewModel
+@{
+    ViewData["Title"] = "DefaultSlack";
+}
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+<partial name="~/Views/Shared/navbarshared/_SetupsSidebar.cshtml" />
+<div class="container-fluid" style="height:561px;margin-top:50px;overflow-y:auto;">
+
+
+
+
+<h2>Default Slacks</h2>
+<div class="card">
+    <div class="card-body">
+        <h5>View Default Slacks</h5>
+
+        <div class="row align-content-center  m-2">
+
+            <div class="table-responsive">
+
+                <table class="table table-bordered table-hover table-striped" id="DefaultSlackTable">
+                    <thead class="bg-success text-white">
+                        <tr>
+                            <th>
+                                Asset Type
+                            </th>
+                            <th>
+                                MoveAfter
+                            </th>
+                            <th>
+                                MoveBefore
+                            </th>
+                            <th>
+
+                            </th>
+                        </tr>
+                    </thead>
+
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+
+@*Edit Modal*@
+
+<div class="modal fade" id="EditDefaultSlackForm" tabindex="-1" role="dialog" aria-labelledby="EditDefaultSlackFormLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="EditDefaultSlackLabel">Edit Default Slack</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="editDefaultSlack" class="needs-validation" asp-controller="DefaultSlack" asp-action="EditDefaultSlack" method="post">
+                <div class="modal-body">
+                    <input asp-for="AssetType" id="assetType" name="AssetType" hidden />
+                    <div class="mb-3">
+                        <label for="MoveBefore" class="form-label">Move Before</label>
+                        <input asp-for="MoveBefore" id="moveBefore" type="text" name="MoveBefore" class="form-control" />
+                       
+                        <label for="MoveAfter" class="form-label">Move After</label>
+                        <input asp-for="MoveAfter" id="moveAfter" type="text" name="MoveAfter" class="form-control"/>
+                        
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@*Delete Default Slack*@
+
+<div class="modal fade" id="deletealert" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="deletealertLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deletealertLabel">Delete Slack Periods </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span>
+                    Are you sure you want to delete the selected Slack Period ?
+                </span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <form id="deleteform" asp-antiforgery="true" asp-action="DeleteDefaultSlack" asp-controller="DefaultSlack" method="post">
+                    <input hidden name="AssetType" />
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+<script>
+    $(document).ready(function () {
+        $('#DefaultSlackTable').DataTable({
+            "processing": true,
+            "serverSide": true,
+            "bSearchable": true,
+            "order": [[1, 'asc']],
+            "language": {
+                "emptyTable": "No record found.",
+                "processing":
+                    '<i class="fa fa-spinner fa-spin fa-3x fa-fw" style="color:#2a2b2b;"></i><span class="sr-only">Loading...</span> '
+            },
+            "sAjaxSource": "/DefaultSlack/ApplyPagination",
+            "columns": [
+
+                {
+                    "data": "assetType",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+
+                {
+                    "data": "moveAfter",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "moveBefore",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+
+
+                {
+                    "data": null,
+                    title: "Actions",
+                    orderable: false,
+                    defaultContent: '',
+                    render: function (data, type, row) {
+                        var inner = `<button onclick="oneditingDefaultSlack.bind(this)()" value="` + row.assetType + `" class="btn btn-primary mb-1">
+                <i class="bi bi-pencil-square"></i>
+            </button>`;
+            
+                        return inner;
+                    }
+                }
+            ]
+        });
+
+    });
+
+
+    // OnEditCounty
+    function oneditingDefaultSlack() {
+        debugger;
+        $.ajax(
+            {
+                type: 'Get',
+                dataType: 'JSON',
+                url: '/DefaultSlack/GetDefaultSlack',
+                data: { assetType: this.value },
+                success:
+                    function (response) {
+                        debugger;
+                        var form = document.getElementById('editDefaultSlack');
+                        $('#assetType').val(response.assetType);
+                        $('#moveBefore').val(response.moveBefore);
+                        $('#moveAfter').val(response.moveAfter);
+                        var model = document.getElementById('EditDefaultSlackForm');
+                        var formModel = bootstrap.Modal.getOrCreateInstance(model);
+                        formModel.show();
+                    },
+                error:
+                    function (response) {
+
+                    }
+            });
+    }
+
+
+
+    function ondeletingDefaultSlack() {
+        var form = document.getElementById('deleteform');
+        form.AssetType.value = this.value;
+    }
+
+</script>
+

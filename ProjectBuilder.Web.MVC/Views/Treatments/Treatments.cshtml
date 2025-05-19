@@ -1,0 +1,1264 @@
+﻿@model TreatmentViewModel
+
+@{
+    ViewData["Title"] = "Treatments";
+}
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+
+<script src="https://cdn.datatables.net/fixedcolumns/4.3.0/js/dataTables.fixedColumns.min.js"></script>
+<style>
+    /*#interstateTxt,#directionTxt,*/
+    #benefit,
+    .form-control:disabled,
+    .form-select:disabled {
+        background-color:darkgray!important; /* Change this color to the desired darker shade */
+    }
+
+</style>
+<div class="candidatepools_maincontainer">
+    <nav class="sidenavbar"></nav>
+    <div class="candidatepools_maincontent-container" style="width:97%;">
+
+        <div class="headerName" style="width:100%;">
+            <div class="" style="">
+                <p></p>
+            </div>
+        </div>
+        <div class="candidatepools_header">
+            <h1>Treatments</h1>
+            @if (Context.Session.GetString("RoleName") == "Guest")
+            {
+                <div class="col-auto" style="margin-right:-3px;">
+                    <button id="createtreatmentbtn" type="button" class="btn btn-primary m-1" data-bs-toggle="modal" data-bs-target="#createtreatmentdialog" disabled>Create Treatment</button>
+                </div>
+            }
+            else
+            {
+                <div class="col-auto" style="margin-right:-3px;">
+                    <button id="createtreatmentbtn" type="button" class="btn btn-primary m-1" data-bs-toggle="modal" data-bs-target="#createtreatmentdialog">Create Treatment</button>
+                </div>
+            }
+        </div>
+        <div class="candidatepools_maincontent">
+            <div class="card">
+                <div class="card-body">                    
+
+                    <div class="row align-content-center">
+                        @using (Html.BeginForm("Index", "Treatments", FormMethod.Get))
+                        {
+                            <div class="row mb-3">
+                                <div class="col-auto">
+                                    @*   @Html.DropDownListFor(model => model.AssetType,new SelectList(Model.Assets,"Value","Text"),"AssetType",new { @class = "form-select"}) *@
+                                </div>
+                                <div class="col-auto">
+                                    @*@Html.DropDownListFor(model => model.District,Model.Districts.Select(s => new SelectListItem() {Text = s.ToString()}),"District",new { @class = "form-select", })*@
+                                    <select class="form-select" asp-for="@Model.District" name="district" data-filter="district">
+                                        <option value="" selected>Select District</option>
+                                        @foreach (var item in ViewBag.Districts)
+                                        {
+                                            <option value="@item">District @item</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-auto">
+                                    @*@Html.DropDownListFor(model => model.County, Model.Counties.Select(s => new SelectListItem() { Value = s.CountyId.ToString(), Text = s.CountyFullName }), "County", new { @class = "form-select" })*@
+                                    @if(ViewBag.County != null)
+                                    {
+                                        <select class="form-select" asp-for="@Model.County" name="county" data-filter="county">
+                                            <option value="" selected>Select County</option>
+                                            @foreach (var item in ViewBag.County)
+                                            {
+                                                var NewName = item.ToString().Split('-');
+
+                                                <option value="@NewName[0]">@item</option>
+                                            }
+                                        </select>
+                                    }
+                                    else
+                                    {
+                                        <select class="form-select" asp-for="@Model.County" name="county" data-filter="county">
+                                            <option value="" selected>Select County</option>
+                                        </select>
+                                    }
+                                    
+                                </div>
+                                <div class="col-auto">
+                                    @* @Html.DropDownListFor(model => model.Route,Model.Routes.Select(s => new SelectListItem() {Text = s.ToString()}),"Route",new {@class = "form-select"})*@
+                                    @if(ViewBag.Route != null)
+                                    {
+                                        <select class="form-select" asp-for="@Model.Route" name="route" data-filter="route">
+                                            <option value="" selected>Select Route</option>
+                                            @foreach (var item in ViewBag.Route)
+                                            {
+                                                <option value="@item">@item</option>
+                                            }
+                                        </select>
+                                    }
+                                    else
+                                    {
+                                        <select class="form-select" asp-for="@Model.Route" name="route" data-filter="route">
+                                            <option value="" selected>Select Route</option>
+                                        </select>
+                                    }
+
+                                </div>
+                                <div class="col-auto">
+
+                                    @if (ViewBag.Section != null)
+                                    {
+                                        <select class="form-select" asp-for="@Model.Section" name="section" data-filter="section">
+                                            <option value="" selected>Select Section</option>
+                                            @foreach (var item in ViewBag.Section)
+                                            {
+                                                <option value="@item">@item</option>
+                                            }
+                                        </select>
+                                    }
+                                    else
+                                    {
+                                        <select class="form-select" asp-for="@Model.Section" name="section" data-filter="section">
+                                            <option value="" selected>Select Section</option>
+                                        </select>
+                                    }
+
+
+                                 
+                                </div>
+                                <div class="col-auto">
+                                    <select class="form-select" asp-for="@Model.FilterDirection" name="filterdirection" data-filter="direction">
+                                        <option value="" selected>Select Direction</option>
+                                        <option value="false">0</option>
+                                        <option value="true">1</option>
+                                    </select>
+                                </div>
+                                @* <div class="col-auto">
+                            <select class="form-select" asp-for="@Model.Year" name="year" data-filter="year">
+                            <option value="" selected>Year</option>
+                            @foreach (var item in Model.Years)
+                            {
+                            <option value="@item">@item</option>
+                            }
+                            </select>
+                            </div> *@
+                                <div class="col-auto">
+                                    <input type="submit" value="Filter" class="btn btn-success filterBtn" />
+                                </div>
+                                <div class="col-auto">
+                                  @*   <label>
+                                        Search:
+                                        <input type="text" id="searchInput" placeholder="Search">
+                                    </label> *@
+                                </div>
+                            </div>
+
+                        }
+
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover table-striped" id="treatmentsTable" style="overflow-x: auto; overflow-y: hidden;">
+                                <thead class="bg-success text-white">
+                                    <tr>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Asset Type
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" onclick="oncontextmenuclickednew.bind(this, event)(0)" class="" context-menu>
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>                                            
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Source
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" onclick="oncontextmenuclickednew.bind(this, event)(1)" class="" context-menu>
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                District
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" onclick="oncontextmenuclickednew.bind(this, event)(2)" class="" context-menu>
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                County
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" onclick="oncontextmenuclickednew.bind(this, event)(3)" class="" context-menu>
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Route
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" onclick="oncontextmenuclickednew.bind(this, event)(4)" class="" context-menu>
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Section
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" onclick="oncontextmenuclickednew.bind(this, event)(5)" class="" context-menu>
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                BRKey
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" onclick="oncontextmenuclickednew.bind(this, event)(6)" class="" context-menu>
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                BMS ID
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" onclick="oncontextmenuclickednew.bind(this, event)(7)" class="" context-menu>
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Treatment
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" onclick="oncontextmenuclickednew.bind(this, event)(8)" class="" context-menu>
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Interstate
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" onclick="oncontextmenuclickednew.bind(this, event)(9)" class="" context-menu>
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Direction
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" onclick="oncontextmenuclickednew.bind(this, event)(10)" class="" context-menu>
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Cost
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" onclick="oncontextmenuclickednew.bind(this, event)(11)" class="" context-menu>
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Benefit
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" onclick="oncontextmenuclickednew.bind(this, event)(12)" class="" context-menu>
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Risk
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" onclick="oncontextmenuclickednew.bind(this, event)(13)" class="" context-menu>
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Preferred Year
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" onclick="oncontextmenuclickednew.bind(this, event)(14)" class="" context-menu>
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Min.Year
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" onclick="oncontextmenuclickednew.bind(this, event)(15)" class="" context-menu>
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Max.Year
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" onclick="oncontextmenuclickednew.bind(this, event)(16)" class="" context-menu>
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Is Committed
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" onclick="oncontextmenuclickednew.bind(this, event)(17)" class="" context-menu>
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                User Treatment Type
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" onclick="oncontextmenuclickednew.bind(this, event)(18)" class="" context-menu>
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Indirect Cost Design
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" onclick="oncontextmenuclickednew.bind(this, event)(19)" class="" context-menu>
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Indirect Cost Row
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" onclick="oncontextmenuclickednew.bind(this, event)(20)" class="" context-menu>
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Indirect Cost Utilities
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" onclick="oncontextmenuclickednew.bind(this, event)(21)" class="" context-menu>
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Indirect Cost Other
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" onclick="oncontextmenuclickednew.bind(this, event)(22)" class="" context-menu>
+                                                    <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            Actions
+                                        </th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+
+
+
+
+    </div>
+</div>
+
+<div div class="modal fade" id="createtreatmentdialog" tabindex="-1" role="dialog" aria-labelledby="createtreatmentlabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createtreatmentlabel">Create new Treatment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="createtreatment" class="needs-validation" asp-controller="Treatments" asp-action="CreateTreatment" method="post" novalidate>
+                <div class="modal-body row g-3 align-items-center">
+                    <input name="treatmentid" asp-for="@Model.TreatmentId" hidden />
+                    <div class="col-sm-4 mb-1">
+                        <label for="assettype" class="form-label">Asset Type</label>
+                        @* <input name="assettype" class="form-control" style="display:none;" disabled /> *@
+                        <select asp-for="@Model.AssetType" name="assettype" id="assettype" class="form-select" required>
+                            <option value="" selected>Select Asset Type</option>
+                            <option value="B">Bridge</option>
+                            <option value="P">Pavement</option>
+                            <option value="O">Others</option>
+                        </select>
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="treatment" class="form-label">Treatment</label>
+                        <input type="text" asp-for="@Model.Treatment" name="treatment" id="treatment" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1 mt-5">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" asp-for="@Model.IsCommitted" type="checkbox" name="iscommitted" id="iscommitted">
+                            <label class="form-check-label" for="iscommitted">Is Committed</label>
+                        </div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="district" class="form-label">District</label>
+                        <input name="district" class="form-control" style="display:none;" disabled />
+                        <select class="form-select" id="district" name="district" required>
+                            <option value="" selected>Select District</option>
+                            @foreach (var item in ViewBag.Districts)
+                            {
+                                <option value="@item">District @item</option>
+                            }
+                        </select>
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="preferredyear" class="form-label">Preferred Year</label>
+                        <select class="form-select" asp-for="@Model.PreferredYear" name="preferredyear" id="preferredyear" required>
+                            <option value="" selected>Select Preferred Year</option>
+                            @for (int i = DateTime.Today.Year; i <= 2050; i++)
+                            {
+                                <option value="@i">@i</option>
+                            }
+                        </select>
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="pariorityorder" class="form-label">Priority Order</label>
+                        <select class="form-select" asp-for="@Model.PriorityOrder" name="pariorityorder" id="pariorityorder" required>
+                            <option value="">Select Priority Order</option>
+                            <option value="0">0</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4" selected>4</option>
+                        </select>
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="county" class="form-label">County</label>
+                        <input name="county" class="form-control" style="display:none;" disabled />
+                        <select class="form-select" id="county" name="county" required data-clear="yes">
+                            <option value="" selected>Select County</option>
+                        </select>
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="minyear" class="form-label">Minimum Year</label>
+                        <input type="number" name="minyear" min="0" oninput="checkValue(this)" id="minyear" asp-for="@Model.MinYear" class="form-control" required />
+                        <div id="minyearfeedback" class="invalid-feedback">Must be a psoitive number</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="cost" class="form-label">Construction Cost</label>
+                        <input type="number" step="any" name="cost" min="0" oninput="checkValue(this)" id="cost" asp-for="@Model.Cost" class="form-control costcalc" required />
+                        <div class="invalid-feedback">Must be a positive number</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="route" class="form-label">Route</label>
+                        <input name="route" class="form-control" style="display:none;" disabled />
+                        <select class="form-select" id="route" asp-for="@Model.Route" name="route" required data-clear="yes">
+                            <option value="" selected>Select Route</option>
+                        </select>
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="maxyear" class="form-label">Maximum Year</label>
+                        <input type="number" name="maxyear" min="0" oninput="checkValue(this)" id="maxyear" asp-for="@Model.MaxYear" class="form-control" required />
+                        <div id="maxyearfeedback" class="invalid-feedback">Must be a positive number</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="benefit" class="form-label">Benefit</label>
+                        <input type="number" step="any" name="benefit" min="0" oninput="checkValue(this)" asp-for="@Model.Benefit" id="benefit" class="form-control" required disabled />
+                        <div class="invalid-feedback">Must be a positive number</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="section" class="form-label">Section</label>
+                        <input name="section" class="form-control" style="display:none;" disabled />
+                        <select class="form-select" asp-for="@Model.Section" id="section" name="section" required data-clear="yes">
+                            <option value="" selected>Select Section</option>
+                        </select>
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-md-4 mb-1">
+                        <label for="treatmenttype" class="form-label">Treatment Type</label>
+                        <select class="form-select" asp-for="@Model.TreatmentType" id="treatmenttype" name="treatmenttype" required>
+                            <option value="" selected>Select Treatment Type</option>
+                            <option value="1">Safety</option>
+                            <option value="2">Mobility</option>
+                            <option value="3">Capacity adding</option>
+                            <option value="4">Under clearance</option>
+                            <option value="5">Congestion</option>
+                            <option value="6">Preservation</option>
+                            <option value="7">Rehabilitation</option>
+                            <option value="8">Maintenanace</option>
+                        </select>
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="risk" class="form-label">Risk</label>
+                        <input type="number" step="any" name="risk" min="0" oninput="checkValue(this)" id="risk" asp-for="@Model.Risk" class="form-control" required disabled />
+                        <div class="invalid-feedback">Must be positive number</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <div class="form-check d-none">
+                            <input class="form-check-input d-none" name="interstate" asp-for="@Model.Interstate" type="checkbox" id="interstate" disabled style="opacity:1.0;">
+                            <label class="form-check-label d-none" for="interstate" style="opacity:1.0;">Interstate</label>                            
+                        </div
+
+                        <label for="indirectcostdesign" class="form-label">Interstate</label>
+                        <input type="text" id="interstateTxt" readonly class="form-control" required value="No" />
+
+
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="indirectcostdesign" class="form-label">Indirect Cost Design</label>
+                        <input type="number" step="any" name="indirectcostdesign" min="0" asp-for="@Model.IndirectCostDesign" oninput="checkValue(this)" id="indirectcostdesign" class="form-control costcalc" required />
+                        <div class="invalid-feedback">Must be a positive number</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="indirectcostrow" class="form-label">Indirect Cost Row</label>
+                        <input type="number" step="any" name="indirectcostrow" min="0" asp-for="@Model.IndirectCostRow" oninput="checkValue(this)" id="indirectcostrow" class="form-control costcalc" required />
+                        <div class="invalid-feedback">Must be a positive number</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <div class="form-check d-none">
+                            <input class="form-check-input d-none" name="direction" asp-for="@Model.Direction" type="checkbox" id="direction" disabled style="opacity:1.0;">
+                            <label class="form-check-label d-none" for="direction" style="opacity:1.0;">Direction</label>                            
+                        </div>
+
+                        <label for="indirectcostdesign" class="form-label">Direction</label>
+                        <input type="text" id="directionTxt" readonly class="form-control" required value="No" />
+
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="indirectcostutilities" class="form-label">Indirect Cost Utilities</label>
+                        <input type="number" step="any" name="indirectcostutilities" min="0" asp-for="@Model.IndirectCostUtilities" oninput="checkValue(this)" id="indirectcostutilities" class="form-control costcalc" required />
+                        <div class="invalid-feedback">Must be a positive number</div>
+                    </div>
+                    <div class="col-sm-4 mb-1">
+                        <label for="indirectcostothers" class="form-label">Indirect Cost Others</label>
+                        <input type="number" step="any" name="indirectcostothers" min="0" asp-for="@Model.IndirectCostOthers" oninput="checkValue(this)" id="indirectcostothers" class="form-control costcalc" required />
+                        <div class="invalid-feedback">Must be a positive number</div>
+                    </div>
+
+                    <div class="col-sm-4 mb-1">
+                        <label for="indirectcostothers" class="form-label">Total Cost</label>
+                        <input type="number" step="any" name="totalcost" min="0" id="totalcost" class="form-control" readonly />
+                        <div class="invalid-feedback">Must be a positive number</div>
+                    </div>
+
+
+                    <hr class="dropdown-divider" />
+                    <div id="brkeyparent" class="col-sm-4" style="display: none;">
+                        <label for="brkey" class="form-label">BRKey</label>
+                        <input type="text" name="brkey" id="brkey" asp-for="@Model.Brkey" class="form-control" />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="col-sm-8">
+                    </div>
+                    <div id="bridgeidparent" class="col-sm-4" style="display: none;">
+                        <label for="bridgeid" class="form-label">BMS ID</label>
+                        <input type="number" name="bridgeid" asp-for="@Model.BridgeId" oninput="checkValue(this)" id="bridgeid" class="form-control" />
+                        <div class="invalid-feedback">Must be a positive number</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button id="createtrtBtn" type="submit" class="btn btn-success">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<div id="contextmenu" class="contextmenu-container">
+    <ul class="menu">
+        <li class="menuitem">
+            <a href="#" class="sort_asc sort">
+                <i class="fa-solid fa-arrow-up-short-wide"></i>
+                <span>Sort Ascending</span>
+            </a>
+        </li>
+        <li class="menuitem">
+            <a href="#" class="sort_desc sort">
+                <i class="fa-solid fa-arrow-up-wide-short"></i>
+                <span>Sort Descending</span>
+            </a>
+        </li>
+        <li class="menuitem">
+            <a href="#" class="dropdown-toggle" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="fa-solid fa-list"></i>
+                <span>Columns</span>
+            </a>
+            <ul class="submenu dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton" style="padding:20px;width:500px;margin-left:100px;">
+                <li>
+                    <div class="row">
+                        <div class="form-check col-md-6">
+                            <label class="form-check-label" for="checkbox0">
+                                <input class="form-check-input-column" type="checkbox" value="0" id="checkbox0" checked>
+                                Asset Type
+                            </label>
+                        </div>
+
+                        <div class="form-check col-md-6">
+                            <label class="form-check-label" for="checkbox1">
+                                <input class="form-check-input-column" type="checkbox" value="1" id="checkbox1" checked>
+                                Source
+                            </label>
+                        </div>
+
+                        <div class="form-check col-md-6">
+                            <label class="form-check-label" for="checkbox2">
+                                <input class="form-check-input-column" type="checkbox" value="2" id="checkbox2" checked>
+                                District
+                            </label>
+                        </div>
+
+                        <div class="form-check col-md-6">
+                            <label class="form-check-label" for="checkbox3">
+                                <input class="form-check-input-column" type="checkbox" value="3" id="checkbox3" checked>
+                                County
+                            </label>
+                        </div>
+
+                        <div class="form-check col-md-6">
+                            <label class="form-check-label" for="checkbox4">
+                                <input class="form-check-input-column" type="checkbox" value="4" id="checkbox4" checked>
+                                Route
+                            </label>
+                        </div>
+
+                        <div class="form-check col-md-6">
+                            <label class="form-check-label" for="checkbox5">
+                                <input class="form-check-input-column" type="checkbox" value="5" id="checkbox5" checked>
+                                Section
+                            </label>
+                        </div>
+
+                        <div class="form-check col-md-6">
+                            <label class="form-check-label" for="checkbox6">
+                                <input class="form-check-input-column" type="checkbox" value="6" id="checkbox6">
+                                BRKey
+                            </label>
+                        </div>
+
+                        <div class="form-check col-md-6">
+                            <label class="form-check-label" for="checkbox7">
+                                <input class="form-check-input-column" type="checkbox" value="7" id="checkbox7">
+                                BMS ID
+                            </label>
+                        </div>
+
+                        <div class="form-check col-md-6">
+                            <label class="form-check-label" for="checkbox8">
+                                <input class="form-check-input-column" type="checkbox" value="8" id="checkbox8">
+                                Treatment
+                            </label>
+                        </div>
+
+                        <div class="form-check col-md-6">
+                            <label class="form-check-label" for="checkbox9">
+                                <input class="form-check-input-column" type="checkbox" value="9" id="checkbox9">
+                                Interstate
+                            </label>
+                        </div>
+
+                        <div class="form-check col-md-6">
+                            <label class="form-check-label" for="checkbox10">
+                                <input class="form-check-input-column" type="checkbox" value="10" id="checkbox10">
+                                Direction
+                            </label>
+                        </div>
+
+                        <div class="form-check col-md-6">
+                            <label class="form-check-label" for="checkbox11">
+                                <input class="form-check-input-column" type="checkbox" value="11" id="checkbox11" checked>
+                                Cost ($)
+                            </label>
+                        </div>
+
+                        <div class="form-check col-md-6">
+                            <label class="form-check-label" for="checkbox12">
+                                <input class="form-check-input-column" type="checkbox" value="12" id="checkbox12" checked>
+                                Benefit ($)
+                            </label>
+                        </div>
+
+                        <div class="form-check col-md-6">
+                            <label class="form-check-label" for="checkbox13">
+                                <input class="form-check-input-column" type="checkbox" value="13" id="checkbox13" checked>
+                                Risk
+                            </label>
+                        </div>
+
+                        <div class="form-check col-md-6">
+                            <label class="form-check-label" for="checkbox14">
+                                <input class="form-check-input-column" type="checkbox" value="14" id="checkbox14" checked>
+                                Preferred Year
+                            </label>
+                        </div>
+
+                        <div class="form-check col-md-6">
+                            <label class="form-check-label" for="checkbox15">
+                                <input class="form-check-input-column" type="checkbox" value="15" id="checkbox15" checked>
+                                Min.Year
+                            </label>
+                        </div>
+
+                        <div class="form-check col-md-6">
+                            <label class="form-check-label" for="checkbox16">
+                                <input class="form-check-input-column" type="checkbox" value="16" id="checkbox16">
+                                Max.Year
+                            </label>
+                        </div>
+
+                        <div class="form-check col-md-6">
+                            <label class="form-check-label" for="checkbox17">
+                                <input class="form-check-input-column" type="checkbox" value="17" id="checkbox17">
+                                Is Committed
+                            </label>
+                        </div>
+
+                        <div class="form-check col-md-6">
+                            <label class="form-check-label" for="checkbox18">
+                                <input class="form-check-input-column" type="checkbox" value="18" id="checkbox18">
+                                User Treatment Type
+                            </label>
+                        </div>
+
+                        <div class="form-check col-md-6">
+                            <label class="form-check-label" for="checkbox19">
+                                <input class="form-check-input-column" type="checkbox" value="19" id="checkbox19">
+                                Indirect Cost Design
+                            </label>
+                        </div>
+
+                        <div class="form-check col-md-6">
+                            <label class="form-check-label" for="checkbox20">
+                                <input class="form-check-input-column" type="checkbox" value="20" id="checkbox20">
+                                Indirect Cost Row
+                            </label>
+                        </div>
+
+                        <div class="form-check col-md-6">
+                            <label class="form-check-label" for="checkbox21">
+                                <input class="form-check-input-column" type="checkbox" value="21" id="checkbox21">
+                                Indirect Cost Utilities
+                            </label>
+                        </div>
+
+                        <div class="form-check col-md-6">
+                            <label class="form-check-label" for="checkbox22">
+                                <input class="form-check-input-column" type="checkbox" value="22" id="checkbox22">
+                                Indirect Cost Other
+                            </label>
+                        </div>
+                    </div>
+                </li>
+
+            </ul>
+        </li>
+    </ul>
+</div>
+
+<div class="modal fade" id="deletealert" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="deletealertLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deletealertLabel">Delete Treatment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span>
+                    Are you sure you want to delete the selected Treatment ?
+                </span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <form id="deleteform" asp-antiforgery="true" asp-action="DeleteTreatment" asp-controller="Treatments" method="post">
+                    <input hidden name="treatmentid" />
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div id="overlay">
+    <div class="overlay-content">
+        <div class="spinner"></div>
+        <div class="overlay-text">Please wait...</div>
+    </div>
+</div>
+
+
+@section Styles{
+    <link rel="stylesheet" href="~/css/candidatepools_styles.css" />
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+
+}
+
+<script>
+    document.querySelectorAll('.filterBtn').forEach(button => {
+        button.addEventListener('click', function (e) {
+            document.getElementById('overlay').style.display = 'flex';
+        });
+    });
+</script>
+
+<script>
+    $(document).ready(function () {
+        var assetType = $("#AssetType").text();
+        var dataTable = $('#treatmentsTable').DataTable({
+            "fixedColumns": {
+                left: 0,
+                right: 1
+            },
+            "processing": true,
+            "serverSide": true,
+            "searching": false,
+         
+            "scroller": true,
+            "fixedHeader": {
+                "header": true
+            },
+            "scrollX": true,
+            "scrollY": 300,
+            "order": [[0, 'asc']],
+            "language": {
+                "emptyTable": "No record found.",
+                "processing":
+                    '<i class="fa fa-spinner fa-spin fa-3x fa-fw" style="color:#2a2b2b;"></i><span class="sr-only">Loading...</span> '
+            },
+            "sAjaxSource": "/Treatments/ApplyPagination",
+            "columns": [
+                {
+                    "data": "assetType",
+                    "autoWidth": true,
+                    orderable: false,
+                    "searchable": true,
+                    render: function (data, type, row) {
+                        switch (row.assetType) {
+                            case 'B':
+                                return 'Bridge';
+                            case 'P':
+                                return 'Pavement';
+                            default:
+                                return 'Others';
+                        }
+                    }
+                },
+                {
+                    "data": "assetType",
+                    "autoWidth": true,
+                    orderable: false,
+                    "searchable": true,
+                    render: function (data, type, row) {
+                        switch (row.assetType) {
+                            case 'B':
+                                return 'BAMS';
+                            case 'P':
+                                return 'PAMS';
+                            default:
+                                return 'DecisionSpace';
+                        }
+                    }
+                },
+                {
+                    "data": "district",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "county",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "route",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true,
+                    "render": function (data, type, row) {
+                        return data.toString().padStart(4, '0');
+                    }
+                },
+                {
+                    "data": "section",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "brkey",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "bridgeId",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "treatment",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true,
+                },
+                {
+                    "data": "interstate",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true,
+                    render: function (data, type, row) {
+                        return row.interstate ? "Y" : "N"
+                    }
+                },
+                {
+                    "data": "direction",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "cost",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true,
+                    render: function (data, type, row) {
+                        return new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: 'USD',
+                            minimumFractionDigits: 2
+                        }).format(data);
+                    }
+                },
+                {
+                   "data": "benefit",
+                    orderable: false,
+                    "autoWidth": true,
+                   "searchable": true,
+                    render: function (data, type, row) {
+                        return new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: 'USD',
+                            minimumFractionDigits: 2
+                        }).format(data);         
+                    }
+                   },
+
+                {
+                    "data": "risk",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true,
+                    render: function (data, type, row) {
+                        if (row.risk !== null) {
+                            return row.risk.toFixed(2)
+                        }
+                        return row.risk
+                    }
+                },
+                {
+                    "data": "preferredYear",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "minYear",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "maxYear",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "isCommitted",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "userTreatmentName",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "indirectCostDesign",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true,
+                    render: function (data, type, row) {
+                        var num = parseFloat(data);
+                        if (isNaN(num)) return '';
+
+                        return '$' + num.toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        });
+                    }
+                },
+                {
+                    "data": "indirectCostRow",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true,
+                    render: function (data, type, row) {
+                        var num = parseFloat(data);
+                        if (isNaN(num)) return '';
+
+                        return '$' + num.toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        });
+                    }
+                },
+                {
+                    "data": "indirectCostUtilities",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true,
+                    render: function (data, type, row) {
+                        var num = parseFloat(data);
+                        if (isNaN(num)) return '';
+
+                        return '$' + num.toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        });
+                    }
+                },
+                {
+                    "data": "indirectCostOther",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true,
+                    render: function (data, type, row) {
+                        var num = parseFloat(data);
+                        if (isNaN(num)) return '';
+
+                        return '$' + num.toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        });
+                    }
+                },
+                {
+                    "data": null,
+                    title: "Actions",
+                    orderable: false,
+                    defaultContent: '',
+                    render: function (data, type, row) {
+                        var inner = `
+                                <div class="dropdown">
+                                   <button class="btn btn-secondary circlebutton" type="button" id="dropdownMenuButton1"
+                                      data-bs-toggle="dropdown" aria-expanded="true">
+                                      <i class="fa-solid fa-ellipsis-vertical"></i>
+                                   </button>
+                                   <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1" data-popper-placement="bottom-end"
+                                      style="position: absolute; inset: 0px auto auto 0px; margin: 0px; transform: translate(-100px, 20px);">
+                                      <li>
+                                         <button type="button" onclick="editingtreatment.bind(this)()" value="${row.importTimeGeneratedId}"
+                                            class="btn mb-1">
+                                            <i class="bi bi-pencil-square"></i> Edit
+                                         </button>
+                                      </li>
+                                          <hr style="margin:0px !important;">
+                                      <li>
+                                         <button type="button" value="${row.importTimeGeneratedId}" onclick="ondeletingtreatment.bind(this)()"
+                                            class="btn mb-1" data-bs-toggle="modal" data-bs-target="#deletealert">
+                                            <i class="bi bi-trash"></i> Delete
+                                         </button>
+                                      </li>
+                                   </ul>
+                                </div>
+                                `;
+
+                        return inner;
+                    }
+                }
+
+            ]
+        });
+
+        dataTable.column(6).visible(false);
+        dataTable.column(7).visible(false);
+        dataTable.column(8).visible(false);
+        dataTable.column(9).visible(false);
+        dataTable.column(10).visible(false);
+
+        dataTable.column(16).visible(false);
+        dataTable.column(17).visible(false);
+        dataTable.column(18).visible(false);
+        dataTable.column(19).visible(false);
+        dataTable.column(20).visible(false);
+        dataTable.column(21).visible(false);
+        dataTable.column(22).visible(false);
+
+
+        $(document).on("click", ".sort_asc", function () {
+            dataTable.order([$(this).attr("value"), 'asc']).draw();
+        });
+
+        $(document).on("click", ".sort_desc", function () {
+            dataTable.order([$(this).attr("value"), 'desc']).draw();
+        });
+
+        $(document).on("change", ".form-check-input-column", function () {
+            if ($(this).is(":checked")) {
+                dataTable.column($(this).val()).visible(true);
+            } else {
+                dataTable.column($(this).val()).visible(false);
+            }
+            dataTable.ajax.reload();
+        });
+
+
+    });
+    function ondeletingtreatment() {
+        var form = document.getElementById('deleteform');
+        form.treatmentid.value = this.value;
+    }
+
+
+    function checkValue(input){
+        var btn = $("#createtrtBtn");
+        var minYear = parseInt($("#minyear").val()) || 0;
+        var maxYear = parseInt($("#maxyear").val()) || 0;
+
+        if(input.value < 0){
+            $("#createtrtBtn").prop("disabled", true);
+            $(input).addClass("is-invalid");
+            btn.disable = true;
+        }
+        else{
+            $("#createtrtBtn").prop("disabled", false);
+            $(input).removeClass("is-invalid");
+
+
+            if (input.id === "maxyear") {
+                if (maxYear < minYear) {
+                    $(input).addClass("is-invalid");
+                    $("#maxyearfeedback").text("Maximum Year must be greater than or equal to Minimum Year").show();
+                    $("#createtrtBtn").prop("disabled", true);
+                } else {
+                    $(input).removeClass("is-invalid");
+                    $("#maxyearfeedback").hide();
+                    $("#createtrtBtn").prop("disabled", false);
+                }
+            }
+
+        }
+    }
+        
+
+
+    function oncontextmenuclickednew(event, id) {
+        console.log("clicked");
+        var contextmenu = $('#contextmenu');
+        var portheight = window.innerHeight;
+        var contextheight = contextmenu.height();
+        var ycor = event.clientY;
+        var offset = (event.clientY + contextheight) - portheight;
+        if (offset > 0) {
+            ycor = ycor - offset;
+        }
+        contextmenu.css("display", "block")
+            .css("left", `${event.clientX - 260}px`)
+            .css("top", `${ycor}px`);
+
+
+        $(".sort").each(function () {
+            if ($(this).hasClass("sort_asc")) {
+                $(this).attr("value", id);
+            }
+            if ($(this).hasClass("sort_desc")) {
+                $(this).attr("value", id);
+            }
+        });
+    }
+  
+
+    $(document).ready(function () {
+
+        var idValue = "@ViewBag.id"; // Replace with the actual Guid value you want to send
+
+        $.ajax({
+            url: '/CandidatePools/GetLibraryWithScenario', // Replace 'ControllerName' with the actual name of your controller
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(idValue),
+            success: function (data) {
+                // Handle the success response here
+                console.log(data);
+                if (data.scenarioName && data.libraryName){
+                    $(".headerName p").text(data.scenarioName + " / " + data.libraryName);
+                }else if(data.libraryName){
+                    $(".headerName p").text(data.libraryName);
+                }                    
+            },
+            error: function (error) {
+                // Handle the error response here
+                console.log(error);
+            }
+        });
+
+    });
+</script>
+<style>
+    .menuitem:hover .submenu {
+        display: block;
+    }
+
+    table.dataTable thead > tr > th.sorting_asc:before, table.dataTable thead > tr > th.sorting_desc:after, table.dataTable thead > tr > td.sorting_asc:before, table.dataTable thead > tr > td.sorting_desc:after {
+        display: none !important;
+    }
+
+    table.dataTable thead > tr > th.sorting:before, table.dataTable thead > tr > th.sorting_asc:before, table.dataTable thead > tr > th.sorting_desc:before, table.dataTable thead > tr > th.sorting_asc_disabled:before, table.dataTable thead > tr > th.sorting_desc_disabled:before, table.dataTable thead > tr > td.sorting:before, table.dataTable thead > tr > td.sorting_asc:before, table.dataTable thead > tr > td.sorting_desc:before, table.dataTable thead > tr > td.sorting_asc_disabled:before, table.dataTable thead > tr > td.sorting_desc_disabled:before {
+        display: none !important;
+    }
+
+    table.dataTable thead > tr > th.sorting:after, table.dataTable thead > tr > th.sorting_asc:after, table.dataTable thead > tr > th.sorting_desc:after, table.dataTable thead > tr > th.sorting_asc_disabled:after, table.dataTable thead > tr > th.sorting_desc_disabled:after, table.dataTable thead > tr > td.sorting:after, table.dataTable thead > tr > td.sorting_asc:after, table.dataTable thead > tr > td.sorting_desc:after, table.dataTable thead > tr > td.sorting_asc_disabled:after, table.dataTable thead > tr > td.sorting_desc_disabled:after {
+        display: none !important;
+    }
+
+    table thead {
+        background: #3399cc !important;
+    }
+
+    table thead tr th a {
+        padding-left: 20px;
+        padding-right: 20px;
+        color: #fff;
+    }
+
+    table thead tr th {
+        text-align: center;
+        vertical-align: middle;
+    }
+
+
+   
+
+    .headerName p{
+        font-size: 20px;
+        font-weight: 800;
+        color: #193562;
+        float: right;
+    }
+    .table.table-bordered.table-hover.table-striped.dataTable {
+    margin-left: 48px!important;
+            }
+</style>

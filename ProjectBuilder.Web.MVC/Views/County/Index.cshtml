@@ -1,0 +1,210 @@
+﻿@model CountyViewModel
+@{
+    ViewData["Title"] = "County";
+}
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+<partial name="~/Views/Shared/navbarshared/_SetupsSidebar.cshtml" />
+<div class="container-fluid" style="margin-top:30px;overflow-y:auto;">
+
+
+
+
+    <div class="card">
+        <div class="card-body" style="height:600px;">
+            <h5>View Counties</h5>
+
+            <div class="row align-content-center  m-2">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover table-striped" id="CountyTable">
+                        <thead class="bg-success text-white">
+                            <tr>
+                                <th>
+                                    CountyId
+                                </th>
+                                <th>
+                                    CountyName
+                                </th>
+                                <th>
+                                    District
+                                </th>
+
+                                <th>
+                                    CountyFullName
+                                </th>
+                                <th>
+                                    Actions
+                                </th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+
+
+</div>
+
+@*Edit Modal*@
+
+<div class="modal fade" id="EditCountyForm" tabindex="-1" role="dialog" aria-labelledby="EditCountyFormLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="EditCountyFormLabel">Edit County</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="editCounty" class="needs-validation" asp-controller="County" asp-action="EditCounty" method="post">
+                <div class="modal-body">
+                    <input asp-for="CountyId" id="countyId" name="CountyId" hidden />
+                    <input asp-for="District" id="district" name="District" hidden />
+                    <div class="mb-3">
+                        <label for="userName" class="form-label">Name</label>
+                        <input asp-for="CountyName" id="countyName" type="text" name="CountyName" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+
+
+@*Delete County*@
+<div class="modal fade" id="deletealert" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="deletealertLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deletealertLabel">Delete County</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span>
+                    Are you sure you want to delete the selected county ?
+                </span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <form id="deleteform" asp-antiforgery="true" asp-action="DeleteCounty" asp-controller="County" method="post">
+                    <input hidden name="countyId" />
+                    <input hidden name="district" />
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    $(document).ready(function () {
+        $('#CountyTable').DataTable({
+            "processing": true,
+            "serverSide": true,
+            "bSearchable": true,
+            "order": [[1, 'asc']],
+            "language": {
+                "emptyTable": "No record found.",
+                "processing":
+                    '<i class="fa fa-spinner fa-spin fa-3x fa-fw" style="color:#2a2b2b;"></i><span class="sr-only">Loading...</span> '
+            },
+            "sAjaxSource": "/County/ApplyPagination",
+            "columns": [
+                {
+                    "data": "countyId",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+
+                {
+                    "data": "countyName",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "district",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+
+                {
+                    "data": "countyFullName",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": null,
+                    title: "Actions",
+                    orderable: false,
+                    defaultContent: '',
+                    render: function (data, type, row) {
+                        console.log(data);
+                        console.log(row);
+                        var inner = `<button onclick="oneditingCounty(${row.countyId},${row.district}).bind(this)()" value="${row.district}" class="btn btn-primary mb-1">
+            <i class="bi bi-pencil-square"></i>
+        </button>
+            <button type="button" value="${row.projectId}" onclick="ondeletingCounty(${row.countyId},${row.district}).bind(this)()" class="btn btn-danger mb-1" data-bs-toggle="modal" data-bs-target="#deletealert" ${row.isDeleteable ? 'disabled' : ''}>
+            <i class="bi bi-trash"></i>
+        </button>`;
+                        return inner;
+                    }
+                }
+            ]
+        });
+
+    });
+
+
+    // OnEditCounty
+    function oneditingCounty(CountyId,District) {
+        debugger;
+        $.ajax(
+            {
+                type: 'Get',
+                dataType: 'JSON',
+                url: '/County/GetCounty',
+                data: { id: CountyId, district: District },
+                success:
+                    function (response) {
+                        debugger;
+                        var form = document.getElementById('editCounty');
+                        $('#countyName').val(response.countyName);
+                        $('#countyId').val(response.countyId);
+                        $('#district').val(response.district);
+                        var model = document.getElementById('EditCountyForm');
+                        var formModel = bootstrap.Modal.getOrCreateInstance(model);
+                        formModel.show();
+                    },
+                error:
+                    function (response) {
+
+                    }
+            });
+    }
+
+
+
+
+    function ondeletingCounty(CountyId, District) {
+        var form = document.getElementById('deleteform');
+        form.countyId.value = CountyId
+        form.district.value = District
+    }
+
+</script>
+

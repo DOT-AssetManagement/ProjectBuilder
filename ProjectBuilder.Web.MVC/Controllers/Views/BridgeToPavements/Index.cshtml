@@ -1,0 +1,149 @@
+﻿@model BridgeToPavementsViewModel
+@{
+    ViewData["Title"] = "BridgeToPavements";
+}
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+
+
+<h2>Bridge To Pavements</h2>
+<div class="card">
+    <div class="card-body">
+        <h5>View Bridge To Pavements</h5>
+
+        <div class="row align-content-center  m-2">
+
+            <div class="table-responsive">
+
+                <table class="table table-bordered table-hover table-striped" id="usersTable">
+                    <thead class="bg-success text-white">
+                        <tr>
+                            <th>
+                                BrKey
+                            </th>
+                            <th>
+                                District
+                            </th>
+                            <th>
+                                County
+                            </th>
+                            <th>
+                                BridgeId
+                            </th>
+                            <th>
+                                CountyCode
+                            </th>
+                            <th>
+                                Route
+                            </th>
+                            <th>
+                                Segment
+                            </th>
+                            <th>
+                                Offset
+                            </th>
+                            <th>
+                                CreatedBy
+                            </th>
+                            <th>
+                                CreatedAt
+                            </th>
+                            <th>
+
+                            </th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function () {
+        $('#usersTable').DataTable({
+            "processing": true,
+            "serverSide": true,
+            "bSearchable": true,
+            "order": [[1, 'asc']],
+             "language": {
+                        "emptyTable": "No record found.",
+                        "processing":
+                            '<i class="fa fa-spinner fa-spin fa-3x fa-fw" style="color:#2a2b2b;"></i><span class="sr-only">Loading...</span> '
+                    },
+            "sAjaxSource": "/BridgeToPavements/ApplyPagination",
+            "columns": [
+                {
+                    "data": "brKey",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "district",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "county",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "bridgeId",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "countyCode",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "route",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "segment",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "offSet",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "createdBy",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "createdAt",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+               
+                {
+                        "data": null,
+                        title: "Actions",
+                        orderable: false,
+                        defaultContent: '',
+                        render: function (data, type, row) {
+                        var inner = `<button onclick="oneditingproject.bind(this)()" value="` + row.projectId + `" class="btn btn-primary mb-1">
+    <i class="bi bi-pencil-square"></i>
+</button>
+<button type="button" value="` + row.projectId + `" onclick="ondeletingproject.bind(this)()" class="btn btn-danger mb-1" data-bs-toggle="modal" data-bs-target="#deletealert">
+    <i class="bi bi-trash"></i>
+</button>
+                                `;
+                            return inner;
+                        }
+                }
+            ]
+        });
+
+    });
+</script>

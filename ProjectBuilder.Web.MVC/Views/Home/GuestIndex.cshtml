@@ -1,0 +1,19 @@
+﻿@{
+    ViewData["Title"] = "Home";
+}
+
+@if (User.Identity?.IsAuthenticated == true)
+{
+
+    <nav id="sidebarMenu" class="sidenavbar">
+    </nav>
+
+    <div class="flex-row justify-content-between" style="margin-top:50px;">
+        <center>
+        <h1>Welcome! </h1>
+        <h2 class="bottom-50">We're delighted to have you here as our guest user. Currently, you are not allowed to have access to any of the functionalities. Contact the administrator for further assistance!</h2>
+        </center>
+        <div class="col-md-2 d-flex justify-content-end align-items-center">
+        </div>
+    </div>
+}

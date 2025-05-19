@@ -1,0 +1,205 @@
+﻿@{
+    ViewData["Title"] = "Outputs";
+}
+@using ProjectBuilder.Core;
+@using Newtonsoft.Json;
+@using ProjectBuilder.Web.MVC.Models;
+
+<div class="maps_main-container">
+    <partial name="~/Views/Shared/navbarshared/_outputsnavbar.cshtml" />
+    <div id="overlay" class="loading-overlay">
+        <div class="loading-content">
+            <i class="fa-solid fa-spinner fa-spin fa-2xl"></i>
+            <p>Loading map please wait...</p>
+       </div>
+    </div>
+    <div class="maps_maincontent">
+        <div class="maps_main-header">
+            <div class="maps_main-header_info">
+                <h1>Maps <i class="fa-solid fa-download me-3" style="cursor:pointer;"></i></h1>
+                <h1>@Html.DisplayText("ScenarioName")</h1>
+            </div>
+            <div class="card filterArea" style="display:none;">
+                <div class="maps_main-body card-body">
+                    <form id="mapsform" asp-controller="Outputs" asp-action="GenerateMapsResponse" method="get" class="maps_main-form">
+                        <div class="maps_main-formbody">
+                            <input id="scenario" name="scenario" value="@Html.DisplayText("ScenarioId")" hidden/>
+                            <select class="form-select" name="scenarioid" id="scenarioid" data-filter=" scenario">
+                                <option value="" selected>Select Scenario</option>
+                            </select>
+                            <select class="form-select"  name="district"
+                                data-filter="district">
+                                <option value="Select District" selected>Select District</option>
+                                @foreach (var district in Model.Districts)
+                                {
+                                    <option value="@district">District @district</option>
+                                }
+
+                            </select>
+                            <select class="form-select"  name="county" data-filter="county">
+                                <option value="" selected>Select County</option>
+                            </select>
+                            <select class="form-select" name="route" data-filter="route">
+                                <option value="" selected>Select Route</option>
+                            </select> 
+                            <select class="form-select" name="treatmenttype" data-filter="section">
+                                <option value="" selected>Select Treatment Type</option>
+                            </select>
+
+                            <button id="generatebtn" type="submit" class="btn btn-primary me-2" style="display:none;">Generate Map</button>
+                            <button id="downloadjson" type="button" class="btn btn-primary">Download JSON</button>
+                        </div>
+                        
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="maps_main-response" style="height:800px;overflow-y: scroll;">
+            <div id="maperror" class="maps_failed-content" style="display:none">
+               <p id="errormessage"></p>
+            </div>
+            <iframe id='mapframe' style='width:100%;height:800px;' src='https://map.pbweb.info/'></iframe>
+
+        </div>
+    </div>
+</div>
+@section Styles{
+    <link rel="stylesheet" href="~/css/outputs_styles.css" />
+}
+
+<div id="loader-container">
+    <div id="loader" class="loader"></div>
+</div>
+
+
+<script>
+    function showLoader() {
+        document.getElementById('loader-container').style.display = 'block';
+    }
+
+    function hideLoader() {
+        document.getElementById('loader-container').style.display = 'none';
+    }
+
+    $(document).on("click", ".fa-download", function(){
+        $(".filterArea").toggle();
+    });
+
+
+    $(function () {
+        //$('#scenario').trigger('change');
+        var scenId = $('#scenario').val();
+        var scenId = $('#scenario').val();
+
+        if (scenId === null || scenId === undefined || scenId === '') {
+            $('#scenarioslink').show();
+            $("#maperror").css('visibility', 'visible');
+            $('#generatebtn').prop('disabled', true);
+            $('#downloadjson').prop('disabled', true);
+            $("#errormessage").text('In order to generate a map, you have to select a scenario first.');
+            //$('#mapframe').removeAttr("src");      
+        }
+
+        $.ajax({
+            type: 'GET',
+            url: "/Scenarios/GetScenarios",
+            contentType: 'application/json',
+            success: function (response) {
+                $("#scenarioid").html("<option value=''>Select Scenario</option>");
+                $.each(response.scenarios, function (key, value) {
+                    if (scenId == value.scenarioId)
+                        $("#scenarioid").append("<option value='" + value.scenarioId + "' selected>" + value.scenarioName + "</option>");
+                    else
+                        $("#scenarioid").append("<option value='" + value.scenarioId + "'>" + value.scenarioName + "</option>");
+                });
+                hideLoader();
+            }
+        });
+
+
+        $(document).on("click","#downloadjson",function(){
+               $.ajax({
+                    type: "POST",
+                    url: "/Outputs/GenerateMapJson",
+                    data: $("#mapsform").serialize(),
+                    success: function (response) {
+                        console.log("response: " + response);
+                        const jsonData = typeof response === "string" ? JSON.parse(response) : response;
+
+                        const jsonString = JSON.stringify(jsonData, null, 4); 
+                        const blob = new Blob([jsonString], { type: "application/json" });
+                        const url = URL.createObjectURL(blob);
+
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = "map_data.json"; 
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+
+                        URL.revokeObjectURL(url);
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("Error:", xhr.responseText || error);
+                        alert("Failed to generate JSON.");
+                    }
+                });
+        });
+
+
+        showLoader();
+
+        // Set a timeout to hide the loader after 3 seconds
+        setTimeout(function () {
+            hideLoader();
+        }, 3000);
+
+
+        $(document).on("change", "#scenarioid", function () {
+            if ($(this).val())
+                window.location.href = "/Outputs/Maps?scenid=" + $(this).val();
+            else
+                window.location.href = "/Outputs/Maps";
+        });
+
+
+        var currentUrl = window.location.href;
+        var url = new URL(currentUrl);
+        var searchParams = new URLSearchParams(url.search);
+        var fromScenario = searchParams.get("fromscenario");
+        if(fromScenario == "true"){
+            $("#scenarioid").hide();
+        }
+    });
+    // var data = Html.Raw( JsonConvert.SerializeObject(Model.Json));
+    // console.log(data);
+    // if (data) {
+    //     $.ajax({
+    //         type: 'POST',
+    //         data: data,
+    //         url: "https://gis.bergmannpc.com/ProjectBuilderMap/api/scenarios",
+    //         contentType: 'application/json',
+    //         beforeSend: function () {
+    //             on();
+    //         },
+    //         success: function (data) {
+    //             console.log(data);
+    //             $("#maps_main-response").html("<iframe src='" + data.MapViewerUrl + "' width='100%' height='100%'>");
+    //         },
+    //         complete: function () {
+    //             off();
+    //         },
+    //     });
+    //     /*
+    //     }).then(function (data, status, xhr) {
+    //         $("#mapresponse").html("<iframe src='" + data.MapViewerUrl + "' width='100%' height='600px'>");
+    //     });*/
+    // } else {
+    //     //$("#mapresponse").html("No Data");
+    // }
+
+
+
+
+</script>
+

@@ -1,0 +1,171 @@
+﻿@using ProjectBuilder.Core;
+@using Newtonsoft.Json;
+@using ProjectBuilder.Web.MVC.Models;
+
+@model PotentialBenefitsChartViewModel
+@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+}
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <h2 class="bottom-50"></h2>
+
+    @using (Html.BeginForm("Index", "PotentialBenefitsChart", FormMethod.Get))
+    {
+        <div class="row justify-content-start m-2">
+            <div class="col-3">
+                @Html.DropDownListFor(model => model.ScenarioId,Model.Scenarios.Select(s => new SelectListItem() {Value = s.ScenarioId.ToString(), Text = s.ScenarioFullName}),"Select Scenario",new {@class = "form-control"})
+            </div>
+
+            <div class="col-3">
+                @Html.DropDownListFor(model => model.SelectedDistrict,Model.Districts.Select(s => new SelectListItem() {Text = s.ToString()}),"Select District",new {@class = "form-control"})
+            </div>
+
+            <div class="col-3">
+                <select class="form-control" asp-for="SelectedNeedIndex"> 
+                    <option value="0">Assets</option>
+                    <option value="1">Bridge</option>
+                    <option value="2">Pavement</option>
+                </select>
+            </div>
+            <input type="submit" value="Filter" class="col-2 btn btn-primary" />
+        </div>
+    }
+    <div class="row">
+        @if (@Model.SelectedDistrict is not null && @Model.ScenarioId > 0)
+        {
+            <canvas id="myChart"></canvas>
+        }
+    </div>
+
+    <script>
+
+    </script>
+
+    <input asp-for="@Model.Json" type="text" name="SelectedDistrict" class="form-control" style="display:none;" />
+
+
+    // Serialize the JSON data
+    string jsonData = JsonConvert.SerializeObject(@Model.Json);
+
+
+    <script>
+        var data = @Html.Raw(jsonData); // Decode the JSON string into a JavaScript object
+        chartdata = JSON.parse(data);
+        console.log(chartdata.SeriesPoint);
+        console.log(chartdata.Labels);
+
+
+        interstateValues = [];
+        nonInterstateValues = [];
+        for (var year in chartdata.SeriesPoint) {
+            if (chartdata.SeriesPoint.hasOwnProperty(year)) {
+                interstateValues.push(chartdata.SeriesPoint[year].Interstate / 1000000);
+                nonInterstateValues.push(chartdata.SeriesPoint[year]['Non-Interstate'] / 1000000);
+
+                console.log(year);
+
+            }
+        }
+
+        var ctx = document.getElementById('myChart').getContext('2d');
+        var myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: chartdata.Labels,
+                datasets: [
+                    {
+                        label: 'Interstate',
+                        backgroundColor: '#66cc94',
+                        data: interstateValues,
+                        stack: 'Stack 0',
+                    },
+                    {
+                        label: 'Non-Interstate',
+                        backgroundColor: '#6666cc',
+                        data: nonInterstateValues,
+                        stack: 'Stack 0',
+                    }
+                ]
+            },
+            options: {
+                scales: {
+                    x: {
+                        display: true,
+                    },
+                    y: {
+                        display: true,
+                        ticks: {
+                            callback: function (value, index, values) {
+                                return '$' + value + 'M';
+                            }
+                        }
+                    }
+                }, plugins: {
+                    tooltip: {
+                        enabled: true,
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function (tooltipItem, data) {
+
+                                console.log(tooltipItem);
+                                var datasetLabel = tooltipItem.dataset.data[tooltipItem.dataIndex] || '';
+
+                                console.log(datasetLabel);
+                                return tooltipItem.dataset.label + ': $' + (tooltipItem.raw).toFixed(2) + 'M';
+                            }
+                        }
+                    }
+                }
+
+            }
+        });
+
+
+
+        /*var ctx = document.getElementById('myChart').getContext('2d');
+        var myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['2021', '2022', '2023', '2024', '2025', '2026'],
+                datasets: [
+                    {
+                        label: 'Interstate',
+                        backgroundColor: '#66cc94',
+                        data: [100, 150, 100, 130, 150, 140],
+                        stack: 'Stack 0',
+                    },
+                    {
+                        label: 'Non-Interstate',
+                        backgroundColor: '#6666cc',
+                        data: [2000, 2500, 4000, 3500, 2600, 3700],
+                        stack: 'Stack 0',
+                    }
+                ]
+            },
+            options: {
+                scales: {
+                    xAxes: [{
+                        stacked: true
+                    }],
+                    yAxes: [{
+                        stacked: true
+                    }]
+                }
+            }
+        });*/
+    </script>
+
+}
+else
+{
+    <div class="text-center">
+        <h1 class="display-4">Welcome</h1>
+        <p>Please login into your account to see your Libraries.</p>
+    </div>
+}

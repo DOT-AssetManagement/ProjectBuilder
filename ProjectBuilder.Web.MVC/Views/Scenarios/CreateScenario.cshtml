@@ -1,0 +1,1096 @@
+@model CandidatePoolViewModel
+
+
+@{
+    ViewData["Title"] = "Create Scenario";
+}
+
+
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+<link rel="stylesheet" href="~/css/jquery-ui.css">
+
+
+<div class="container" style="margin-bottom:100px;margin-top:40px;">
+    <form id="ScenarioForm" class="needs-validation" asp-controller="Scenarios" asp-action="CreateScenario" method="post" novalidate>
+        <div class="accordion-container">
+        <div id="accordion">
+            <h3 class="createScenario">Create New Scenario</h3>
+            <div>
+                <div style="background:#fff;">
+                    <h1>Create New Scenario</h1>
+                    <label for="scenarioname" class="form-label">Scenario Name</label>
+                    <input type="text" id="scenarioname" name="scenarioname" class="form-control" required
+                           oninput="validateScenarioName()" onblur="validateScenarioNameBlur()" />
+                    <div id="error-message3" style="color:#dc3545;font-size:.875em;" class="error-message3"></div>
+                    <div id="editnamefeedback" class="invalid-feedback">Field is required</div>
+
+                    <div id="ValidSceName" style="color:#dc3545;font-size:.875em;display:none;">Enter Scenario Name</div>
+
+
+                    <label for="minyear" class="form-label">First Year</label>
+                    <input type="number" name="minyear" id="minyear" maxlength="4" value="2025" oninput="validateYear()" min="2025" onblur="validateYearBlur()" class="form-control"
+                           placeholder="2025" />
+                    <div id="error-message" style="color:#dc3545;font-size:.875em;" class="error-message"></div>
+
+                    <div id="ValidFYeareName" style="color:#dc3545;font-size:.875em;display:none;">Enter First Year</div>
+
+
+
+                    <label for="maxyear" class="form-label">Last Year</label>
+                    <input type="number" name="maxyear" id="maxyear" maxlength="4" oninput="validateMaxYear()" min="2025" onblur="validateMaxYearBlur()" class="form-control"
+                           placeholder="2099" />
+                    <div id="error-message2" style="color:#dc3545;font-size:.875em;" class="error-message"></div>
+
+                    <div id="ValidLYeareName" style="color:#dc3545;font-size:.875em;display:none;">Enter Last Year</div>
+                </div>
+
+                <div id="ValidcandPool" style="color:#dc3545;display:none;font-size:.875em;">Create or Select a Treatment Candidate</div>
+
+                <div class="mt-3 d-flex justify-content-end">
+                    <button type="button" class="btn btn-success mx-2" data-bs-toggle="modal"
+                                data-bs-target="#CreateNewLibraryForm" id="createPoolButton">
+                        Create Empty Treatment Candidate
+                    </button>
+                    <button type="button" class="btn btn-success mx-2 accordion-buttons" id="poolAccordion">Next ></button>
+                </div>
+
+            </div>
+                <h3 class="poolAccordion">Select a Treatment Candidate</h3>
+            <div>
+                <div class="table-container">
+                    <table class="table table-bordered table-hover table-striped" id="candidatePoolsTable">
+                        <thead class="bg-success text-white">
+                            <tr>
+                                <th>
+                                    Select
+                                </th>
+                                <th>
+                                    Treatment Candidate Name
+                                </th>
+                                <th>
+                                    Scenario Name
+                                </th>
+                                <th>
+                                    Date Created
+                                </th>
+                                <th>
+                                    Shared
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-3 d-flex justify-content-between">
+                    <button type="button" class="btn btn-success mx-2 accordion-buttons" id="createScenario">< Prev</button>
+                    <button type="button" class="btn btn-success mx-2 accordion-buttons" id="parametersAccordion">Next ></button>
+                </div>
+
+
+
+            </div>
+            <h3 class="parametersAccordion">Parameters (Optional)</h3>
+            <div>
+                <div style="height:350px;overflow-y:auto;width:100%;margin-top:10px;background:#fff;padding:20px;" class="parameterDiv extraDiv">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h1>Scenario Parameters</h1>
+                        <input type="text" id="searchInput" style="width:250px;" class="form-control-sm" placeholder="Search">
+                    </div>
+                    <div id="Para" class="parameter"></div>
+                </div>
+
+                <div class="mt-3 d-flex justify-content-between">
+                    <button type="button" class="btn btn-success mx-2 accordion-buttons" id="poolAccordion">< Prev</button>
+                    <button type="button" class="btn btn-success mx-2 accordion-buttons" id="budgetAccordion">Next ></button>
+                </div>
+
+            </div>
+                <h3 class="budgetAccordion">Budget Constraints (Optional)</h3>
+            <div>
+                <div style="height:350px;overflow-y:auto;width:100%;margin-top:10px;background:#fff;padding:20px;" class="budgetDiv extraDiv">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h1>Budget Constraints</h1>
+                    </div>
+                    <div id="Bud"></div>
+                </div>
+
+                <div class="mt-3 d-flex justify-content-between">
+                    <button type="button" class="btn btn-success mx-2 accordion-buttons" id="parametersAccordion">< Prev</button>
+                </div>
+            </div>
+            </div>
+        </div>
+
+
+        <div class="col-md-6 mt-3 d-flex justify-content-center mx-auto">
+            <button id="CreateScen" style="width:100%;" type="button" class="btn btn-success" onclick="saveNewScenario()">Create Scenario</button>
+        </div>
+
+    </form>
+</div>
+
+
+
+          
+
+<div class="modal fade" id="NewLibmodal" tabindex="-1" aria-labelledby="NewLibmodalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title" id="editBudgetModalLabel">Please enter name for a new pool that will contain a copy of the selected pool</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="createlibrary1" class="needs-validation" asp-controller="CandidatePools"
+                  asp-action="CreateLibrary" method="post" novalidate>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="NewLibName">New Pool name</label>
+                        <input type="text" id="NewLibName" name="NewLibName" oninput="CandidatePoolNameExists()" class="form-control">
+                        <div id="editnamefeedback" class="invalid-feedback">Name Already Exists</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="libraryDescription" class="form-label">Candidate Pool Description</label>
+                        <input name="librarydescription2" type="text" id="librarydescription2"
+                               class="form-control" required />
+                        <div id="descriptionfeedback3" class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox"
+                               name="isshared" id="isshared">
+                        <label class="form-check-label" for="isshared">Shared</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="onSaveCandidatePoolScenario()">Save changes</button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="CreateNewLibraryForm" tabindex="-1" role="dialog"
+     aria-labelledby="CreateNewLibraryFormlabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="CreateNewLibraryFormlabel">Create Empty Candidate Pool</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="createlibrary2" class="needs-validation" asp-controller=""
+                  asp-action="" method="" novalidate>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="libraryName" class="form-label">Candidate Pool Name</label>
+                        <input asp-for="@Model.Name" type="text" id="libraryname" oninput="RemoveInvalid(this)" name="libraryname" class="form-control"
+                               required onblur="validateExistingPoolName()" />
+                        <div id="namefeedback" class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="libraryDescription" class="form-label">Candidate Pool Description</label>
+                        <input asp-for="@Model.Description" id="libraryDescription2" oninput="RemoveInvalid(this)" name="librarydescription" type="text"
+                               class="form-control" required />
+                        <div id="descriptionfeedback" class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="form-check mb-3 d-none">
+                        <input class="form-check-input" asp-for="@Model.IsEmptyLibrary" type="radio"
+                               name="isemptylibrary" id="isemptylibrary" value="true" checked>
+                        <label class="form-check-label" for="isemptylibrary">
+                            Create an empty candidate pool
+                        </label>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" asp-for="@Model.IsShared" type="checkbox"
+                                    name="isshared" id="isshared">
+                            <label class="form-check-label" for="isshared">Shared</label>
+                        </div>
+                    </div>
+                   
+ 
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success" onclick="onSaveNewCandidatePool()">Create</button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
+
+
+<div id="loader-container">
+    <div id="loader" class="loader"></div>
+</div>
+
+
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+<script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+
+<script>
+  $( function() {
+        $("#accordion").accordion({
+
+            heightStyle: "content"
+
+        });
+
+      $(document).on('click', '.accordion-buttons', function () {            
+            $('#accordion').find('.' + $(this).attr('id')).trigger("click");            
+
+
+            var scrollTo = $("#accordion").find('.' + $(this).attr('id'));
+            $(".accordion-container").animate({
+                scrollTop: scrollTo.offset().top - $(".accordion-container").offset().top + $(".accordion-container").scrollTop()
+            }, 500);
+
+      });
+  } );
+  </script>
+
+
+<script>
+    var check = null;
+    $(document).ready(function () {
+
+
+        $(document).on('click', '.scenarioDiv', function () {
+
+            if ($(this).hasClass('selectedDiv')) {
+                $('.scenarioDiv').removeClass("selectedDiv");
+                $(".extraDiv").hide();
+            } else { 
+                $('.scenarioDiv').removeClass("selectedDiv");
+                $(this).addClass("selectedDiv");
+                if ($(this).hasClass('parameterDiv')) {
+                    $(".extraDiv").hide();
+                    $(".parameterDiv").show();
+
+
+                } else {
+                    $(".extraDiv").hide();
+                    $(".budgetDiv").show();
+                }
+            }
+
+        });
+
+        
+
+        showLoader();
+
+        // Set a timeout to hide the loader after 3 seconds
+        setTimeout(function () {
+            hideLoader();
+        }, 1500);
+        $.ajax({
+            url: '/EditScenario/PScenarioParameters',
+            type: 'GET',
+            success: function (response) {
+                $('#Para').html(response);
+            },
+            error: function (error) {
+                sweetAlert("Oops...", "Disconnected!", "error");
+            }
+        });
+        $.ajax({
+            url: '/EditScenario/PBudConstraints',
+            type: 'GET',
+            success: function (response) {
+
+                $('#Bud').html(response);
+            },
+            error: function (error) {
+                sweetAlert("Oops...", "Disconnected!", "error");
+            }
+        });
+        $.ajax({
+            url: '/CandidatePools/List',
+            type: 'GET',
+            dataType: "json",
+            success: function (response) {
+                $.each(response.libraries, function (id, library) {
+                    $("#candidatePoolsTable tbody").append("<tr><td><input type='radio' class='library-radio' name='LibraryId' value='" + library.candidatePoolId + "'></td><td>" + library.name + "</td><td id='SelectScen'>" + library.sceName + "</td><td>" + library.createdAt + "</td><td>" + library.isShared + "</td></tr>");
+                });
+
+            },
+            error: function (error) {
+                sweetAlert("Oops...", "Disconnected!", "error");
+            }
+        });
+
+
+
+    });
+    $(document).on('click', '#candidatePoolsTable tbody tr', function () {
+        $('input[type="radio"]', '#candidatePoolsTable').prop('checked', false);
+
+        $('input[type="radio"]', this).prop('checked', true);
+        $("#ValidcandPool").css('display', 'none');
+    });
+    $('#createPoolButton').click(function () {
+        $('#CreateNewLibraryForm input[type="text"]').val('');
+    });
+
+    function onSaveCandidatePoolScenario() {
+        var form = document.getElementById('createlibrary1');
+        var libraryname = document.getElementById("NewLibName").value;
+        var librarydescription = document.getElementById("librarydescription2").value;
+
+        if (!libraryname) {
+            form.NewLibName.classList.add('is-invalid');
+            return false;
+        }
+        if (!librarydescription) {
+            form.librarydescription2.classList.add('is-invalid');
+            return false;
+        }
+        validateCandidatePoolform(form);
+    }
+
+    function saveNewScenario() {
+        var checkRadio = $("#candidatePoolsTable input[type='radio'].library-radio:checked")
+        var LibraryId = checkRadio.val();
+        var scenarioname = document.getElementById("scenarioname").value;
+        var minyear = document.getElementById("minyear").value;
+        var maxyear = document.getElementById("maxyear").value;
+        if (!scenarioname) {
+            $('#ValidSceName').css('display', '');
+            $('html, body').animate({ scrollTop: 0 }, 'slow');
+            $('#accordion').find('.createScenario').trigger("click");
+            return false;
+        }
+        if (!minyear) {
+            $('#ValidFYeareName').css('display', '');
+            $('html, body').animate({ scrollTop: 0 }, 'slow');
+            $('#accordion').find('.createScenario').trigger("click");
+            return false;
+        }
+        if (!maxyear) {
+            $('#ValidLYeareName').css('display', '');
+            $('html, body').animate({ scrollTop: 0 }, 'slow');
+            $('#accordion').find('.createScenario').trigger("click");
+            return false;
+        }
+        if (!LibraryId) {
+            // swal("Validation Error", "Please Select Candidate Pool", "error");
+            $('#ValidcandPool').css('display', '');
+            $('html, body').animate({ scrollTop: 0 }, 'slow');
+            $('#accordion').find('.createScenario').trigger("click");
+            return false;
+        }
+        var Scform = document.getElementById('ScenarioForm');
+        var SceName = Scform.scenarioname.value;
+        $.ajax({
+            type: 'POST',
+            dataType: 'JSON',
+            url: '/Scenarios/CheckScenarioName',
+            data: { attemptedname: SceName },
+            success: function (response) {
+                $('#ValidSceName').css('display', 'none');
+                var checkRadio = $("#candidatePoolsTable input[type='radio'].library-radio:checked")
+                var LibraryId = checkRadio.val();
+                var SelectScen = checkRadio.closest('tr').find('td#SelectScen');
+                SelectScen = SelectScen.text();
+                if (SelectScen == "" || SelectScen == "null") {
+                    OnEmptyCandidatePoolScenario();
+                }
+                else {
+                    var form = document.getElementById('createlibrary1');
+                    form.NewLibName.value = ('');
+                    form.librarydescription2.value = ('');
+                    form.NewLibName.classList.remove('is-invalid');
+                    form.librarydescription2.classList.remove('is-invalid');
+                    var model = document.getElementById('NewLibmodal');
+                    var formModel = bootstrap.Modal.getOrCreateInstance(model);
+                    formModel.show();
+                }
+            },
+            error: function (response) {
+                $('#ValidSceName').css('display', 'none');
+                check = false;
+                Scform.scenarioname.classList.add('is-invalid');
+                document.getElementById('namefeedback').innerText = response.responseText;
+                document.getElementById('editnamefeedback').innerText = response.responseText;
+            }
+        });
+
+
+
+    }
+
+    function validateCandidatePoolform(form) {
+        form.classList.remove('was-validated');
+        validateCandidatePoolName(form);
+    }
+
+    function validateCandidatePoolName(form) {
+        var libraryname = form.NewLibName.value;
+        var libraryid = '';
+        if (form.libraryId !== undefined) {
+            libraryid = form.libraryId.value;
+        }
+        $.ajax({
+            type: 'POST',
+            dataType: 'JSON',
+            url: '/CandidatePools/CheckLibraryName',
+            data: { libraryname: libraryname, libraryid: libraryid },
+            success:
+                function (response) {
+                    showLoader();
+                    var model = document.getElementById('NewLibmodal');
+                    var formModel = bootstrap.Modal.getOrCreateInstance(model);
+                    formModel.hide();
+                    var scenarioname = document.getElementById("scenarioname").value;
+                    var minyear = document.getElementById("minyear").value;
+                    var maxyear = document.getElementById("maxyear").value;
+
+                    var NewLibName = document.getElementById("NewLibName").value;
+                    var librarydescription = document.getElementById("librarydescription2").value;
+                    var isSharedCheckbox = document.getElementById('isshared');
+                    var isSharedValue = isSharedCheckbox.checked;
+                    var newLibrarySend = [];
+                    var newLibrary = {
+                        NewLibName: NewLibName,
+                        librarydescription: librarydescription,
+                        IsShared: isSharedValue
+                    };
+                    newLibrarySend.push(newLibrary);
+
+
+                    var checkRadio = $("#candidatePoolsTable input[type='radio'].library-radio:checked")
+                    var LibraryId = checkRadio.val();
+                    var SelectScen = checkRadio.closest('tr').find('td#SelectScen');
+                    SelectScen = SelectScen.text();
+                    var parameterData = [];
+                    $('#parameterTable tbody tr').each(function () {
+                        var row = $(this);
+                        var paramId = row.find('td:eq(0)').text();
+                        var defaultValue = row.find('td:eq(1)').text();
+                        var parameter = {
+                            ParameterId: paramId,
+                            DefaultValue: defaultValue
+                        };
+                        parameterData.push(parameter);
+                    });
+                    var budgetConstraints = [];
+                    $('#budgetConstraints tbody tr').each(function () {
+                        var row = $(this);
+                        var YearofWork = row.find('td:eq(1)').text();
+                        var District = row.find('td:eq(2)').text();
+                        var bridgeInterstateBudget = row.find('td:eq(3)').text();
+                        var bridgeNonInterstateBudget = row.find('td:eq(4)').text();
+                        var pavementInterstateBudget = row.find('td:eq(5)').text();
+                        var pavementNonInterstateBudget = row.find('td:eq(6)').text();
+                        var budget = {
+                            YearofWork: YearofWork,
+                            District: District,
+                            bridgeInterstateBudget: bridgeInterstateBudget,
+                            bridgeNonInterstateBudget: bridgeNonInterstateBudget,
+                            pavementInterstateBudget: pavementInterstateBudget,
+                            pavementNonInterstateBudget: pavementNonInterstateBudget
+                        };
+                        budgetConstraints.push(budget);
+                    });
+                    var dataToSend = {
+                        scenarioname: scenarioname,
+                        FirstYear: minyear,
+                        LastYear: maxyear,
+                        LibraryId: LibraryId,
+                        parameters: parameterData,
+                        budgetConstraints: budgetConstraints,
+                        SelectScen: SelectScen,
+                        newLibrarySend: newLibrarySend
+                    };
+                    $.ajax({
+                        type: 'POST',
+                        url: '/Scenarios/CreateScenario',
+                        data: JSON.stringify(dataToSend),
+                        contentType: 'application/json',
+                        success: function (response) {
+                            hideLoader();
+                            displaynotification("Creating Scenario", "Scenario was created successfuly", "S", true);
+                            setTimeout(RedirectToIndex, 3000);
+                        },
+                        error: function (response) {
+                            sweetAlert("Oops...", "Disconnected!", "error");
+                        }
+                    });
+
+                },
+            error:
+                function (response) {
+                    check = false;
+                    form.NewLibName.classList.add('is-invalid');
+                    document.getElementById('namefeedback').innerText = response.responseText;
+                    document.getElementById('editnamefeedback').innerText = "Name already exist";
+
+                }
+        });
+    }
+
+    // Check Name Validation present or not
+
+    function CandidatePoolNameExists(){
+        var form = document.getElementById('createlibrary1');
+        var libraryname = form.NewLibName.value;
+        var libraryid = '';
+
+        $.ajax({
+            type: 'POST',
+            dataType: 'JSON',
+            url: '/CandidatePools/CheckLibraryName',
+            data: { libraryname: libraryname, libraryid: libraryid },
+            success: function (response) {
+                form.NewLibName.classList.remove('is-invalid');
+            },
+            error:
+                function (response) {
+                    check = false;
+
+                    form.NewLibName.classList.add('is-invalid');
+                    document.getElementById('namefeedback').innerText = response.responseText;
+                    document.getElementById('editnamefeedback').innerText = "Name already exist";
+                }
+        });
+    }
+
+
+    function OnEmptyCandidatePoolScenario() {
+        showLoader();
+        var scenarioname = document.getElementById("scenarioname").value;
+        var minyear = document.getElementById("minyear").value;
+        var maxyear = document.getElementById("maxyear").value;
+
+        var checkRadio = $("#candidatePoolsTable input[type='radio'].library-radio:checked")
+        var LibraryId = checkRadio.val();
+        var LibraryId = checkRadio.val();
+        var SelectScen = checkRadio.closest('tr').find('td#SelectScen');
+        SelectScen = SelectScen.text();
+        var parameterData = [];
+        $('#parameterTable tbody tr').each(function () {
+            var row = $(this);
+            var paramId = row.find('td:eq(0)').text();
+            var defaultValue = row.find('td:eq(1)').text();
+            var parameter = {
+                ParameterId: paramId,
+                DefaultValue: defaultValue
+            };
+            parameterData.push(parameter);
+        });
+        var budgetConstraints = [];
+        $('#budgetConstraints tbody tr').each(function () {
+            var row = $(this);
+            var YearofWork = row.find('td:eq(1)').text();
+            var District = row.find('td:eq(2)').text();
+            var bridgeInterstateBudget = row.find('td:eq(3)').text();
+            var bridgeNonInterstateBudget = row.find('td:eq(4)').text();
+            var pavementInterstateBudget = row.find('td:eq(5)').text();
+            var pavementNonInterstateBudget = row.find('td:eq(6)').text();
+            var budget = {
+                YearofWork: YearofWork,
+                District: District,
+                bridgeInterstateBudget: bridgeInterstateBudget,
+                bridgeNonInterstateBudget: bridgeNonInterstateBudget,
+                pavementInterstateBudget: pavementInterstateBudget,
+                pavementNonInterstateBudget: pavementNonInterstateBudget
+            };
+            budgetConstraints.push(budget);
+        });
+        var dataToSend = {
+            scenarioname: scenarioname,
+            FirstYear: minyear,
+            LastYear: maxyear,
+            LibraryId: LibraryId,
+            parameters: parameterData,
+            budgetConstraints: budgetConstraints,
+            SelectScen: SelectScen,
+        };
+        $.ajax({
+            type: 'POST',
+            url: '/Scenarios/CreateScenario',
+            data: JSON.stringify(dataToSend),
+            contentType: 'application/json',
+            success: function (response) {
+                hideLoader();
+                displaynotification("Creating Scenario", "Scenario was created successfuly", "S", true);
+                setTimeout(RedirectToIndex, 3000);
+            },
+            error: function (response) {
+                hideLoader();
+            }
+        });
+    }
+
+    function RedirectToIndex() {
+        window.location.href = '/Scenarios/Index';
+    }
+    // Functions for validation year and others
+
+    // Checking Methods for Scenario First year
+    {
+        function validateYear() {
+            $('#ValidFYeareName').css('display', 'none');
+
+            var yearInput = document.getElementById('minyear');
+            var errorMessage = document.getElementById('error-message');
+            var button = document.getElementById("CreateScen");
+            var year = parseInt(yearInput.value);
+            if (isNaN(year) || year > 2099 || year <= 2022) {
+                button.disabled = true;
+                errorMessage.textContent = 'Error: Please enter a year between 2025 to 2099';
+                yearInput.setCustomValidity('Invalid year');
+            } else {
+                errorMessage.textContent = '';
+                button.disabled = false;
+                yearInput.setCustomValidity('');
+            }
+
+            if (yearInput.value.length > 4) {
+                yearInput.value = yearInput.value.slice(0, 4);
+            }
+        }
+        function validateYearBlur() {
+            validateYear();
+
+            // Check if the input is valid
+            var yearInput = document.getElementById('minyear');
+            if (!yearInput.checkValidity()) {
+                // The input is not valid, focus back on the input field
+                yearInput.focus();
+            }
+        }
+    }
+
+
+
+    // Checking Methods for Scenario Last Year
+
+    {
+        function validateMaxYear() {
+            $('#ValidLYeareName').css('display', 'none');
+            var button = document.getElementById("CreateScen");
+
+            var MinYear = document.getElementById('minyear');            
+            var yearInput = document.getElementById('maxyear');
+            var errorMessage = document.getElementById('error-message2');
+            let date = new Date().getFullYear();
+            var year = parseInt(yearInput.value);
+            var MinYear = parseInt(MinYear.value);
+      
+
+            if (isNaN(year) || year > 2099 || year < date) {
+                button.disabled = true;
+
+                errorMessage.textContent = 'Error:  Please enter valid or year between current year to 2099 ';
+                yearInput.setCustomValidity('Invalid year');
+            } 
+            else if (MinYear > year) {
+                button.disabled = true;
+
+                errorMessage.textContent = 'Error:  Last year must be greater than first year ';
+                yearInput.setCustomValidity('Invalid year');
+            }
+            else {
+                button.disabled = false;
+                errorMessage.textContent = '';
+                yearInput.setCustomValidity('');
+            }
+            if (yearInput.value.length > 4) {
+                yearInput.value = yearInput.value.slice(0, 4);
+            }
+        }
+        function validateMaxYearBlur() {
+            // Trigger validation when the user leaves the input field
+            validateMaxYear();
+            ReviseBudgetConstraints();
+            // Check if the input is valid
+            var yearInput = document.getElementById('maxyear');
+            if (!yearInput.checkValidity()) {
+                // The input is not valid, focus back on the input field
+                yearInput.focus();
+            }
+        }
+    }
+
+
+    function ReviseBudgetConstraints() {
+
+        var table = $('#budgetConstraints');
+        // table.value = '';
+        table.find('tbody').empty();
+        var MinYear = document.getElementById('minyear').value;
+        var MaxYear = document.getElementById('maxyear').value;
+        $.ajax({
+            type: 'POST',
+            dataType: 'JSON',
+            url: '/EditScenario/ReviseBudgetConstarints',
+            data: {
+                firstYear: MinYear,
+                lastYear: MaxYear
+            },
+            success: function (response) {
+                console.log("budget const", response);
+                var tableBody = $("#budgetConstraints tbody");
+                var budid = 0;
+
+                $.each(response, function (id, budget) {
+                    budid++;
+                    var rowHtml = "<tr>";
+                    rowHtml += "<td>" + budid + "</td>";
+                    rowHtml += "<td>" + budget.yearOfWork + "</td>";
+                    rowHtml += "<td>" + budget.district + "</td>";
+                    rowHtml += "<td>" + budget.bridgeInterstate + "</td>";
+                    rowHtml += "<td>" + budget.bridgeNonInterstate + "</td>";
+                    rowHtml += "<td>" + budget.pavementInterstate + "</td>";
+                    rowHtml += "<td>" + budget.pavementNonInterstate + "</td>";
+                    rowHtml += "<td><div class='dropdown'>" +
+                        "<button class='btn btn-secondary circlebutton' " +
+                        "type='button' id='dropdownMenuButton1' " +
+                        "data-bs-toggle='dropdown' aria-expanded='true'>" +
+                        "<i context-menu='' class='fa-solid fa-ellipsis-vertical'></i>" +
+                        "</button>" +
+                        "<ul class='dropdown-menu' aria-labelledby='dropdownMenuButton1' " +
+                        "data-popper-placement='bottom-end' style='position: absolute; inset: 0px auto auto 0px; margin: 0px; transform: translate(-134px, 32px);'>" +
+                        "<li> " +
+                        "<button type='button' onclick='onEditBudget.bind(this)()' data-Bud-id='" + budid + "' class='btn mb-1'>" +
+                        "<i class='bi bi-pencil-square'></i> Edit" +
+                        "</button>" +
+                        // "</li>" +
+                        // "<li> " +
+                        // "<button type='button' onclick='confirmDelete.bind(this)()' data-Bud-id='" + budid + "' class='btn mb-1'>" +
+                        // "<i class='bi bi-trash'></i> Delete" +
+                        // "</button>" +
+                        "</li>" +
+                        "</ul>" +
+                        "</div></td>";
+
+                    rowHtml += "</tr>";
+
+                    tableBody.append(rowHtml);
+                });
+            },
+            error: function (response) {
+                console.log(response);
+            }
+        });
+        // table.find('tbody tr').each(function () {
+        //     var year = parseInt($(this).find('td:eq(1)').text());
+
+        //     if (year < MinYear || year > MaxYear) {
+        //         // Set style to hide the row
+        //         $(this).css('display', 'none');
+        //     } else {
+        //         // Set style to show the row
+        //         $(this).css('display', '');
+        //     }
+        // });
+    }
+
+    // Validating Scenario Name
+
+    {
+        function validateScenarioName() {
+            var scenarionameInput = document.getElementById('scenarioname');
+            var errorMessage = document.getElementById('error-message3');
+            var button = document.getElementById("CreateScen");
+            var pattern = /^[a-zA-Z0-9 _-]*$/;
+            // Check if the value matches the pattern
+            if (!pattern.test(scenarionameInput.value)) {
+                errorMessage.textContent = 'Error: Invalid characters in the scenario name.';
+                scenarionameInput.setCustomValidity('Invalid characters');
+                button.disabled = true;
+            } else {
+                errorMessage.textContent = '';
+                scenarionameInput.setCustomValidity('');
+                button.disabled = false;
+            }
+
+        }
+        function validateScenarioNameBlur() {
+
+            $('#ValidSceName').css('display', 'none');
+            // Trigger validation when the user leaves the input field
+            validateScenarioName();
+            // Check if the input is valid
+            var scenarionameInput = document.getElementById('scenarioname');
+            if (!scenarionameInput.checkValidity()) {
+                // The input is not valid, focus back on the input field
+                scenarionameInput.focus();
+            }
+            var Scform = document.getElementById('ScenarioForm');
+            var SceName = Scform.scenarioname.value;
+            $.ajax({
+                type: 'POST',
+                dataType: 'JSON',
+                url: '/Scenarios/CheckScenarioName',
+                data: { attemptedname: SceName },
+                success: function (response) {
+                    Scform.scenarioname.classList.remove('is-invalid');
+                },
+                error: function (response) {
+                    check = false;
+                    Scform.scenarioname.classList.add('is-invalid');
+                    document.getElementById('namefeedback').innerText = response.responseText;
+                    document.getElementById('editnamefeedback').innerText = response.responseText;
+                }
+            });
+
+        }
+    }
+
+
+    // For Displaying The Loader
+
+    function showLoader() {
+        document.getElementById('loader-container').style.display = 'block';
+    }
+
+    function hideLoader() {
+        document.getElementById('loader-container').style.display = 'none';
+    }
+
+
+
+    // Save New Library
+
+    function onSaveNewCandidatePool() {
+        var form = document.getElementById('createlibrary2');
+        var libraryname = document.getElementById("libraryname").value;
+        var libraryDescription = document.getElementById("libraryDescription2").value;
+       
+        var EmptyLib = document.getElementById('isemptylibrary');
+
+        if (!libraryname) {
+            form.libraryname.classList.add('is-invalid');
+            return false;
+        }
+        if (!libraryDescription) {
+            form.librarydescription.classList.add('is-invalid');
+            return false;
+        }
+        
+        
+        
+        validateNewCandidatePoolName(form);
+    }
+
+    function RemoveInvalid(input){
+        input.classList.remove('is-invalid');
+    }
+
+    function validateExistingPoolName(){
+        var form = document.getElementById('createlibrary2');
+
+        var libraryname = form.libraryname.value;
+        var libraryid = '';
+        if (form.libraryId !== undefined) {
+            libraryid = form.libraryId.value;
+        }
+
+
+        $.ajax({
+            type: 'POST',
+            dataType: 'JSON',
+            url: '/CandidatePools/CheckLibraryName',
+            data: { libraryname: libraryname, libraryid: libraryid },
+            success:
+                function (response) { },
+            error:
+                function (response) {
+                    check = false;
+                    form.libraryname.classList.add('is-invalid');
+                    document.getElementById('namefeedback').innerText = response.responseText;
+                    document.getElementById('editnamefeedback').innerText = "Name already exist";
+
+                }
+        });
+   
+    }
+
+    // Validating Library Name for new candidate Pool
+    function validateNewCandidatePoolName(form) {
+        var libraryname = form.libraryname.value;
+        var libraryid = '';
+        if (form.libraryId !== undefined) {
+            libraryid = form.libraryId.value;
+        }
+        $.ajax({
+            type: 'POST',
+            dataType: 'JSON',
+            url: '/CandidatePools/CheckLibraryName',
+            data: { libraryname: libraryname, libraryid: libraryid },
+            success:
+                function (response) {
+                    if (response.statusCode == 200) {
+                        form.libraryname.classList.remove('is-invalid');
+                        form.classList.remove('was-validated');
+                        var libraryname = document.getElementById("libraryname").value;
+                        var libraryDescription = document.getElementById("libraryDescription2").value;
+                        var isSharedValue = false;
+                        var EmptyLib = document.getElementById('isemptylibrary');
+                        if (EmptyLib.checked) {
+                            var dataToSend = {
+                                Name: libraryname,
+                                Description: libraryDescription,
+                                IsShared: isSharedValue,
+                                IsEmptyLibrary:true,
+                            };
+                        }
+                       
+
+
+                        $.ajax({
+                            type: 'POST',
+                            url: '/CandidatePools/CreateScenaLibrary',
+                            data: JSON.stringify(dataToSend),
+                            contentType: 'application/json',
+                            success: function (response) {
+                                libraryid = response;
+                                var model = document.getElementById('CreateNewLibraryForm');
+                                var formModel = bootstrap.Modal.getOrCreateInstance(model);
+                                formModel.hide();
+                                displaynotification("Creating Candidate Pool", "Candidate Pool was created successfuly", "S", true);
+                                let table = document.getElementById("candidatePoolsTable");
+                                // Remove all rows from the tbody
+                                let tbody = table.getElementsByTagName("tbody")[0];
+                                tbody.innerHTML = '';
+                                var EmptyLib = document.getElementById('isemptylibrary');
+                                var librarywithtreatment = document.getElementById('librarywithtreatment');
+                               
+
+                                $('#createlibrary2 input[type="text"]').val('');
+                                $('#createlibrary2 textarea').val('');
+                                $('#createlibrary2 select').prop('selectedIndex', 0);
+                                $('#createlibrary2 input[type="number"]').val('');
+                              
+                                $.ajax({
+                                    url: '/CandidatePools/List',
+                                    type: 'GET',
+                                    dataType: "json",
+                                    success: function (response) {
+                                        debugger;
+                                        $.each(response.libraries, function (id, library) {
+                                            if (libraryid == library.candidatePoolId) {
+                                                $("#candidatePoolsTable tbody").append("<tr style='background-color:#1c305c;color:white;'><td><input type='radio' checked class='library-radio' name='LibraryId' value='" + library.candidatePoolId + "'></td><td>" + library.name + "</td><td id='SelectScen'>" + library.sceName + "</td><td>" + library.createdAt + "</td><td>" + library.isShared + "</td></tr>");
+                                                   }
+                                                   else{
+                                                $("#candidatePoolsTable tbody").append("<tr><td><input type='radio' class='library-radio' name='LibraryId' value='" + library.candidatePoolId + "'></td><td>" + library.name + "</td><td id='SelectScen'>" + library.sceName + "</td><td>" + library.createdAt + "</td><td>" + library.isShared + "</td></tr>");
+                                                   }
+                                        });
+
+                                        $('#accordion').find('.poolAccordion').trigger("click");                                       
+                                    },
+                                    error: function (error) {
+                                        sweetAlert("Oops...", "Disconnected!", "error");
+                                    }
+                                });
+                            },
+                            error: function (response) {
+                                sweetAlert("Oops...", "Disconnected!", "error");
+                            }
+                        });
+                    }
+                },
+            error:
+                function (response) {
+                    check = false;
+                    form.libraryname.classList.add('is-invalid');
+                    document.getElementById('namefeedback').innerText = response.responseText;
+                    document.getElementById('editnamefeedback').innerText = "Name already exist";
+
+                }
+        });
+    }
+
+
+
+    document.getElementById("searchPoolInput").addEventListener("input", function () {
+        var input, filter, table, tr, td1, td2, i, txtValue1, txtValue2;
+        input = this;
+        filter = input.value.toUpperCase();
+        table = document.getElementById("candidatePoolsTable");
+        tr = table.getElementsByTagName("tr");
+
+        for (i = 0; i < tr.length; i++) {
+            td1 = tr[i].getElementsByTagName("td")[1]; 
+            td2 = tr[i].getElementsByTagName("td")[2];
+            if (td1 && td2) {
+                txtValue1 = td1.textContent || td1.innerText;
+                txtValue2 = td2.textContent || td2.innerText;
+                if (txtValue1.toUpperCase().indexOf(filter) > -1 || txtValue2.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }
+        }
+    });
+
+
+</script>
+@section Styles{
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+    <link rel="stylesheet" href="~/css/createscenario_styles.css" />
+}
+
+<style>
+    main{
+        overflow-y:auto !important;    }
+
+
+    .selectedDiv, .ui-state-active{
+        background: #3399cc !important;
+        border: 1px solid #3399cc !important;
+    }
+</style>
+
+<style>
+    .table-container {
+        max-height: 400px; /* Set the maximum height for the table container */
+        overflow-y: auto; /* Enable vertical scrolling */
+    }
+
+    /* Style the table as needed */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th, td {
+        border: 1px solid #dddddd;
+        text-align: left;
+        padding: 8px;
+    }
+
+    th {
+        background-color: #f2f2f2;
+    }
+</style>
+
+
+
+<style>
+    /* Set the table container to have a fixed height and overflow-y to enable scrolling */
+    #Bud, #Para {
+        max-height: 300px; /* Adjust the height as needed */
+        overflow-y: auto;
+        border: 1px solid #ccc;
+    }
+
+    /* Set the table header to be fixed at the top */
+    #budgetConstraints thead, #Para thead {
+        position: sticky;
+        top: -1px;
+        background-color: #f2f2f2; /* Adjust the background color as needed */
+    }
+
+</style>

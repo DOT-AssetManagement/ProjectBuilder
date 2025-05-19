@@ -1,0 +1,174 @@
+﻿@using ProjectBuilder.Core;
+@using ProjectBuilder.Web.MVC.Models;
+
+
+@model ReportsViewModel<CombinedProjectModel>
+@{
+    ViewData["Title"] = "Combined Projects";
+    var fromscenario = ViewContext.HttpContext.Request.Query["fromscenario"].FirstOrDefault();
+}
+
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+<div class="projects_main-container">
+    <partial name="~/Views/shared/navbarshared/_outputsnavbar.cshtml" />
+    <div class="projects_maincontent">
+        <div class="projects_header">
+            <h1>Combined Projects</h1>
+            <h1>@Model.ScenarioName</h1>
+        </div>
+        <div class="projects_body">
+            <div class="card">
+                <div class="card-header">
+                    <div class="projects_filter-content">
+                        <form asp-controller="Reports" asp-action="CombinedProjects" method="get">
+                            <div class="projects_form-body">
+                                <input name="scenid" id="scenid" value="@Model.ScenarioId" hidden>
+                                <input name="fromscenario" id="fromscenario" value="@fromscenario" hidden>
+
+                                <select class="form-select" name="scenario_id" id="scenario_id" data-filter=" scenario">
+                                    <option value="" selected>Select Scenario</option>
+                                </select>
+                                <select class="form-select" name="district">
+                                    <option selected disabled>Select District</option>
+                                    @foreach (var district in Model.Districts)
+                                    {
+                                        if (Model.SelectedDistrict == district)
+                                        {
+                                            <option value="@district" selected>District @district</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@district">District @district</option>
+                                        }
+                                    }
+                                </select>
+                                <select class="form-select" name="projecttype" asp-for="@Model.SelectedProjectType">
+                                    <option value="0">Combined Projects</option>
+                                    <option value="1">Bridge</option>
+                                    <option value="2">Pavement</option>
+                                </select>
+                            </div>
+                            <button id="filter" type="submit" class="btn btn-primary">Filter</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="projects_body-tablecontainer">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover table-striped" id="projectsummarytable">
+                                <thead class="bg-success text-white">
+                                    <tr>
+                                        <th>District</th>
+                                        <th>Selected Year</th>
+                                        <th>Projects</th>
+                                        <th>Treatments</th>
+                                        <th>Cost ($M)</th>
+                                        <th>Benefit ($M)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var data in Model.ReportsData)
+                                    {
+                                        <tr>
+                                            <td>@data.District</td>
+                                            <td>@data.SelectedYear</td>
+                                            <td>@data.Projects</td>
+                                            <td>@data.Treatments</td>
+                                            <td>
+                                                @{
+                                                    double cost = data.TotalCost ?? 0;
+                                                    @Math.Round(cost / 1000000, 2)
+                                                }
+                                            </td>
+                                            <td>
+                                                @{
+                                                    double Benefit = data.Benefit ?? 0;
+                                                    @Math.Round(Benefit / 1000000, 2)
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@section Styles{
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+    <link rel="stylesheet" href="~/css/projects_styles.css" />
+}
+<div id="loader-container">
+    <div id="loader" class="loader"></div>
+</div>
+<style>
+    th {
+        word-spacing: normal;
+    }
+</style>
+
+<script>
+    function showLoader() {
+        document.getElementById('loader-container').style.display = 'block';
+    }
+
+    function hideLoader() {
+        document.getElementById('loader-container').style.display = 'none';
+    }
+
+
+    $(function () {
+        var scenId = $('#scenid').val();
+
+
+        $.ajax({
+            type: 'GET',
+            url: "/Scenarios/GetScenarios",
+            contentType: 'application/json',
+            success: function (response) {
+                $("#scenario_id").html("<option value=''>Select Scenario</option>");
+                $.each(response.scenarios, function (key, value) {
+                    if (scenId == value.scenarioId)
+                        $("#scenario_id").append("<option value='" + value.scenarioId + "' selected>" + value.scenarioName + "</option>");
+                    else
+                        $("#scenario_id").append("<option value='" + value.scenarioId + "'>" + value.scenarioName + "</option>");
+                });
+                hideLoader();
+            }
+        });
+
+
+        showLoader();
+
+        // Set a timeout to hide the loader after 3 seconds
+        setTimeout(function () {
+            hideLoader();
+        }, 3000);
+
+
+        $(document).on("change", "#scenario_id", function () {
+            if ($(this).val())
+                window.location.href = "/Reports/CombinedProjects?scenid=" + $(this).val();
+            else
+                window.location.href = "/Reports/CombinedProjects";
+        });
+
+        var currentUrl = window.location.href;
+        var url = new URL(currentUrl);
+        var searchParams = new URLSearchParams(url.search);
+        var fromScenario = searchParams.get("fromscenario");
+        if (fromScenario == "true") {
+            $("#scenario_id").hide();
+        }
+    });
+    $(document).ready(function () {
+        var table = $('#projectsummarytable').DataTable({
+            searching: false,
+            "order": [[1, 'asc']]
+        });
+
+    });
+</script>

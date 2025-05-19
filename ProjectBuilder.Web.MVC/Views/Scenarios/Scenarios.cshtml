@@ -1,0 +1,446 @@
+﻿@model ScenarioViewModel
+
+@{
+    ViewData["Title"] = "Scenarios";
+}
+
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+<div class="scenarios_main-container">
+    <nav id="sidebarMenu" class="sidenavbar">
+    </nav>
+
+
+
+
+    <div class="scenarios_maincontent-container" style="width:95%;">
+        <div class="scenarios_options-container">
+            <div class="scenarios_options-searchcontainer">
+                <label>Search in Scenarios</label>
+                <form>
+                    <div class="scenarios_options-search">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" name="SearchString" value="@Model.SearchString" />
+                        <button type="submit" class="btn btn-primary m-1">Search</button>
+                        <a asp-controller="Scenarios"
+                           asp-action="Index" class="btn btn-warning m-1" style="background-color:#3099cf;color:#fff;">Reset</a>
+                    </div>
+
+                </form>
+            </div>
+            <div class="scenarios_options-newscenario">
+                <a id="createnewscenario" role="button" class="btn btn-primary" asp-controller="Scenarios"
+                   asp-action="CreateScenario">
+                    <span>Create New Scenario</span>
+                </a>
+
+            </div>
+        </div>
+
+        <div class="scenarios_table-container NewClass" style="margin-bottom:60px;">
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover table-responsive table-striped" id="scenariosTable">
+                            <thead class="bg-success text-white">
+                                <tr>
+                                    <th>
+                                        
+                                    </th>
+                                    <th>
+                                        @Html.DisplayNameFor(model => model.ScenarioName)
+                                    </th>
+                                    <th>
+                                        @Html.DisplayName("Locked")
+                                    </th>
+                                    <th>
+                                        @Html.DisplayName("Comments")
+                                    </th>
+                                    <th>
+                                        @Html.DisplayName("Created By")
+                                    </th>
+                                    <th>
+                                        @Html.DisplayName("Created At")
+                                    </th>
+                                    <th>
+                                        @Html.DisplayName("Last Run By")
+                                    </th>
+                                    <th>
+                                        @Html.DisplayName("Last Run At")
+                                    </th>
+                                    <th>
+                                        @Html.DisplayName("Last Started")
+                                    </th>
+                                    <th>
+                                        @Html.DisplayName("Last Finished")
+                                    </th>
+                                    <th>
+                                        @Html.DisplayName("Candidate Pool")
+                                    </th>
+                                    <th>
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.Scenarios)
+                                {
+                                    <tr>
+                                        <td>
+                                            <a href="/EditScenario/ScenarioParameters?scenid=@item.ScenarioId" class="loadBtn">
+                                                <img src="~/images/play.png" alt="Project Builder" loading="lazy" style="width:30px;" />
+                                            </a>
+                                        </td>
+                                        <td>
+                                            @Html.DisplayFor(modelItem => item.ScenarioName)
+                                        </td>
+                                        <td>
+                                            @item.Locked
+                                        </td>
+                                        <td>
+                                            @if (item.ReRun || item.Notes == "Candidate Pool has been modified. Please perform a scenario re-run")
+                                            {
+                                                <span><b> @Html.DisplayFor(modelItem => item.Notes) </b></span>
+                                            }
+                                            else
+                                            {
+                                                @Html.DisplayFor(modelItem => item.Notes)
+                                            }
+                                        </td>
+                                        <td>
+                                            @Html.DisplayFor(modelItem => item.CreatedBy)
+                                        </td>
+                                        <td>
+                                            @Html.DisplayFor(modelItem => item.CreatedAt)
+                                        </td>
+                                        <td>
+                                            @Html.DisplayFor(modelItem => item.LastRunBy)
+                                        </td>
+                                        <td>
+                                            @Html.DisplayFor(modelItem => item.LastRunAt)
+                                        </td>
+                                        <td>
+                                            @Html.DisplayFor(modelItem => item.LastStarted)
+                                        </td>
+                                        <td>
+                                            @Html.DisplayFor(modelItem => item.LastFinished)
+                                        </td>
+                                        <td>
+                                            @Html.DisplayFor(modelItem => item.CandidatePool)
+                                        </td>
+                                        <td>
+                                            @*  <button type="button" value="@item.ScenarioId"
+                                        onclick="oncontextmenuclicked.bind(this,event)()" class="circlebutton"
+                                        context-menu>
+                                        <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                        </button> *@
+                                            <button value="@item.ScenarioId" class="btn btn-secondary circlebutton"
+                                                    context-menu type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false" onclick="oncontextmenuclickedscenario.bind(this,event)()">
+
+                                                <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div id="contextmenu" class="contextmenu-container">
+            <ul class="menu">
+                <li class="menuitem">
+                    <button id="runbutton" type="button">
+                        <i class="fa-solid fa-chart-column"></i>
+                        <span>Run</span>
+                    </button>
+                </li>
+                <hr />
+                <li class="menuitem">
+                    <a asp-controller="EditScenario" asp-action="ScenarioParameters">
+                        <i class="fa-solid fa-gear"></i>
+                        <span>Settings</span>
+                    </a>
+                </li>
+                <!--
+                <hr />
+                <li class="menuitem">
+                    <a>
+                        <i class="fa-solid fa-copy"></i>
+                        <span>Copy</span>
+                    </a>
+                </li>-->
+                <hr />
+                <li class="menuitem">
+                    <button type="button" id="deletescen">
+                        <i class="fa-regular fa-trash-can"></i>
+                        <span>Delete</span>
+                    </button>
+                </li>
+                <hr />
+                <li class="menuitem">
+                    <a asp-controller="CandidatePools" asp-action="Index" asp-route-importing="true">
+                        <i class="fa-solid fa-file-import"></i>
+                        <span>Import</span>
+                    </a>
+                </li>
+                <hr />
+                <li class="menuitem">
+                    <a asp-controller="Projects" asp-action="Index" asp-route-exporting="true">
+                        <i class="fa-solid fa-file-export"></i>
+                        <span>Export</span>
+                    </a>
+                </li>
+                <hr />
+                <li class="menuitem">
+                    <a asp-controller="Projects" asp-route-fromscenario="true">
+                        <i class="fa-solid fa-arrow-up-from-bracket"></i>
+                        <span>Output</span>
+                    </a>
+                </li>
+                <hr />
+                <li class="menuitem">
+                    <a asp-controller="CandidatePools" asp-action="Index">
+                        <i class="fa-solid fa-water-ladder"></i>
+                        <span>Candidate Pool</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+
+
+        @*Run Alert*@
+
+        <div class="modal fade" id="runAlert" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+             aria-labelledby="deletealertLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="deletealertLabel">Already Run</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body d-flex align-items-center">
+                        <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                        <span>
+                            This scenario is associated with existing projects. Confirm if you wish to proceed with running it again.
+                        </span>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" id="runbuttonAgain" class="btn btn-primary">Run</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+
+        @*Delete Modal*@
+
+        <div class="modal fade" id="deletealertScenario" tabindex="-1" aria-labelledby="DeleteScenLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="deletealertLabel">Delete Scenerio</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body d-flex align-items-center">
+                        <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                        <span>
+                            Are you sure you want to delete the selected Scenerio?
+                        </span>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <form id="deleteform" asp-antiforgery="true" asp-action="DeleteScenerio"
+                              asp-controller="Scenarios" method="post">
+                            <input hidden name="scenerioId" />
+                            <button type="submit" class="btn btn-danger">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade" id="exportcandidatepool" tabindex="-1" role="dialog"
+             aria-labelledby="exportcandidatepoollabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editlibraryheader">Export</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <form class="needs-validation" novalidate>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-check-label mb-2" for="importbridge">
+                                    Export What?
+                                </label>
+                                <select class="form-select">
+                                    <option>BAMS</option>
+                                    <option>PAMS</option>
+                                    <option>DecisionSpace</option>
+                                    <option>Summary Report</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="formFile" class="form-label">Excel File</label>
+                                <input class="form-control" type="file" id="excelfile" name="excelfile" required
+                                       accept=".xlsx,.xls">
+                                <div id="excelvalidation" class="invalid-feedback">Field is required</div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-success">Export</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade" id="createcandidatepoolalert" data-bs-keyboard="false" tabindex="-1"
+             aria-labelledby="createcandidatepoolalertlabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="createcandidatepoolalertlabel">Create Candidate Pool</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body d-flex align-items-center">
+                        <i class="bi bi-info-circle-fill text-primary fa-2x me-3"></i>
+                        <span>
+                            you dont have any candidate pool for now, do you want to create a new one ?
+                        </span>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="closealert" type="button" class="btn btn-secondary"
+                                data-bs-dismiss="modal">
+                            Close
+                        </button>
+                        <a asp-controller="CandidatePools" asp-action="Index" class="btn btn-primary">Create</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="modal fade" id="ScenrioWithCandidatePoolModal" tabindex="-1" aria-labelledby="DeleteScenLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editBudgetModalLabel">Delete Scenario Alert</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <input type="text" id="budidDelete" class="form-control" hidden>
+
+                    </div>
+                    <div class="modal-body">
+                        <p>Scenario deletion is not allowed as there is an associated candidate pool.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+
+
+    </div>
+</div>
+
+
+<div id="overlay">
+    <div class="overlay-content">
+        <div class="spinner"></div>
+        <div class="overlay-text">Please wait...</div>
+    </div>
+</div>
+
+
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+    <link rel="stylesheet" href="~/css/scenarios_styles.css" />
+}
+
+<script>
+    document.querySelectorAll('.loadBtn').forEach(button => {
+        button.addEventListener('click', function (e) {
+            e.preventDefault();
+            document.getElementById('overlay').style.display = 'flex';
+            const href = this.getAttribute('href');
+
+            setTimeout(function () {
+                window.location.href = href;
+            }, 2000);
+
+
+        });
+    });
+</script>
+
+
+
+<script>
+    $(document).ready(function () {
+        $('#scenariosTable').DataTable({
+            searching: false
+        });
+        $('#deletescen').on('click', function () {
+            var form = document.getElementById('deleteform');
+            form.scenerioId.value = $(this).attr('current-id');
+            var scenId = $(this).attr('current-id');
+            $.ajax({
+                type: 'POST',
+                dataType: 'JSON',
+                url: '/Scenarios/CheckScenrioDeletion',
+                data: {
+                    scenId: scenId
+                },
+                success: function (response) {
+                    if (response) {
+                        var model = document.getElementById('ScenrioWithCandidatePoolModal');
+                        var formModel = bootstrap.Modal.getOrCreateInstance(model);
+                        formModel.show();
+                        return;
+                    }
+                    else {
+                        var model = document.getElementById('deletealertScenario');
+                        var formModel = bootstrap.Modal.getOrCreateInstance(model);
+                        formModel.show();
+                    }
+                },
+                error: function (response) {
+                    console.log(response);
+                }
+            });
+
+        });
+        $('#createnewscenario').on('click', function (event) {
+            event.preventDefault();
+            var librariescount = '@ViewBag.LibrariesCount';
+            if (parseInt(librariescount) <= 0) {
+                var model = document.getElementById('createcandidatepoolalert');
+                var formModel = bootstrap.Modal.getOrCreateInstance(model);
+                formModel.show();
+            } else {
+                window.location.href = $(this).prop('href');
+            }
+        });
+    });
+
+</script>
+<style>
+    table tr th {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>

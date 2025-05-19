@@ -1,0 +1,316 @@
+.container {
+    max-width: 100%;
+}
+
+body {
+    font-family: 'Montserrat', sans-serif;
+}
+
+.nav-bar {
+    height: 75px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.bg-lite {
+    background-image: url(~/../../images/background.jpg);
+    background-repeat: no-repeat;
+    background-size: cover;
+    height: 80vh;
+    height: 70vh;
+    min-height: calc(100vh - 140px);
+}
+
+    .bg-lite h2 {
+        margin-top: 20px;
+        margin-left: 15px;
+        font-weight: 700;
+    }
+
+.overlay-bg {
+    position: relative;
+    width: 100%;
+    height: 80vh;
+    min-height: calc(100vh - 140px);
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #02180ea3;
+    z-index: 2;
+}
+
+.overlay-bg1 {
+    background-color: #00000040;
+    z-index: 2;
+}
+
+.content {
+    position: absolute;
+    margin-top: 150px;
+    width: 100%;
+}
+
+.ttm-cp {
+    display: table-caption;
+    width: 100%;
+}
+
+    .ttm-cp input {
+        height: 40px;
+        margin-bottom: 10px;
+        padding: 8px;
+        width: 70%;
+        margin-left: 16%;
+    }
+
+.content-ttm h4 {
+    font-weight: 300;
+}
+
+#btn-ttm {
+    margin-top: 10px;
+    text-align: center;
+    margin-left: 34%;
+    padding: 6px;
+    width: 127px;
+    background-color: #2d359d;
+    border: none;
+    font-weight: 100;
+}
+
+.content .rm-ttm {
+    margin-top: 10px;
+}
+
+.content h6 {
+    margin-top: 15px;
+}
+
+    .content h6 a {
+        text-decoration: none;
+        color: white;
+        font-weight: 200;
+    }
+
+.cap-ttm {
+    display: flex;
+    justify-content: center;
+}
+
+.bg-lay {
+    height: 7vh;
+    background: linear-gradient(90deg, #5e5e5e,#ffffff,#5e5e5e);
+}
+
+.bg-lay-rm {
+    position: relative;
+    height: 5vh;
+    background: linear-gradient(90deg,#241d1d, #064201, #064201);
+}
+
+.line-rm {
+    height: 3vh;
+    background-color: rgb(14, 121, 85);
+}
+
+.rigts {
+    background: linear-gradient(0.25turn,#006837, #00ada4, #1b201a, #00396a);
+    height: 8vh;
+    display: flex;
+    justify-content: center;
+    align-items: self-end;
+    /* margin-top: 26px; */
+    position: relative;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 60px;
+    line-height: 60px;
+    background-color: #f5f5f5;
+}
+
+.copyright span h6 {
+    color: #ffffff;
+    margin-right: 30px;
+    font-weight: 200;
+}
+
+.rrm-sm span h6 {
+    color: #ffffff;
+    font-weight: 200;
+}
+
+#api {
+    width: 100%;
+    text-align: center;
+    padding: 20px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+#localAccountForm .intro, #localAccountForm label {
+    display: none;
+}
+
+    #api .heading h1, #api .intro p, #localAccountForm .intro h2, #localAccountForm .error p, #localAccountForm label, #localAccountForm .divider h2, #localAccountForm .create p, #attributeVerification label {
+        color: #fff;
+    }
+
+#localAccountForm .entry-item {
+    margin-bottom: 20px;
+}
+
+    #localAccountForm .entry-item input {
+        height: 40px;
+        text-indent: 10px;
+        background: #afadad;
+        color: #fff;
+        width: 70%;
+    }
+
+#localAccountForm .buttons, #api .heading h1 {
+    text-align: center;
+    text-transform: uppercase;
+}
+
+    #localAccountForm .buttons button, #attributeVerification .buttons button {
+        text-transform: uppercase;
+        color: #fff;
+        background-color: #003881;
+        border-color: #003881;
+        display: inline-block;
+        font-weight: 400;
+        text-align: center;
+        white-space: nowrap;
+        vertical-align: middle;
+        user-select: none;
+        border: 1px solid transparent;
+        padding: 0.375rem 0.75rem;
+        font-size: 14px;
+        line-height: 1.5;
+        border-radius: 0.25rem;
+        transition: color .15s ease-in-out,background-color .15s ease-in-out,border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+        font-weight: bold;
+    }
+
+#localAccountForm a {
+    color: #d4fdfb;
+}
+
+#attributeList ul li {
+    list-style-type: none;
+}
+
+#attributeList ul {
+    padding-left: 0;
+}
+
+#attributeVerification .attrEntry {
+    margin-bottom: 10px;
+}
+
+#attributeVerification .buttons button {
+    margin-left: 10px;
+}
+
+#attributeList a.helpLink {
+    display: none;
+}
+
+#attributeVerification .attrEntry input {
+    height: 40px;
+    text-indent: 10px;
+    background: #afadad;
+    color: #fff;
+    width: 70%;
+}
+
+::placeholder {
+    color: #fff;
+}
+
+.attrEntry .error, .verificationControlContent div {
+    color: #fff;
+}
+
+.verificationControlContent .buttons button {
+    font-size: 12px !important;
+}
+
+
+#attributeVerification .attrEntry {
+    margin-bottom: 10px;
+}
+
+    #attributeVerification .attrEntry input {
+        height: 40px;
+        text-indent: 10px;
+        background: #afadad;
+        color: #fff;
+        width: 70%;
+    }
+
+
+#attributeVerification .buttons button {
+    margin-left: 10px;
+    text-transform: uppercase;
+    color: #fff;
+    background-color: #003881;
+    border-color: #003881;
+    display: inline-block;
+    font-weight: 400;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+    user-select: none;
+    border: 1px solid transparent;
+    padding: 0.375rem 0.75rem;
+    font-size: 12px;
+    line-height: 1.5;
+    border-radius: 0.25rem;
+    transition: color .15s ease-in-out,background-color .15s ease-in-out,border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+    font-weight: bold;
+}
+
+#attributeList ul li {
+    list-style-type: none;
+}
+
+#attributeList ul {
+    padding-left: 0;
+}
+
+#attributeList a.helpLink {
+    display: none;
+}
+
+#api h1 {
+    font-size: 2rem;
+}
+
+div.intro p {
+    margin-bottom: 0;
+}
+
+
+#attributeList .newPassword_li, #attributeList .reenterPassword_li, #attributeList .displayName_li, button#continue, button#cancel {
+    /*display: none !important;*/
+}
+
+.verificationControlContent div {
+    color: #fff !important;
+}
+
+.verifying_blurb, #claimVerificationServerError {
+    color: #fff;
+}
+/* Body css */
+
+
+/* Body css */
+
+

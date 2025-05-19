@@ -1,0 +1,187 @@
+﻿@model TreatmentParameterViewModel
+@{
+    ViewData["Title"] = "TreatmentParameter";
+}
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+
+<partial name="~/Views/Shared/navbarshared/_SetupsSidebar.cshtml" />
+<div class="container-fluid" style="height:730px;margin-top:50px;overflow-y:auto;">
+
+
+
+<div class="card">
+    <div class="card-body">
+        <h5>View Treatment Parameters</h5>
+
+        <div class="row align-content-center  m-2">
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-striped" id="TreatmentParamTable">
+                    <thead class="bg-success text-white">
+                        <tr>
+                            <th>
+                                UserTreatmentTypeNo
+                            </th>
+                            <th>
+                                UserTreatmentBenefitWeight
+                            </th>
+                            <th>
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+</div>
+
+@*Delete Modal*@
+<div class="modal fade" id="deletealert" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="deletealertLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deletealertLabel">Delete Treatment Parameter</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span>
+                    Are you sure you want to delete the selected Treatment Parameter ?
+                </span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <form id="deleteform" asp-antiforgery="true" asp-action="DeleteTreatmentParameter" asp-controller="TreatmentParameter" method="post">
+                    <input asp-for="TreatmentParameterId" id="treatmentParameterId" name="TreatmentParameterId" hidden />
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@*Edit Modal*@
+
+<div class="modal fade" id="EditTreatmentParameterForm" tabindex="-1" role="dialog" aria-labelledby="EditParameterFormLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="EditParameterFormLabel">Edit Parameter</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="editTreatmentParameter" class="needs-validation" asp-controller="TreatmentParameter" asp-action="EditTreatmentParameter" method="post">
+                <div class="modal-body">
+                    <input asp-for="TreatmentParameterId" id="treatmentParameterId1" type="text" name="TreatmentParameterId" hidden />
+                    <div class="mb-3">
+                        <label for="UserTreatmentBenefitWeight" class="form-label">UserTreatmentBenefitWeight</label>
+                        <input asp-for="UserTreatmentBenefitWeight" id="userTreatmentBenefitWeight" type="text" name="UserTreatmentBenefitWeight" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+
+    $(document).ready(function () {
+        $('#TreatmentParamTable').DataTable({
+            "processing": true,
+            "serverSide": true,
+            "bSearchable": true,
+            "order": [[1, 'asc']],
+            "language": {
+                "emptyTable": "No record found.",
+                "processing":
+                    '<i class="fa fa-spinner fa-spin fa-3x fa-fw" style="color:#2a2b2b;"></i><span class="sr-only">Loading...</span> '
+            },
+            "sAjaxSource": "/TreatmentParameter/ApplyPagination",
+            "columns": [
+                {
+                    "data": "treatmentParameterId",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "userTreatmentBenefitWeight",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": null,
+                    title: "Actions",
+                    orderable: false,
+                    defaultContent: '',
+                    render: function (data, type, row) {
+                        var inner = `<button onclick="oneditingTreatmentParameter.bind(this)()" value="` + row.treatmentParameterId + `" class="btn btn-primary mb-1">
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+                                        <button type="button" value="` + row.treatmentParameterId + `"onclick="ondeletingTreatmentParameter.bind(this)()" class="btn btn-danger mb-1" data-bs-toggle="modal" data-bs-target="#deletealert">
+                        <i class="bi bi-trash"></i>
+                    </button>`;
+                        return inner;
+                    }
+                }
+            ]
+        });
+    });
+
+    function oneditingTreatmentParameter() {
+        $.ajax(
+            {
+                type: 'Get',
+                dataType: 'JSON',
+                url: '/TreatmentParameter/GetTreatmentParameter',
+                data: { id: this.value },
+                success:
+                    function (response) {
+                        debugger;
+                        var form = document.getElementById('editTreatmentParameter');
+                        $('#userTreatmentBenefitWeight').val(response.userTreatmentBenefitWeight);
+                        $('#treatmentParameterId1').val(response.treatmentParameterId);
+                        var model = document.getElementById('EditTreatmentParameterForm');
+                        var formModel = bootstrap.Modal.getOrCreateInstance(model);
+                        formModel.show();
+                    },
+                error:
+                    function (response) {
+
+                    }
+            });
+    }
+
+    function ondeletingTreatmentParameter() {
+        $.ajax(
+            {
+                type: 'Get',
+                dataType: 'JSON',
+                url: '/TreatmentParameter/GetTreatmentParameter',
+                data: { id: this.value },
+                success:
+                    function (response) {
+                        debugger;
+                        var form = document.getElementById('deleteform');
+                        $('#treatmentParameterId').val(response.treatmentParameterId);
+                      
+                    },
+                error:
+                    function (response) {
+
+                    }
+            });
+    }
+</script>

@@ -1,0 +1,47 @@
+@{
+    var scenid = ViewContext.HttpContext.Request.Query["scenid"].FirstOrDefault();
+    var action = ViewContext.RouteData.Values["action"]?.ToString();
+}
+
+
+<nav id="sidebarMenu" class="sidenavbar expanded">
+    <button onclick="collapsearea.bind(this)()" id="ScenarioSettings" type="button"
+        class="accordianbtn rounded collapsed" data-bs-toggle="collapse" data-bs-target="#ScenarioSettings-collapsable">
+        <div class="accordiancontent">
+            <span class="accordianspan">Scenario Settings</span>
+        </div>
+        <i class="fa-solid fa-chevron-down collapse-chevron-up"></i>
+    </button>
+    <div class="accordion-collapse collapse show" id="ScenarioSettings-collapsable" aria-labelledby="ScenarioSettings"
+        data-bs-parent="#ScenarioSettings">
+        <ul>
+            <li>
+                <a id="scenarioparameters" asp-action="ScenarioParameters" asp-controller="EditScenario" asp-route-scenid="@scenid"
+                    class="accordianlink">
+                    <span class="accordianspan">Parameters</span>
+                </a>
+            </li>
+            <li>
+                <a id="budgetconstraints" asp-action="BudgetConstraints" asp-controller="EditScenario" asp-route-scenid="@scenid" class="accordianlink">
+                    <span class="accordianspan">Budget Constraints</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+</nav>
+<script>
+
+    $(function () {
+        var action = "#@action".toLowerCase();
+        $(action).addClass('selected');
+    });
+    function collapsearea() {
+        if (!$(this).hasClass('collapsed')) {
+            $(this).children('i').removeClass('collapse-chevron-down');
+            $(this).children('i').addClass('collapse-chevron-up');
+        } else {
+            $(this).children('i').removeClass('collapse-chevron-up');
+            $(this).children('i').addClass('collapse-chevron-down');
+        }
+    }
+</script>

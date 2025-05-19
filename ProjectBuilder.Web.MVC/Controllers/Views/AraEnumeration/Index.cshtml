@@ -1,0 +1,119 @@
+﻿@model AraEnumerationViewModel
+@{
+    ViewData["Title"] = "AraEnumeration";
+}
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+
+
+<h2>Ara Enumerations</h2>
+<div class="card">
+    <div class="card-body">
+        <h5>View AraEnumerations</h5>
+
+        <div class="row align-content-center  m-2">
+
+            <div class="table-responsive">
+
+                <table class="table table-bordered table-hover table-striped" id="araEnumerationsTable">
+                    <thead class="bg-success text-white">
+                        <tr>
+                            <th>
+                                EnumFamily
+                            </th>
+                            <th>
+                                EnumName
+                            </th>
+                            <th>
+                                EnumInt
+                            </th>
+                           
+                            <th>
+
+                            </th>
+                        </tr>
+                    </thead>
+                  
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="deletealert" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="deletealertLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deletealertLabel">Delete User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span>
+                    Are you sure you want to delete the selected User ?
+                </span>
+            </div>
+            @*<div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <form id="deleteform" asp-antiforgery="true" asp-action="DeleteUser" asp-controller="User" method="post">
+                    <input asp-for="@Model.EntityId" hidden name="userId" />
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>*@
+        </div>
+    </div>
+</div>
+<script>
+    $(document).ready(function () {
+        $('#araEnumerationsTable').DataTable({
+            "processing": true,
+            "serverSide": true,
+            "bSearchable": true,
+            "order": [[1, 'asc']],
+            "language": {
+                "emptyTable": "No record found.",
+                "processing":
+                    '<i class="fa fa-spinner fa-spin fa-3x fa-fw" style="color:#2a2b2b;"></i><span class="sr-only">Loading...</span> '
+            },
+            "sAjaxSource": "/AraEnumeration/ApplyPagination",
+            "columns": [
+                {
+                    "data": "enumFamily",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "enumName",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "enumInt",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+               
+                {
+                    "data": null,
+                    title: "Actions",
+                    orderable: false,
+                    defaultContent: '',
+                    render: function (data, type, row) {
+                        var inner = `<button onclick="oneditingproject.bind(this)()" value="` + row.projectId + `" class="btn btn-primary mb-1">
+        <i class="bi bi-pencil-square"></i>
+    </button>
+    <button type="button" value="` + row.projectId + `" onclick="ondeletingproject.bind(this)()" class="btn btn-danger mb-1" data-bs-toggle="modal" data-bs-target="#deletealert">
+        <i class="bi bi-trash"></i>
+    </button>
+                                    `;
+                        return inner;
+                    }
+                }
+            ]
+        });
+
+    });
+</script>

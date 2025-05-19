@@ -1,0 +1,66 @@
+﻿@model IEnumerable<CountyDisplayVM>
+
+
+
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css" />
+
+
+<script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+
+<table class="table table-bordered table-hover table-striped" id="CountyTableD">
+    <thead class="bg-success text-white">
+        <tr>
+            <th>
+                CountyId
+            </th>
+            <th>
+                CountyName
+            </th>
+            <th>
+                District
+            </th>
+
+            <th>
+                CountyFullName
+            </th>
+            <th>
+                Actions
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.CountyId</td>
+                <td>@item.CountyName</td>
+                <td>@item.District</td>
+                <td>@item.CountyFullName</td>
+                <td>
+                    <button onclick="oneditingCounty(@item.CountyId,@item.District).bind(this)()" value="@item.District" class="btn btn-primary">
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+                    @if (item.IsDeleteable)
+                    {
+                        <button onclick="ondeletingCounty(@item.CountyId,@item.District).bind(this)()" data-bs-toggle="modal" data-bs-target="#deletealert" class="btn btn-primary">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    }
+                    else
+                    {
+                        <button onclick="ondeletingCounty(@item.CountyId,@item.District).bind(this)()" data-bs-toggle="modal" data-bs-target="#deletealert" disabled class="btn btn-primary">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+
+</table>
+<script>
+    new DataTable('#CountyTableD');
+
+</script>

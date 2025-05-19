@@ -1,0 +1,260 @@
+﻿@using Newtonsoft.Json;
+@using ProjectBuilder.Core;
+@using ProjectBuilder.Web.MVC.Models;
+
+@model ChartsViewModel
+
+@{
+    ViewData["Title"] = "Potential Benefits";
+}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<div class="charts_main-container">
+    <partial name="~/Views/shared/navbarshared/_outputsnavbar.cshtml" />
+    <div class="charts_maincontent">
+        <div class="charts_main-header">
+            <h1>Potential Benefits</h1>
+            <h1>@Model.ScenarioName</h1>
+        </div>
+        <div class="charts_main-body">
+            <div class="charts_main-filter">
+                <div class="card">
+                    <form asp-controller="ChartsData" asp-action="LoadPotentialBenefitsCharts" class="charts_main-filter_form"
+                          id="filterform" method="post" chart="needs">
+                        <div class="charts_main-filter_form-body">
+                            <input name="scenid" id="scenid" value="@Model.ScenarioId" hidden>
+
+                            <select class="form-select" name="scenario_id" id="scenario_id" data-filter=" scenario">
+                                <option value="" selected>Select Scenario</option>
+                            </select>
+
+                            <select class="form-select" name="district">
+                                <option selected disabled>Select District</option>
+                                @foreach (var district in Model.Districts)
+                                {
+                                    <option value="@district">District @district</option>
+                                }
+                            </select>
+                            <select class="form-select" name="asset">
+                                <option selected disabled>Select Asset Type</option>
+                                <option selected>Assets</option>
+                                <option value="0">Bridge</option>
+                                <option value="1">Pavement</option>
+                            </select>
+                        </div>
+                        <button id="filter" type="submit" class="btn btn-primary">Filter</button>
+                    </form>
+                </div>
+            </div>
+            <div id="chartcontainer" class="charts_main-chart">
+                @if (!Model.ScenarioId.HasValue)
+                {
+                    <div class="error_container">
+                        <p>To view Potential Benefits Charts you need to select a scenario first.</p>
+                        
+                    </div>
+                }
+                else
+                {
+                    <div class="error_container">
+                        <p>To view Charts select a district first.</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+@section Styles{
+    <link rel="stylesheet" href="~/css/charts_styles.css" /> 
+}
+<div id="loader-container">
+    <div id="loader" class="loader"></div>
+</div>
+
+    <script>
+
+    function showLoader() {
+        document.getElementById('loader-container').style.display = 'block';
+    }
+
+    function hideLoader() {
+        document.getElementById('loader-container').style.display = 'none';
+    }
+
+
+    $(function () {
+        var scenId = $('#scenid').val();
+
+
+        $.ajax({
+            type: 'GET',
+            url: "/Scenarios/GetScenarios",
+            contentType: 'application/json',
+            success: function (response) {
+                $("#scenario_id").html("<option value=''>Select Scenario</option>");
+                $.each(response.scenarios, function (key, value) {
+                    if (scenId == value.scenarioId)
+                        $("#scenario_id").append("<option value='" + value.scenarioId + "' selected>" + value.scenarioName + "</option>");
+                    else
+                        $("#scenario_id").append("<option value='" + value.scenarioId + "'>" + value.scenarioName + "</option>");
+                });
+                hideLoader();
+            }
+        });
+
+
+        showLoader();
+
+        // Set a timeout to hide the loader after 3 seconds
+        setTimeout(function () {
+            hideLoader();
+        }, 3000);
+
+
+        $(document).on("change", "#scenario_id", function () {
+            if ($(this).val())
+                window.location.href = "/Charts/PotentialBenefits?scenid=" + $(this).val();
+            else
+                window.location.href = "/Charts/PotentialBenefits";
+        });
+
+        var currentUrl = window.location.href;
+        var url = new URL(currentUrl);
+        var searchParams = new URLSearchParams(url.search);
+        var fromScenario = searchParams.get("fromscenario");
+        if (fromScenario == "true") {
+            $("#scenario_id").hide();
+        }
+    });
+
+        //  function validateDropdown() {
+        //     var scenariodropdown = document.getElementById('scenarioDropdown');
+        //     var districtDropdown = document.getElementById('districtDropdown');
+
+        //     var validationMessage = document.getElementById('validationMessage');
+
+        //     if (scenariodropdown.value === "") {
+        //         scenerioValidationMessage.textContent = 'Please select a scenario';
+        //         return false;
+        //     }
+        //     else {
+        //         scenerioValidationMessage.textContent = '';
+        //     }
+
+        //     if (districtDropdown.value === "") {
+        //         districtValidationMessage.textContent = 'Please select a District';
+        //         return false;
+        //     }
+        //     else {
+        //         scenerioValidationMessage.textContent = '';
+        //     }
+
+        //     validationMessage.textContent = '';
+        //     return true;
+        // }
+
+         // Decode the JSON string into a JavaScript object
+        // chartdata = JSON.parse(data);
+        // console.log(chartdata.SeriesPoint);
+        // console.log(chartdata.Labels);
+
+
+        // interstateValues = [];
+        // nonInterstateValues = [];
+        // for (var year in chartdata.SeriesPoint) {
+        //     if (chartdata.SeriesPoint.hasOwnProperty(year)) {
+        //         interstateValues.push(chartdata.SeriesPoint[year].Interstate / 1000000);
+        //         nonInterstateValues.push(chartdata.SeriesPoint[year]['Non-Interstate'] / 1000000);
+
+        //         console.log(year);
+
+        //     }
+        // }
+
+        // var ctx = document.getElementById('myChart').getContext('2d');
+        // var myChart = new Chart(ctx, {
+        //     type: 'bar',
+        //     data: {
+        //         labels: chartdata.Labels,
+        //         datasets: [
+        //             {
+        //                 label: 'Interstate',
+        //                 backgroundColor: '#66cc94',
+        //                 data: interstateValues,
+        //                 stack: 'Stack 0',
+        //             },
+        //             {
+        //                 label: 'Non-Interstate',
+        //                 backgroundColor: '#6666cc',
+        //                 data: nonInterstateValues,
+        //                 stack: 'Stack 0',
+        //             }
+        //         ]
+        //     },
+        //     options: {
+        //         scales: {
+        //             x: {
+        //                 display: true,
+        //             },
+        //             y: {
+        //                 display: true,
+        //                 ticks: {
+        //                     callback: function (value, index, values) {
+        //                         return '$' + value + 'M';
+        //                     }
+        //                 }
+        //             }
+        //         }, plugins: {
+        //             tooltip: {
+        //                 enabled: true,
+        //                 mode: 'index',
+        //                 intersect: false,
+        //                 callbacks: {
+        //                     label: function (tooltipItem, data) {
+
+        //                         console.log(tooltipItem);
+        //                         var datasetLabel = tooltipItem.dataset.data[tooltipItem.dataIndex] || '';
+
+        //                         console.log(datasetLabel);
+        //                         return tooltipItem.dataset.label + ': $' + (tooltipItem.raw).toFixed(2) + 'M';
+        //                     }
+        //                 }
+        //             }
+        //         }
+
+        //     }
+        // });
+
+
+
+        /*var ctx = document.getElementById('myChart').getContext('2d');
+        var myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['2021', '2022', '2023', '2024', '2025', '2026'],
+                datasets: [
+                    {
+                        label: 'Interstate',
+                        backgroundColor: '#66cc94',
+                        data: [100, 150, 100, 130, 150, 140],
+                        stack: 'Stack 0',
+                    },
+                    {
+                        label: 'Non-Interstate',
+                        backgroundColor: '#6666cc',
+                        data: [2000, 2500, 4000, 3500, 2600, 3700],
+                        stack: 'Stack 0',
+                    }
+                ]
+            },
+            options: {
+                scales: {
+                    xAxes: [{
+                        stacked: true
+                    }],
+                    yAxes: [{
+                        stacked: true
+                    }]
+                }
+            }
+        });*/
+    </script>

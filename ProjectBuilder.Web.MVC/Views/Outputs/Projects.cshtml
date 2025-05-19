@@ -1,0 +1,864 @@
+@using ProjectBuilder.Web.MVC.Models;
+
+@model ProjectsViewModel
+@{
+    ViewData["Title"] = "Projects";
+}
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+<script src="https://cdn.datatables.net/fixedcolumns/4.3.0/js/dataTables.fixedColumns.min.js"></script>
+
+
+<div class="projects_main-container">
+    <partial name="~/Views/Shared/navbarshared/_outputsnavbar.cshtml" />
+    <div class="projects_maincontent">
+        <div class="projects_header">
+            <h1>Projects</h1>
+            <h1>@Model.ScenarioName</h1>
+        </div>
+        <div class="projects_body">
+            <div class="card">
+                <div class="card-header">
+                    <div class="projects_filter-content">
+
+                        <div class="row">
+                            <div class="col-lg-9 text-lg-start">
+                                <form id="projectsfilterform" asp-controller="Projects" asp-action="ApplyFilter">
+                                    <div class="projects_form-body">
+                                        <input id="scenario" name="scenarioid" value="@Model.ScenarioId" hidden>
+
+                                        <select class="form-select" name="scenario_id" id="scenario_id" data-filter=" scenario">
+                                            <option value="" selected>Select Scenario</option>
+                                        </select>
+
+                                        <select class="form-select" name="district" data-filter="district">
+                                            <option value="" selected>Select District</option>
+                                        </select>
+                                        <select class="form-select" name="county" data-filter="county">
+                                            <option value="" selected>Select County</option>
+                                        </select>
+                                        <select class="form-select" name="route" data-filter="route">
+                                            <option value="" selected>Select Route</option>
+                                        </select>
+                                        <select class="form-select" name="section" data-filter="section">
+                                            <option value="" selected>Select Section</option>
+                                        </select>
+                                        @Html.DropDownList("Year", Model.Years.Select(s => new SelectListItem() { Text = s.ToString() }), "Select Year", new { @class = "form-select" })
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Filter</button>
+                                </form>
+                            </div>
+                            <div class="col-lg-3 text-lg-end">
+                                <button type="button" class="btn btn-primary exportModal">Export to Excel</button>
+                            </div>
+                        </div>
+
+
+                    </div>
+                </div>
+
+                <div class="maps_main-response" style="height:700px;overflow-y: scroll;">
+                    <div id="maperror" class="">
+                        <p id="errormessage" style="font-size: 20px;margin-bottom: 20px;font-weight: 800;text-align: center;"></p>
+                    </div>
+
+                </div>
+
+
+                <div class="projects_body-tablecontainer">
+                    <div class="card-body">
+                        <div class="">
+                            <table class="table table-bordered table-hover table-striped" id="projectsdataTable">
+                                <thead class="bg-success text-white">
+                                    <tr>
+                                        <th>
+                                            Id
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Asset
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" href="#" onclick="oncontextmenuclickednew.bind(this, event)(2)" class="" context-menu-new>
+                                                    <i context-menu-new class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+
+                                            <div style="display: flex;">
+                                                District
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" href="#" onclick="oncontextmenuclickednew.bind(this, event)(3)" class="" context-menu-new>
+                                                    <i context-menu-new class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                County
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" value=""
+                                                   onclick="oncontextmenuclickednew.bind(this,event)(3)" class=""
+                                                   context-menu-new>
+                                                    <i context-menu-new class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Route
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" value=""
+                                                   onclick="oncontextmenuclickednew.bind(this,event)(4)" class=""
+                                                   context-menu-new>
+                                                    <i context-menu-new class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Section
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" value=""
+                                                   onclick="oncontextmenuclickednew.bind(this,event)(5)" class=""
+                                                   context-menu-new>
+                                                    <i context-menu-new class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Direction
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" value=""
+                                                   onclick="oncontextmenuclickednew.bind(this,event)(6)" class=""
+                                                   context-menu-new>
+                                                    <i context-menu-new class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                First Year
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" value=""
+                                                   onclick="oncontextmenuclickednew.bind(this,event)(7)" class=""
+                                                   context-menu-new>
+                                                    <i context-menu-new class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Total Cost
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" value=""
+                                                   onclick="oncontextmenuclickednew.bind(this,event)(8)" class=""
+                                                   context-menu-new>
+                                                    <i context-menu-new class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Benefit
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" value=""
+                                                   onclick="oncontextmenuclickednew.bind(this,event)(9)" class=""
+                                                   context-menu-new>
+                                                    <i context-menu-new class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                No. Treatments
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" value=""
+                                                   onclick="oncontextmenuclickednew.bind(this,event)(10)" class=""
+                                                   context-menu-new>
+                                                    <i context-menu-new class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Status
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" value=""
+                                                   onclick="oncontextmenuclickednew.bind(this,event)(11)" class=""
+                                                   context-menu-new>
+                                                    <i context-menu-new class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Selected
+                                                <a type="button" value=""
+                                                   onclick="oncontextmenuclickednew.bind(this,event)(12)" class=""
+                                                   context-menu-new>
+                                                    <i context-menu-new class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                Preferred Year
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" value=""
+                                                   onclick="oncontextmenuclickednew.bind(this,event)(13)" class=""
+                                                   context-menu-new>
+                                                    <i context-menu-new class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            <div style="display: flex;">
+                                                User Created
+                                                <a style="float: right;padding-left:20px;padding-right:20px;" type="button" value=""
+                                                   onclick="oncontextmenuclickednew.bind(this,event)(14)" class=""
+                                                   context-men-new>
+                                                    <i context-menu-new class="fa-solid fa-ellipsis-vertical"></i>
+                                                </a>
+                                            </div>
+                                        </th>
+                                        <th>
+                                            Actions
+                                        </th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+
+                        @* <button type="button" class="btn btn-primary exportModal">Export to Excel</button> *@
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <div id="contextmenu" class="contextmenu-container">
+        <ul class="menu">
+            <li class="menuitem">
+                <a asp-controller="ProjectTreatments" asp-action="Index" asp-route-scenid="@Model.ScenarioId" param="projectid">
+                    <i class="fa-regular fa-pen-to-square"></i>
+                    <span>Edit</span>
+                </a>
+            </li>
+            <hr />
+            <li class="menuitem">
+                <button type="button" id="deleteproject" disabled data-bs-toggle="modal" data-bs-target="#deletealert">
+                    <i class="fa-regular fa-trash-can"></i>
+                    <span>Delete</span>
+                </button>
+            </li>
+        </ul>
+    </div>
+
+    <div id="contextmenunew" class="contextmenu-container">
+        <ul class="menu">
+            <li class="menuitem">
+                <a href="#" class="sort_asc sort">
+                    <i class="fa-solid fa-arrow-up-short-wide"></i>
+                    <span>Sort Ascending</span>
+                </a>
+            </li>
+            <li class="menuitem">
+                <a href="#" class="sort_desc sort">
+                    <i class="fa-solid fa-arrow-up-wide-short"></i>
+                    <span>Sort Descending</span>
+                </a>
+            </li>
+            <li class="menuitem">
+                <a href="#" class="dropdown-toggle" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i class="far fa-pen-to-square"></i>
+                    <span>Columns</span>
+                </a>
+                <ul class="submenu dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton" style="padding:20px;margin-left:175px;">
+                    <li>
+                        <div class="form-check">
+                            <label class="form-check-label" for="checkbox1">
+                                <input class="form-check-input" type="checkbox" value="1" id="checkbox1" checked>
+                                Asset
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <label class="form-check-label" for="checkbox2">
+                                <input class="form-check-input" type="checkbox" value="2" id="checkbox2" checked>
+                                District
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <label class="form-check-label" for="checkbox3">
+                                <input class="form-check-input" type="checkbox" value="3" id="checkbox3" checked>
+                                County
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <label class="form-check-label" for="checkbox4">
+                                <input class="form-check-input" type="checkbox" value="4" id="checkbox4" checked>
+                                Route
+                            </label>
+                        </div>
+
+                        <div class="form-check">
+                            <label class="form-check-label" for="checkbox5">
+                                <input class="form-check-input" type="checkbox" value="5" id="checkbox5" checked>
+                                Section
+                            </label>
+                        </div>
+
+                        <div class="form-check">
+                            <label class="form-check-label" for="checkbox6">
+                                <input class="form-check-input" type="checkbox" value="6" id="checkbox6" checked>
+                                Direction
+                            </label>
+                        </div>
+
+                        <div class="form-check">
+                            <label class="form-check-label" for="checkbox7">
+                                <input class="form-check-input" type="checkbox" value="7" id="checkbox7" checked>
+                                First Year
+                            </label>
+                        </div>
+
+                        <div class="form-check">
+                            <label class="form-check-label" for="checkbox8">
+                                <input class="form-check-input" type="checkbox" value="8" id="checkbox8" checked>
+                                Total Cost
+                            </label>
+                        </div>
+
+                        <div class="form-check">
+                            <label class="form-check-label" for="checkbox9">
+                                <input class="form-check-input" type="checkbox" value="9" id="checkbox9">
+                                Benefit
+                            </label>
+                        </div>
+
+                        <div class="form-check">
+                            <label class="form-check-label" for="checkbox10">
+                                <input class="form-check-input" type="checkbox" value="10" id="checkbox10">
+                                No. Treatments
+                            </label>
+                        </div>
+
+                        <div class="form-check">
+                            <label class="form-check-label" for="checkbox11">
+                                <input class="form-check-input" type="checkbox" value="11" id="checkbox11">
+                                Status
+                            </label>
+                        </div>
+
+                        <div class="form-check">
+                            <label class="form-check-label" for="checkbox12">
+                                <input class="form-check-input" type="checkbox" value="12" id="checkbox12">
+                                Selected
+                            </label>
+                        </div>
+
+                        <div class="form-check">
+                            <label class="form-check-label" for="checkbox13">
+                                <input class="form-check-input" type="checkbox" value="13" id="checkbox13">
+                                Preferred Year
+                            </label>
+                        </div>
+
+                        <div class="form-check">
+                            <label class="form-check-label" for="checkbox14">
+                                <input class="form-check-input" type="checkbox" value="14" id="checkbox14">
+                                User Created
+                            </label>
+                        </div>
+                    </li>
+
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+
+    <div class="modal fade" id="deletealert" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+         aria-labelledby="deletealertLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deletealertLabel">Delete Project</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body d-flex align-items-center">
+                    <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                    <span>
+                        Are you sure you want to delete the selected Project?
+                    </span>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <form id="deleterecordform" asp-antiforgery="true" asp-action="DeleteProject" asp-controller="Projects" method="post"
+                          data-table="projectsdataTable">
+                        <input hidden name="projectid" id="projectid" />
+                        <input hidden name="scenid" value="@Model.ScenarioId" />
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="ExportAlertModel" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+         aria-labelledby="ExportAlertModel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="ExportAlertModel">Export Alert</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body d-flex align-items-center">
+                    <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                    <span>
+                        Scenario treatments have been modified. To apply the changes, please perform a scenario re-run.
+                    </span>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="exportcandidatepool" tabindex="-1" role="dialog"
+         aria-labelledby="exportcandidatepoollabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editlibraryheader">Export to Excel</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form class="needs-validation" novalidate method="POST" asp-controller="Projects"
+                      asp-action="ExportProjects">
+                    <input type="hidden" name="scenarioId" id="scenid" />
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-check-label mb-2" for="importbridge">
+                                Export What?
+                            </label>
+                            <select class="form-select" name="exporttype" id="exporttype">
+                                <option value="BAMS">BAMS</option>
+                                <option value="PAMS">PAMS</option>
+                            </select>
+                        </div>
+                        <div class="mb-3 successMessage">
+                        </div>
+                        <div class="mb-3 errorMessage">
+                        </div>
+                        @if (ViewData["ErrorMessage"] != null)
+                        {
+                            <div class="alert alert-danger">
+                                @ViewData["ErrorMessage"]
+                            </div>
+                        }
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-success " data-bs-dismiss="modal">Export</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div id="loader-container">
+    <div id="loader" class="loader"></div>
+</div>
+
+<!--
+    <option value="DecisionSpace">DecisionSpace</option>
+    <option value="SummaryReport">Summary Report</option>
+-->
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+    <link rel="stylesheet" href="~/css/projects_styles.css" />
+    <link rel="stylesheet" href="~/css/outputs_styles.css" />
+}
+<script>
+
+    function showLoader() {
+        document.getElementById('loader-container').style.display = 'block';
+    }
+
+    function hideLoader() {
+        document.getElementById('loader-container').style.display = 'none';
+    }
+
+
+    $(function () {
+        //$('#scenario').trigger('change');
+        var scenId = $('#scenario').val();
+        if (scenId === null || scenId === undefined || scenId === '') {
+            $(".maps_main-response").show();
+            $("#errormessage").text('In order to view projects, you must select a scenario first.');
+            $(".projects_body-tablecontainer").hide();
+        } else {
+            $(".maps_main-response").hide();
+        }
+
+        $.ajax({
+            type: 'GET',
+            url: "/Scenarios/GetScenarios",
+            contentType: 'application/json',
+            success: function (response) {
+                $("#scenario_id").html("<option value=''>Select Scenario</option>");
+                $.each(response.scenarios, function (key, value) {
+                    if (scenId == value.scenarioId)
+                        $("#scenario_id").append("<option value='" + value.scenarioId + "' selected>" + value.scenarioName + "</option>");
+                    else
+                        $("#scenario_id").append("<option value='" + value.scenarioId + "'>" + value.scenarioName + "</option>");
+                });
+                hideLoader();
+            }
+        });
+
+
+        showLoader();
+
+        // Set a timeout to hide the loader after 3 seconds
+        setTimeout(function () {
+            hideLoader();
+        }, 3000);
+
+
+        $(document).on("change", "#scenario_id", function () {
+            if ($(this).val())
+                window.location.href = "/Projects?scenid=" + $(this).val();
+            else
+                window.location.href = "/Projects";
+        });
+
+        var currentUrl = window.location.href;
+        var url = new URL(currentUrl);
+        var searchParams = new URLSearchParams(url.search);
+        var fromScenario = searchParams.get("fromscenario");
+        if (fromScenario == "true") {
+            $("#scenario_id").hide();
+        }
+    });
+
+    function capitalizeFirstLetter(string) {
+        return string.charAt(0).toUpperCase() + string.slice(1);
+    }
+    $(document).ready(function () {
+
+
+        if ('@Model.IsExporting'.toLocaleLowerCase() === 'true') {
+            $("#scenid").val(@Model.ScenarioId);
+            $(".successMessage").text("");
+            $(".errorMessage").text("");
+            $("#exportcandidatepool").modal("show");
+        }
+
+        $(document).on("change", "#exporttype", function () {
+            $(".successMessage").text("");
+            $(".errorMessage").text("");
+            $(".alert").hide();
+        });
+
+        $(document).on("click", ".exportModal", function () {
+            $("#scenid").val(@Model.ScenarioId);
+            console.log("Scenario id = ", @Model.ScenarioId);
+            CheckRunAvailability(@Model.ScenarioId);
+
+        });
+
+
+
+
+        $('#scenario').trigger('change');
+        $('#deleteproject').on('click', function () {
+            $('#projectid').val($(this).attr('current-id'));
+        });
+        function CheckRunAvailability(selectedscenario) {
+            $.ajax
+                ({
+                    type: 'POST',
+                    dataType: 'JSON',
+                    url: '/ProjectTreatments/CheckRunAvailAbilty',
+                    data: { scenarioId: selectedscenario },
+                    success: function (res) {
+                        if (res) {
+                            $("#ExportAlertModel").modal("show");
+                            return;
+                        }
+                        else {
+                            $(".successMessage").text("");
+                            $(".errorMessage").text("");
+                            $(".alert").hide();
+                            $("#exportcandidatepool").modal("show");
+                        }
+                    },
+                    error: function (res) {
+                        console.log(res)
+                    }
+
+                });
+        }
+        var dataTable = $('#projectsdataTable').DataTable({
+            "fixedColumns": {
+                left: 0,
+                right: 1
+            },
+            "processing": true,
+            "serverSide": true,
+            "bSearchable": true,
+            "searching": false,
+            "scroller": true,
+            "fixedHeader": {
+                "header": true
+            },
+            "scrollX": true,
+            "scrollY": 300,
+            "order": [[0, 'asc']],
+            "language": {
+                "emptyTable": "No record found.",
+                "processing":
+                    '<i class="fa fa-spinner fa-spin fa-3x fa-fw" style="color:#2a2b2b;"></i><span class="sr-only">Loading...</span> '
+            },
+            "sAjaxSource": "/Projects/ApplyPagination",
+            "columns": [
+                {
+                    "data": "projectId",
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "assetType",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "district",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "county",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "route",
+                    "autoWidth": true,
+                    orderable: false,
+                    "searchable": true,
+                    "render": function (data, type, row) {
+                        return data.toString().padStart(4, '0');
+                    }
+                },
+                {
+                    "data": "section",
+                    "autoWidth": true,
+                    orderable: false,
+                    "searchable": true
+                },
+                {
+                    "data": "direction",
+                    "autoWidth": true,
+                    orderable: false,
+                    "searchable": true
+                },
+                {
+                    "data": "selectedFirstYear",
+                    "autoWidth": true,
+                    orderable: false,
+                    "searchable": true
+                },
+                {
+                    "data": "totalCost",
+                    "autoWidth": true,
+                    orderable: false,
+                    "searchable": true,
+                    render: function (data, type, row) {
+                        return new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: 'USD',
+                            minimumFractionDigits: 2
+                        }).format(row.totalCost);
+                    }
+                },
+                {
+                    "data": "benefit",
+                    "autoWidth": true,
+                    orderable: false,
+                    "searchable": true,
+                    render: function (data, type, row) {
+                        return new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: 'USD',
+                            minimumFractionDigits: 2
+                        }).format(row.benefit);
+                    }
+                },
+                {
+                    "data": "numberOfTreatments",
+                    "autoWidth": true,
+                    orderable: false,
+                    "searchable": true
+                },
+                {
+                    "data": "commitmentStatus",
+                    "autoWidth": true,
+                    orderable: false,
+                    "searchable": true
+                },
+                {
+                    "data": "selected",
+                    orderable: false,
+                    "autoWidth": true,
+                    "searchable": true
+                },
+                {
+                    "data": "preferredStartingYear",
+                    "autoWidth": true,
+                    orderable: false,
+                    "searchable": true
+                },
+                {
+                    "data": "userCreated",
+                    "autoWidth": true,
+                    orderable: false,
+                    "searchable": true
+                },
+                {
+                    "data": null,
+                    title: "Actions",
+                    orderable: false,
+                    defaultContent: '',
+                    render: function (data, type, row) {
+
+                        var inner = `<button type="button" value="` + row.projectId + `"
+                                                 onclick="oncontextmenuclicked.bind(this,event)()" class="circlebutton"
+                                                 context-menu>
+                                            <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                        </button>
+                                    `;
+                        return inner;
+                    }
+                }
+            ]
+        });
+
+
+
+        dataTable.column(9).visible(false);
+        dataTable.column(10).visible(false);
+        dataTable.column(11).visible(false);
+        dataTable.column(12).visible(false);
+        dataTable.column(13).visible(false);
+        dataTable.column(14).visible(false);
+
+        $(document).on("click", ".sort_asc", function () {
+            dataTable.order([$(this).attr("value"), 'asc']).draw();
+        });
+
+        $(document).on("click", ".sort_desc", function () {
+            dataTable.order([$(this).attr("value"), 'desc']).draw();
+        });
+
+        $(document).on("change", ".form-check-input", function () {
+            if ($(this).is(":checked")) {
+                dataTable.column($(this).val()).visible(true);
+            } else {
+                dataTable.column($(this).val()).visible(false);
+            }
+            dataTable.ajax.reload();
+
+        });
+
+
+    });
+
+
+
+    function oncontextmenuclicked(event, id) {
+        var contextmenu = $('#contextmenu');
+        var portheight = window.innerHeight;
+        var contextheight = contextmenu.height();
+        var ycor = event.clientY;
+        var offset = (event.clientY + contextheight) - portheight;
+        if (offset > 0) {
+            ycor = ycor - offset;
+        }
+        contextmenu.css("display", "block")
+            .css("left", `${event.clientX - 260}px`)
+            .css("top", `${ycor}px`);
+
+
+        var scenid = $(this).val();
+        $('.menu a[href]').each(function () {
+            var paramname = "scenid";
+            if ($(this).attr("param")) {
+                paramname = $(this).attr('param');
+            }
+            var url = new URL($(this).prop('href'));
+            url.searchParams.set(paramname, scenid);
+            $(this).prop("href", url.href);
+        });
+    }
+
+
+
+     function oncontextmenuclickednew(event, id) {
+        var contextmenu = $('#contextmenunew');
+        var portheight = window.innerHeight;
+        var contextheight = contextmenu.height();
+        var ycor = event.clientY;
+        var offset = (event.clientY + contextheight) - portheight;
+        if (offset > 0) {
+            ycor = ycor - offset;
+        }
+        contextmenu.css("display", "block")
+            .css("left", `${event.clientX - 260}px`)
+            .css("top", `${ycor}px`);
+
+
+        $(".sort").each(function () {
+            if ($(this).hasClass("sort_asc")) {
+                $(this).attr("value", id);
+            }
+            if ($(this).hasClass("sort_desc")) {
+                $(this).attr("value", id);
+            }
+        });
+    }
+
+</script>
+<style>
+    .menuitem:hover .submenu {
+        display: block;
+    }
+
+    table.dataTable thead > tr > th.sorting_asc:before, table.dataTable thead > tr > th.sorting_desc:after, table.dataTable thead > tr > td.sorting_asc:before, table.dataTable thead > tr > td.sorting_desc:after {
+        display: none !important;
+    }
+
+    table.dataTable thead > tr > th.sorting:before, table.dataTable thead > tr > th.sorting_asc:before, table.dataTable thead > tr > th.sorting_desc:before, table.dataTable thead > tr > th.sorting_asc_disabled:before, table.dataTable thead > tr > th.sorting_desc_disabled:before, table.dataTable thead > tr > td.sorting:before, table.dataTable thead > tr > td.sorting_asc:before, table.dataTable thead > tr > td.sorting_desc:before, table.dataTable thead > tr > td.sorting_asc_disabled:before, table.dataTable thead > tr > td.sorting_desc_disabled:before {
+        display: none !important;
+    }
+
+    table.dataTable thead > tr > th.sorting:after, table.dataTable thead > tr > th.sorting_asc:after, table.dataTable thead > tr > th.sorting_desc:after, table.dataTable thead > tr > th.sorting_asc_disabled:after, table.dataTable thead > tr > th.sorting_desc_disabled:after, table.dataTable thead > tr > td.sorting:after, table.dataTable thead > tr > td.sorting_asc:after, table.dataTable thead > tr > td.sorting_desc:after, table.dataTable thead > tr > td.sorting_asc_disabled:after, table.dataTable thead > tr > td.sorting_desc_disabled:after {
+        display: none !important;
+    }
+
+    table thead {
+        background: #3399cc !important;
+    }
+
+        table thead tr th a {
+            padding-left: 20px;
+            padding-right: 20px;
+            color: #fff;
+        }
+
+        table thead tr th {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+    .toolbar {
+        float: left;
+    }
+</style>

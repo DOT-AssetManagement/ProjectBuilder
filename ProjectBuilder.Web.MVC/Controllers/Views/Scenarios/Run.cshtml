@@ -1,0 +1,234 @@
+﻿@model RunScenarioViewModel
+
+@{
+    ViewData["Title"] = "Run";
+   // string selectedScenario = "";
+}
+<div class="row">
+
+
+    <h2>Run Scenario</h2>
+
+    <div class = "col-auto">
+        @Html.DropDownListFor(model => model.SelectedScenario,new SelectList(Model.Scenarios,"ScenarioId","ScenarioFullName"),"Select Scenario",new {@class = "col form-select mx-2",id="scenarioslist"})
+    </div>
+</div>
+<div class="row">
+    <div class="row mt-3">
+        <h5>Scenario Parameters</h5>
+        <div class="table-responsive overflow-scroll" style="height:40vh;">
+            <table class="table table-bordered table-hover table-striped">
+                <thead class="bg-success text-white">
+                    <tr>
+                      <th>
+                        @Html.DisplayName("Parameter Name")
+                      </th>
+                      <th>
+                        @Html.DisplayName("Paramater Value")
+                      </th>
+                      <th>
+                        @Html.DisplayName("Actions")
+                      </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var parameter in Model.ScenarioParameters)
+                    {
+                      <tr>
+                         <td>
+                             @Html.DisplayFor(modelItem => parameter.ParameterName)
+                         </td>
+                         <td>
+                                    @if(parameter.ParameterValue == 1)
+                                    {
+                                         @Html.DisplayName("True")
+                                    }
+                                    else if(parameter.ParameterValue == 0)
+                                    {
+                                         @Html.DisplayName("False");                                       
+                                    }
+                                    else @Html.DisplayFor(modelItem => parameter.ParameterValue)
+                         </td>           
+                         <td>
+                             <button class="btn btn-primary mb-1" onclick="oneditingscenparam.bind(this)()" data-bs-toggle="modal" data-bs-target="#scenarioparameters" data-id="@parameter.ParameterId">
+                                     <i class="bi bi-pencil-square"></i>
+                             </button>
+                        </td>
+                     </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="row mt-3">
+        <h5>Budgets Constraints</h5>
+        <div class="table-responsive overflow-scroll" style="height:auto;">
+            <table class="table table-bordered table-hover table-striped">
+                <thead class="bg-success text-white">
+                    <tr>
+                        <th>
+                            @Html.DisplayName("Year of work")
+                        </th>
+                        <th>
+                            @Html.DisplayName("District")
+                        </th>
+                        <th>
+                            @Html.DisplayName("Bridge Interstate Budget ($M)")
+                        </th>
+                        <th>
+                            @Html.DisplayName("Bridge Non-Interstate Budget ($M)")
+                        </th>
+                        <th>
+                            @Html.DisplayName("Pavement Interstate Budget ($M)")
+                        </th>
+                        <th>
+                            @Html.DisplayName("Pavement Non-Interstate Budget ($M)")
+                        </th>
+                        <th>
+                            @Html.DisplayName("Actions")
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var budget in Model.ScenarioBudgets)
+                    {
+                      <tr>
+                         <td>
+                             @Html.DisplayFor(modelItem => budget.YearWork)
+                         </td>
+                         <td>
+                            @Html.DisplayFor(modelItem => budget.District)
+                         </td>  
+                          <td>
+                           
+                                @{
+                                    decimal BridgeInterstateBudget = budget.BridgeInterstateBudget ?? 0;
+                                    @Math.Round(BridgeInterstateBudget / 1000000, 2)
+                                    ;
+                                }
+
+                         </td> 
+                          <td>
+                                @{
+                                    decimal BridgeNonInterstateBudget = budget.BridgeNonInterstateBudget ?? 0;
+                                    @Math.Round(BridgeNonInterstateBudget / 1000000, 2)
+                                    ;
+                                }
+                         </td> 
+                          <td>
+                                @{
+                                    decimal PavementInterstateBudget = budget.PavementInterstateBudget ?? 0;
+                                    @Math.Round(PavementInterstateBudget / 1000000, 2)
+                                    ;
+                                }
+                         </td> 
+                         <td>
+                                @{
+                                    decimal PavementNonInterstateBudget = budget.PavementNonInterstateBudget ?? 0;
+                                    @Math.Round(PavementNonInterstateBudget / 1000000, 2)
+                                    ;
+                                }
+                         </td> 
+                         <td>
+                             <button class="btn btn-primary mb-1" onclick="oneditingbudgetconstraints.bind(this)()" data-bs-toggle="modal" data-bs-target="#budgetconstraints">
+                                     <i class="bi bi-pencil-square"></i>
+                             </button>
+                        </td>
+                     </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<div class="row mt-3">
+    <div class="col-auto">   
+       <button id="runbutton" class="btn btn-primary mb-1" style="width:150px;">Run</button>
+    </div>
+</div>
+<div class="modal fade" id="scenarioparameters" tabindex="-1" role="dialog" aria-labelledby="scenarioparameterslabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="scenarioparameterslabel">Update Scenario Parameter</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="scenarioparametersform" class="needs-validation" asp-controller="RunScenario" asp-action="UpdateScenarioParameter" asp-route-id="@Model.SelectedScenario" method="post" novalidate>
+                <div class="modal-body">
+                    <input name="parameterid" id="paramid" hidden />
+                    <div class="mb-3">
+                        <label for="parametername" class="form-label">Parameter Name</label>
+                        <input type="text" name="parametername" id="parametername" class="form-control" readonly />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div id="paramvalueparent" class="mb-3">
+                        <label for="parametervalue" class="form-label">Parameter Value</label>
+                        <input name="parametervalue" id="parametervalue" type="text" class="form-control" required/>
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div id="boolvalueparent" class="form-check form-switch mb-3" style="display:none;">
+                        <input class="form-check-input" type="checkbox" name="boolvalue" id="boolvalue">
+                        <label class="form-check-label" for="boolvalue">Parameter value</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="budgetconstraints" tabindex="-1" role="dialog" aria-labelledby="budgetconstraintslabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="budgetconstraintslabel">Update Budget Constraints</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="budgetconstraintsform" class="needs-validation" asp-controller="RunScenario" asp-action="UpdateBudgetConstraints" asp-route-id="@Model.SelectedScenario" method="post" novalidate>
+                <div class="modal-body">
+                    <input name="scenaroid" id="scenaroid" hidden value="@Model.SelectedScenario"/>
+                    <div class="mb-3">
+                        <label for="district" class="form-label">District</label>
+                        <input type="number" name="district" id="district" class="form-control" readonly />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="yearwork" class="form-label">Year</label>
+                        <input name="yearwork" id="yearwork" type="number" class="form-control" readonly/>
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="bridgeinterstatebudget" class="form-label">Bridge Interstate Budget</label>
+                        <input name="bridgeinterstatebudget" id="bridgeinterstatebudget" type="text" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="bridgenoninterstatebudget" class="form-label">Bridge None-Interstate Budget</label>
+                        <input name="bridgenoninterstatebudget" id="bridgenoninterstatebudget" type="text" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="pavementinterstatebudget" class="form-label">Pavement Interstate Budget</label>
+                        <input name="pavementinterstatebudget" id="pavementinterstatebudget" type="text" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="pavementnoninterstatebudget" class="form-label">Pavement Non-Interstate Budget</label>
+                        <input name="pavementnoninterstatebudget" id="pavementnoninterstatebudget" type="text" class="form-control" required />
+                        <div class="invalid-feedback">Field is required</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,113 @@
+﻿@using ProjectBuilder.Core;
+@using Newtonsoft.Json
+
+@model TreatmentSummaryViewModel
+@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+}
+@if (User.Identity?.IsAuthenticated == true)
+{
+
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+
+    <h2 class="bottom-50">Reports</h2>
+
+    
+    <div class="card">
+    <div class="card-body">
+        <h5>Treatment Summary</h5>
+
+
+    @using (Html.BeginForm("Index", "TreatmentSummaryReport", FormMethod.Get))
+    {
+        <div class="row justify-content-start mt-2">
+            <div class="col-3">
+                @Html.DropDownListFor(model => model.ScenarioId,Model.Scenarios.Select(s => new SelectListItem() {Value = s.ScenarioId.ToString(), Text = s.ScenarioFullName}),"Select Scenario",new {@class = "form-control"})
+            </div>
+
+            <div class="col-3">
+                @Html.DropDownListFor(model => model.SelectedDistrict,Model.Districts.Select(s => new SelectListItem() {Text = s.ToString()}),"Select District",new {@class = "form-control"})
+            </div>
+            <input type="submit" value="Filter" class="col-2 btn btn-primary" />
+        </div>
+    }
+            <div class="row mt-2">
+
+        <table class="table table-bordered table-hover table-striped" id="treatmentssummary">
+            <thead class="bg-success text-white">
+                <tr>
+                    <th>Scenario</th>
+                    <th>District</th>
+                    <th>Selected Year</th>
+                    <th>Asset Type</th>
+                    <th>Treatment Description</th>
+                    <th>Projects</th>
+                    <th>Treatments</th>
+                    <th>Cost ($M)</th>
+                    <th>Benefit ($M)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var dataa in Model.TreatmentSummary)
+                {
+                    <tr>
+                        <td>@dataa.ScenarioId</td>
+                        <td>@dataa.District</td>
+                        <td>@dataa.SelectedYear</td>
+                        <td>@dataa.AssetType</td>
+                        <td>@dataa.TreatmentDescription</td>
+                        <td>@dataa.ProjectId</td>
+                        <td>@dataa.TreatmentId</td>
+                                <td>
+                                    @{
+                                        double cost = dataa.Cost ?? 0;
+                                        @Math.Round(cost / 1000000, 2)
+                                        ;
+                                    }
+                                </td>
+                                <td>
+                                    @{
+                                        double Benefit = dataa.Benefit ?? 0;
+                                        @Math.Round(Benefit / 1000000, 2)
+                                        ;
+                                    }
+                                </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+
+
+
+    </div>
+    </div>
+    </div>
+
+    <script>
+
+    </script>
+
+    <input asp-for="@Model.Json" type="text" name="SelectedDistrict" class="form-control" style="display:none;" />
+    <script>
+        $(document).ready(function () {
+            var table = $('#treatmentssummary').DataTable({
+                searching: false
+            });
+
+        });
+    </script>
+
+
+}
+else
+{
+    <div class="text-center">
+        <h1 class="display-4">Welcome</h1>
+        <p>Please login into your account to see your Libraries.</p>
+    </div>
+}

@@ -1,0 +1,462 @@
+﻿@model CandidatePoolViewModel
+
+@{
+    ViewData["Title"] = "Candidate Pools";
+    string currentUserName = ViewData["CurrentUserName"]?.ToString();
+}
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+
+
+
+
+<nav id="sidebarMenu" class="sidenavbar">
+</nav>
+<div class="container-fluid" style="height:561px;margin-top:50px;overflow-y:auto;">
+
+
+        <h1>Candidate Pools</h1>
+      
+        <input id="userRole" type="hidden" value='@Context.Session.GetString("RoleName")' />
+        @if (Model.Libraries.Count() > 0)
+        {
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="candidatepoolstable" class="table table-bordered table-hover table-striped">
+                            <thead class="bg-success text-white">
+                                <tr>
+                                    <th>
+                                        @Html.DisplayNameFor(model => model.Name)
+                                    </th>
+                                    <th>
+                                        @Html.DisplayNameFor(model => model.Description)
+                                    </th>
+                                    <th>
+                                        @Html.DisplayNameFor(model => model.TreatmentsNumber)
+                                    </th>
+                                    <th>
+                                        Shared
+                                    </th>
+                                    <th>
+                                        Owner
+                                    </th>
+                                    <th>
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.Libraries)
+                                {
+                                    <tr>
+                                        <td>
+                                            @Html.DisplayFor(modelItem => item.Name)
+                                        </td>
+                                        <td>
+                                            @Html.DisplayFor(modelItem => item.Description)
+                                        </td>
+                                        <td>
+                                            @Html.DisplayFor(modelItem => item.TreatmentsCount)
+                                        </td>
+                                        <td>
+                                            @if (item.IsShared)
+                                            {
+                                                <i class="bi bi-check-lg"></i>
+                                            }
+                                            else
+                                            {
+                                                @Html.DisplayName("No")
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (item.Owner != currentUserName)
+                                            {
+                                                @Html.DisplayFor(modelitem => item.Owner)
+                                            }
+                                        </td>
+                                        <td>
+                                            @* @if (item.Owner == currentUserName)
+                                    {
+                                    <button onclick="oneditinglibrary.bind(this)()" value="@item.LibraryId"
+                                    class="btn btn-primary mb-1">
+                                    <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                    if (item.IsShared)
+                                    {
+                                    <button type="button" class="btn btn-primary mb-1" data-id="@item.LibraryId"
+                                    onclick="onsharinglibrary.bind(this)()" data-bs-toggle="modal">
+                                    <i class="bi bi-files"></i>
+                                    </button>
+
+                                    }
+                                    else
+                                    {
+                                    <button type="button" class="btn btn-primary mb-1" disabled>
+                                    <i class="bi bi-files"></i>
+                                    </button>
+                                    }
+                                    <button type="button" data-id="@item.LibraryId"
+                                    onclick="ondeletinglibrary.bind(this)()" class="btn btn-danger mb-1"
+                                    data-bs-toggle="modal" data-bs-target="#deletealert">
+                                    <i class="bi bi-trash"></i>
+                                    </button>
+                                    }
+                                    else
+                                    {
+                                    <button class="btn btn-primary mb-1" disabled>
+                                    <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                    if (Context.Session.GetString("RoleName") == "Guest")
+                                    {
+                                    <button type="button" class="btn btn-primary mb-1" disabled>
+                                    <i class="bi bi-files"></i>
+                                    </button>
+                                    }
+                                    else
+                                    {
+                                    <button type="button" class="btn btn-primary mb-1" data-id="@item.LibraryId"
+                                    onclick="onsharinglibrary.bind(this)()" data-bs-toggle="modal">
+                                    <i class="bi bi-files"></i>
+                                    </button>
+                                    }
+                                    <button type="button" class="btn btn-danger mb-1" disabled>
+                                    <i class="bi bi-trash"></i>
+                                    </button>
+                                    } *@
+                                            <button type="button" value="@item.CandidatePoolId"
+                                                    onclick="oncontextmenuclicked.bind(this,event)()" class="circlebutton"
+                                                    context-menu>
+                                                <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <h5 class="ms-2">you dont have any library yet, you can create one using the create button.</h5>
+        }
+
+        @if (Context.Session.GetString("RoleName") != "Guest")
+        {
+            <div class="col-auto">
+                <input id="userlibrariescount" value="@Model.Libraries.Count(l=> l.Owner == currentUserName)" hidden />
+                @if (Model.Libraries.Count(l => l.Owner == currentUserName) > 0)
+                {
+                    <button type="button" class="btn btn-primary m-1" data-bs-toggle="modal"
+                            data-bs-target="#importtreatment">
+                        Import Treatments
+                    </button>
+                }
+                else
+                {
+                    <button type="button" class="btn btn-primary m-1" data-bs-toggle="modal"
+                            data-bs-target="#importtreatment" disabled>
+                        Import Treatments
+                    </button>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="col-auto">
+                <button type="button" class="btn btn-primary m-1" data-bs-toggle="modal"
+                        data-bs-target="#importtreatment" disabled>
+                    Import Treatments
+                </button>
+            </div>
+        }
+
+
+
+
+
+
+    <div class="modal fade" id="CreateNewLibraryForm" tabindex="-1" role="dialog"
+         aria-labelledby="CreateNewLibraryFormlabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="CreateNewLibraryFormlabel">Create Library</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="createlibrary" class="needs-validation" asp-controller="CandidatePools"
+                      asp-action="CreateLibrary" method="post" novalidate>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="libraryName" class="form-label">Library Name</label>
+                            <input asp-for="@Model.Name" type="text" name="libraryname" class="form-control"
+                                   required />
+                            <div id="namefeedback" class="invalid-feedback">Field is required</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="libraryDescription" class="form-label">Library Description</label>
+                            <input asp-for="@Model.Description" name="librarydescription" type="text"
+                                   class="form-control" required />
+                            <div id="descriptionfeedback" class="invalid-feedback">Field is required</div>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" asp-for="@Model.IsEmptyLibrary" type="radio"
+                                   name="isemptylibrary" id="isemptylibrary" value="true">
+                            <label class="form-check-label" for="isemptylibrary">
+                                Create an empty library
+                            </label>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" asp-for="@Model.IsEmptyLibrary" type="radio"
+                                   name="isemptylibrary" id="librarywithtreatment" value="false" checked>
+                            <label class="form-check-label" for="librarywithtreatment">
+                                Create library with treatments from Master library
+                            </label>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" asp-for="@Model.IsShared" type="checkbox"
+                                       name="isshared" id="isshared">
+                                <label class="form-check-label" for="isshared">Shared</label>
+                            </div>
+                        </div>
+                        <div id="libraryoptionparent">
+                            <div class="mb-3">
+                                <label for="assettype" class="form-label">Asset Type</label>
+                                <select asp-for="@Model.SelectedAsset" name="assettype" class="form-select">
+                                    <option selected>All Assets</option>
+                                    <option>Bridge</option>
+                                    <option>Pavement</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="district" class="form-label">District</label>
+                                <select asp-for="@Model.SelectedDistrict" id="district" name="district"
+                                        class="form-select">
+                                    <option selected>All Districts</option>
+                                    @for (int i = 1; i <= 12; i++)
+                                    {
+                                        <option>@i</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="county" class="form-label">County</label>
+                                <select asp-for="@Model.SelectedCounty" id="county" name="county"
+                                        class="form-select" data-clear="yes">
+                                    <option selected>All Counties</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="route" class="form-label">Route</label>
+                                <select asp-for="@Model.SelectedRoute" id="route" name="route" class="form-select"
+                                        data-clear="yes">
+                                    <option selected>All Routes</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="minyear" class="form-label">Minimum Year</label>
+                                <input asp-for="@Model.MinYear" name="minyear" type="number" class="form-control"
+                                       maxlength="4" min="2010" max="2999" required placeholder="2023" />
+                                <div id="minyearfeedback" class="invalid-feedback">Field is required</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="maxyear" class="form-label">Maximum Year</label>
+                                <input asp-for="@Model.MaxYear" name="maxyear" type="number" class="form-control"
+                                       maxlength="4" min="2010" max="2999" required placeholder="2054" />
+                                <div id="maxyearfeedback" class="invalid-feedback">Field is required</div>
+                            </div>
+
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success">Create</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+
+    <div class="modal fade" id="EditLibraryForm" tabindex="-1" role="dialog" aria-labelledby="editlibraryheader"
+         aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editlibraryheader">Edit Library</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="editlibrary" class="needs-validation" asp-controller="CandidatePools"
+                      asp-action="EditLibrary" method="post" novalidate>
+                    <div class="modal-body">
+                        <input asp-for="@Model.Id" name="libraryId" hidden />
+                        <div class="mb-3">
+                            <label for="libraryName" class="form-label">Library Name</label>
+                            <input asp-for="@Model.Name" type="text" name="libraryname" class="form-control"
+                                   required />
+                            <div id="editnamefeedback" class="invalid-feedback">Field is required</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="libraryDescription" class="form-label">Library Description</label>
+                            <input asp-for="@Model.Description" name="librarydescription" type="text"
+                                   class="form-control" required />
+                            <div id="editdescriptionfeedback" class="invalid-feedback">Field is required</div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" asp-for="@Model.IsShared" type="checkbox"
+                                       name="isshared" id="isshared">
+                                <label class="form-check-label" for="isshared">Is Shared</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button name="submitbtn" type="submit" class="btn btn-success">Update</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="deletealert" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+         aria-labelledby="deletealertLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deletealertLabel">Delete Library</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body d-flex align-items-center">
+                    <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                    <span>
+                        Are you sure you want to delete the selected library ?
+                    </span>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <form id="deleteform" asp-antiforgery="true" asp-action="DeleteLibrary"
+                          asp-controller="CandidatePools" method="post">
+                        <input asp-for="@Model.Id" hidden name="libraryid" />
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="importtreatment" tabindex="-1" role="dialog" aria-labelledby="importtreatmentlabel"
+         aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editlibraryheader">Import Treatment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="treatmentimportform" class="needs-validation" asp-controller="CandidatePools"
+                      asp-action="ImportTreatments" method="post" enctype="multipart/form-data" novalidate>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="libraries" class="form-label">Libraries</label>
+                            @Html.DropDownListFor(model => model.Id,new SelectList(Model.Libraries.Where(l =>
+                            l.Owner ==
+                            currentUserName),"LibraryId","Name"),"Select Library",new {@class =
+                            "form-select",id="availiblelibraries",required = "required",name = "id"})
+                            <div class="invalid-feedback">Field is required</div>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="radio" name="importtype" id="importbridge"
+                                   value="true" checked>
+                            <label class="form-check-label" for="importbridge">
+                                Import Bridge Treatments from Excel
+                            </label>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="radio" name="importtype" id="importpavement"
+                                   value="false">
+                            <label class="form-check-label" for="importpavement">
+                                Import Pavement Treatments from Excel
+                            </label>
+                        </div>
+                        <div class="mb-3">
+                            <label for="formFile" class="form-label">Excel File</label>
+                            <input class="form-control" type="file" id="excelfile" name="excelfile" required
+                                   accept=".xlsx,.xls">
+                            <div id="excelvalidation" class="invalid-feedback">Field is required</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="formFile" class="form-label">Tab Name</label>
+                            <input class="form-control" name="tabname">
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-success">Import</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @* <div class="modal fade" id="createlibraryalert" data-bs-keyboard="false" tabindex="-1"
+    aria-labelledby="createlibraryalertlabel" aria-hidden="true">
+    <div class="modal-dialog">
+    <div class="modal-content">
+    <div class="modal-header">
+    <h5 class="modal-title" id="createlibraryalertlabel">Create Library</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+    <div class="modal-body d-flex align-items-center">
+    <i class="bi bi-info-circle-fill text-primary fa-2x me-3"></i>
+    <span>
+    you dont have any library for now, do you want to create a new one ?
+    </span>
+    </div>
+    <div class="modal-footer">
+    <button id="closealert" type="button" class="btn btn-secondary"
+    data-bs-dismiss="modal">Close</button>
+    <button id="createlibrarywhenempty" type="button" class="btn btn-primary">Create</button>
+    </div>
+    </div>
+    </div>
+    </div> *@
+    <div id="contextmenu" class="contextmenu-container">
+        <ul class="menu">
+            <li class="menuitem">
+                <button type="button">
+                    <i class="fa-regular fa-pen-to-square"></i>
+                    <span>Edit</span>
+                </button>
+            </li>
+            <hr />
+            <li class="menuitem">
+                <a>
+                    <i class="fa-solid fa-copy"></i>
+                    <span>Copy</span>
+                </a>
+            </li>
+            <hr />
+            <li class="menuitem">
+                <a>
+                    <i class="fa-solid fa-file-import"></i>
+                    <span>Import</span>
+                </a>
+            </li>
+            <hr />
+            <li class="menuitem">
+                <button type="button" id="deletescen" data-bs-toggle="modal" data-bs-target="#deletealert">
+                    <i class="fa-regular fa-trash-can"></i>
+                    <span>Delete</span>
+                </button>
+            </li>
+        </ul>
+    </div>
+
+
+</div>

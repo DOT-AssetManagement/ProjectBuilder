@@ -1,0 +1,49 @@
+﻿@model IEnumerable<AraEnumerationViewModel>
+
+
+
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css" />
+
+
+<script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+
+<table class="table table-bordered table-hover table-striped" id="Ara">
+    <thead class="bg-success text-white">
+        <tr>
+            <th>
+                Enum Family
+            </th>
+            <th>
+                Enum Name
+            </th>
+            <th>
+                Enum Int
+            </th>
+            <th>
+                Actions
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.EnumFamily</td>
+                <td>@item.EnumName</td>
+                <td>@item.EnumInt</td>
+                <td>
+                    <button onclick="oneditingproject.bind(this)()" value="" class="btn btn-primary mb-1" disabled>
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+                </td>
+            </tr>
+        }
+    </tbody>
+
+</table>
+<script>
+    new DataTable('#Ara');
+
+</script>

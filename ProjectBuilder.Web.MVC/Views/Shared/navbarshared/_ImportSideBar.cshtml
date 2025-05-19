@@ -1,0 +1,17 @@
+﻿@{
+    var scenid = ViewContext.HttpContext.Request.Query["scenid"].FirstOrDefault();
+}
+
+
+<nav id="sidebarMenu" class="d-lg-block" style="z-index:100;height:100%;">
+
+
+    <div b-qi7u8qm8v7="" class="position-sticky">
+        <div b-qi7u8qm8v7="" class="list-group list-group-flush  mt-4">
+            <a asp-action="ImportMAS" asp-controller="CandidatePools" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="administration_Import">Import MAS</a>
+            <a asp-action="ImportB2P" asp-controller="CandidatePools" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="administration_Import">Import B2P Crosswalk</a>
+
+
+        </div>
+    </div>
+</nav>

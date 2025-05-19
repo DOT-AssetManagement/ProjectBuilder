@@ -1,0 +1,333 @@
+﻿@using System.Security.Principal
+@using Microsoft.AspNetCore.Authentication.OpenIdConnect
+@using Microsoft.Extensions.Options
+@using Microsoft.Identity.Web
+@using Microsoft.AspNetCore.Http;
+@{
+    var currentLibrary = ViewContext.HttpContext.Session.GetString(ProjectBuilder.Web.MVC.Constents.LIBRARYIDKEY);
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
+    <link rel="stylesheet" href="~/ProjectBuilder.Web.MVC.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" integrity="sha512-SzlrxWUlpfuzQ+pcUCosxcglQRNAq/DZjVsC0lE40xsADsfeQoEypE+enwcOiGjk/bSuGGKHEyjSoQ1zVisanQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400&display=swap" rel="stylesheet">
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+</head>
+<body>
+
+    <header>
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            <nav id="sidebarMenu" class="collapse d-lg-block sidebar collapse" style="z-index:100;">
+
+                <div class="position-sticky">
+                    <div class="list-group list-group-flush  mt-4">
+                        <a asp-action="Index" asp-controller="Home" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect rounded" aria-current="true">
+                            <i class="fa-solid fa-house me-3 fa-xl"></i><span>Home</span>
+                        </a>
+                        <a asp-action="Index" asp-controller="Libraries" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect">
+                            <img src="~/images/Libraries.png" width="15%" /> <span>Libraries</span>
+                        </a>
+
+                        @*For Admin User*@
+
+                        @if (Context.Session.GetString("RoleName") == "Admin")
+                        {
+                            <button id="administration" type="button" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect rounded" data-bs-toggle="collapse"
+                                    data-bs-target="#administration-collapsable">
+                                <i class="fa fa-cog me-3 fa-xl"></i><span>Administration<span class="arrow"></span><span class="arrow-down"></span></span>
+                            </button>
+                        }
+                        <div class="accordion-collapse collapse" id="administration-collapsable" aria-labelledby="treatments" data-bs-parent="#treatments">
+                            <ul>
+                                <div>
+                                    <button id="SetUp" type="button" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect rounded" data-bs-toggle="collapse"
+                                            data-bs-target="#SetUp-collapsable">
+                                        <span>Setup<span class="arrow"></span><span class="arrow-down"></span></span>
+                                    </button>
+                                    <div class="accordion-collapse collapse" id="SetUp-collapsable" aria-labelledby="treatments" data-bs-parent="#treatments">
+                                        <ul>
+                                            <li>
+                                                <a asp-action="Index" asp-controller="ARAEnumeration" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="setup">ARA Enumerations</a>
+                                            </li>
+                                            <li>
+                                                <a asp-action="Index" asp-controller="BridgeToPavements" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="setup">Bridge To Pavements</a>
+                                            </li>
+                                            <li>
+                                                <a asp-action="Index" asp-controller="County" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="setup">County</a>
+                                            </li>
+                                            <li>
+                                                <a asp-action="Index" asp-controller="DefaultSlack" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="setup">Slack Periods</a>
+                                            </li>
+                                            <li>
+                                                <a asp-action="Index" asp-controller="ImportSessions" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="setup">Import Sessions</a>
+                                            </li>
+                                            <li>
+                                                <a asp-action="Index" asp-controller="Parameter" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="setup">Parameters</a>
+                                            </li>
+                                            <li>
+                                                <a asp-action="Index" asp-controller="TreatmentCancellationMatrix" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="setup">Treatment Cancellation Matrix</a>
+                                            </li>
+                                            <li>
+                                                <a asp-action="Index" asp-controller="TreatmentParameter" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="setup">User Treatment Parameters</a>
+                                            </li>
+                                            <li>
+                                                <a asp-action="Index" asp-controller="UserTreatments" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="setup">User Treatments</a>
+                                            </li>
+                                            <li>
+                                                <a asp-action="Index" asp-controller="TreatmentType" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="setup">Treatment Types</a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+
+                                <li>
+                                    <a asp-action="Index" asp-controller="User" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="users">Users</a>
+                                </li>
+                                <li>
+                                    <a asp-action="Index" asp-controller="Roles" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="roles">Roles</a>
+                                </li>
+
+                            </ul>
+                        </div>
+
+                        @*For Normal Users*@
+                        @if (Context.Session.GetString("RoleName") != "Admin")
+                        {
+                            <button id="treatments" type="button" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect rounded" data-bs-toggle="collapse"
+                                    data-bs-target="#treatments-collapsable">
+                                <i class="fa-solid fa-screwdriver-wrench me-3 fa-xl"></i><span>Treatments<span class="arrow"></span><span class="arrow-down"></span></span>
+                            </button>
+                            <div class="accordion-collapse collapse" id="treatments-collapsable" aria-labelledby="treatments" data-bs-parent="#treatments">
+                                <ul>
+                                    <li>
+                                        <a asp-action="Index" asp-controller="Treatments" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="treatments">View</a>
+                                    </li>
+
+                                </ul>
+                            </div>
+                            <button id="scenarios" type="button" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect rounded" data-bs-toggle="collapse"
+                                    data-bs-target="#scenarios-collapsable">
+                                <i class="fa-regular fa-file-image me-3 fa-xl"></i><span>Scenarios<span class="arrow"></span><span class="arrow-down"></span></span>
+                            </button>
+                            <div class="accordion-collapse collapse" id="scenarios-collapsable" aria-labelledby="scenarios" data-bs-parent="#scenarios">
+                                <ul>
+                                    <li>
+                                        <a asp-action="Index" asp-controller="Scenarios" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="scenarios">View</a>
+                                    </li>
+                                    <li>
+                                        <a asp-action="Index" asp-controller="RunScenario" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="scenarios">Run</a>
+                                    </li>
+                                </ul>
+                            </div>
+                            <button id="projects" type="button" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect rounded" data-bs-toggle="collapse"
+                                    data-bs-target="#projects-collapsable">
+                                <i class="fa-solid fa-clipboard-list me-3 fa-xl"></i><span>Projects<span class="arrow"></span><span class="arrow-down"></span></span>
+                            </button>
+                            <div class="accordion-collapse collapse" id="projects-collapsable" aria-labelledby="scenarios" data-bs-parent="#projects">
+                                <ul>
+                                    <li>
+                                        <a asp-action="Index" asp-controller="Projects" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="projects">View</a>
+                                    </li>
+                                </ul>
+                            </div>
+                            <button id="visualization" type="button" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect rounded" data-bs-toggle="collapse"
+                                    data-bs-target="#visualization-collapsable">
+                                <i class="fa-solid fa-chart-line me-3 fa-xl"></i><span>Visualization<span class="arrow"></span><span class="arrow-down"></span></span>
+                            </button>
+                            <div class="accordion-collapse collapse" id="visualization-collapsable" aria-labelledby="visualization" data-bs-parent="#visualization">
+                                <ul>
+                                    <li>
+                                        <a asp-action="Index" asp-controller="Maps" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="visualization">Map</a>
+                                    </li>
+                                    <li>
+                                        <button id="charts" type="button" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect rounded" data-bs-toggle="collapse"
+                                                data-bs-target="#charts-collapsable">
+                                            <span>Charts<span class="arrow"></span><span class="arrow-down"></span></span>
+                                        </button>
+                                        <div class="accordion-collapse collapse" id="charts-collapsable" aria-labelledby="charts" data-bs-parent="#charts">
+                                            <ul>
+                                                <li>
+                                                    <a asp-action="Index" asp-controller="NeedsChart" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="visualization_charts">Needs</a>
+                                                </li>
+                                                <li>
+                                                    <a asp-action="Index" asp-controller="PotentialBenefitsChart" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="visualization_charts">Potential Benefits</a>
+                                                </li>
+                                                <li>
+                                                    <a asp-action="Index" asp-controller="BudgetChart" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="visualization_charts">Budget</a>
+                                                </li>
+                                                <li>
+                                                    <a asp-action="Index" asp-controller="BudgetSpentChart" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="visualization_charts">Budget Spent</a>
+                                                </li>
+
+                                            </ul>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <button id="reports" type="button" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect rounded" data-bs-toggle="collapse"
+                                                data-bs-target="#reports-collapsable">
+                                            <span>Reports<span class="arrow"></span><span class="arrow-down"></span></span>
+                                        </button>
+                                        <div class="accordion-collapse collapse" id="reports-collapsable" aria-labelledby="reports" data-bs-parent="#reports">
+                                            <ul>
+                                                <li>
+                                                    <a asp-action="Index" asp-controller="ProjectSummaryReport" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="visualization_reports">Project Summary</a>
+                                                </li>
+                                                <li>
+                                                    <a asp-action="Index" asp-controller="TreatmentSummaryReport" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="visualization_reports">Treat Summary</a>
+                                                </li>
+                                                <li>
+                                                    <a asp-action="Index" asp-controller="ProjectsReport" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="visualization_reports">Combined Projects</a>
+                                                </li>
+
+                                            </ul>
+                                        </div>
+                                    </li>
+
+                                </ul>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </nav>
+        }
+        <nav id="main-navbar" class="navbar navbar-expand-lg navbar-light fixed-top" style="height:70px;">
+            <div class="d-flex ms-2 align-items-center">
+                <button class="navbar-toggler me-2 mt-2"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#sidebarMenu"
+                        aria-controls="sidebarMenu"
+                        aria-expanded="false"
+                        style="height:40px;"
+                        aria-label="Toggle navigation">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <a class="navbar-brand align-content-start justify-content-start align-items-center" href="#">
+                    <img src="~/images/head.png"
+                         alt=""
+                         class="img-fluid"
+                         loading="lazy" />
+                </a>
+            </div>
+            <div class="me-5 mt-4 ms-auto">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <ul class="d-flex align-items-center">
+                        @if (ViewBag.Libraries is not null)
+                        {
+                            <li class="nav-item d-block">
+                                <select id="libraries" class="form-select m-2" aria-label="Availible Libraries">
+                                    @foreach (var library in ViewBag.Libraries)
+                                    {
+                                        if ($"{library.LibraryId}" == currentLibrary)
+                                        {
+                                            <option value="@library.LibraryId" selected>@library.Name</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@library.LibraryId">@library.Name</option>
+                                        }
+                                    }
+                                </select>
+                            </li>
+                        }
+                        <li class="nav-item ms-3 d-block">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div style="text-align: right  !important;padding-top: 5px;">
+                                        @User.Identity?.Name
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <ul class="navbar-nav ms-auto">
+                                        <li class="nav-item dropdown">
+                                            <a class="nav-link dropdown-toggle hidden-arrow d-flex align-items-center"
+                                               href="#"
+                                               id="navbarDropdownMenuLink"
+                                               role="button"
+                                               data-bs-toggle="dropdown"
+                                               aria-expanded="false">
+                                                <i class="bi bi-person-fill  fa-lg"></i>
+                                            </a>
+                                            <ul class="dropdown-menu dropdown-menu-end"
+                                                aria-labelledby="navbarDropdownMenuLink">
+                                                <li><a class="dropdown-item text-black" href="#">Profile</a></li>
+                                                <li><a class="dropdown-item text-black" asp-area="MicrosoftIdentity" asp-controller="Account" asp-action="SignOut">Log out</a></li>
+                                            </ul>
+                                    </ul>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                }
+                else
+                {
+                    <a class="btn btn-success mb-3" asp-area="MicrosoftIdentity" asp-controller="Account" asp-action="SignIn">Sign in</a>
+                }
+
+            </div>
+        </nav>
+    </header>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <main style="margin-top: 58px">
+            <div class="container-fluid pt-4">
+                @RenderBody()
+            </div>
+        </main>
+    }
+    else
+    {
+        <div class="pt-4">
+            @RenderBody()
+        </div>
+    }
+    <div class="position-fixed top-0 end-0 p-3" style="z-index:10;margin-top:50px;" id="notecontainer">
+        <div id="mainnotificationmessage" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header text-white bg-primary">
+                <i class="bi bi-info-circle-fill fa-lg me-2"></i>
+                <strong class="me-auto"></strong>
+                <small>now</small>
+                <button type="button" class="btn-close text-white" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+            </div>
+        </div>
+    </div>
+    <div class="footer rigts">
+        <div class="copyright">
+            <span><h6>COPYRIGHTS PennDOT Project Builder 2023 V1.0 </h6></span>
+        </div>
+        <div class="rrm-sm">
+            <span><h6>ALL RIGHTS RESERVED </h6></span>
+        </div>
+    </div>
+
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+    <script>
+        document.getElementById("libraries").onchange = function () {
+            var libraryid = document.getElementById("libraries").value;
+            window.location.href = '@Url.Action(currentAction,currentController,new {id = "libraryid"})'.replace("libraryid", libraryid);
+        }
+    </script>
+</body>
+</html>

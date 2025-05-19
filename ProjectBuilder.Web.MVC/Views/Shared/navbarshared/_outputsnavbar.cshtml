@@ -1,0 +1,118 @@
+@{
+    var scenid = ViewContext.HttpContext.Request.Query["scenid"].FirstOrDefault();
+    var fromscenario = ViewContext.HttpContext.Request.Query["fromscenario"].FirstOrDefault();
+}
+
+
+<nav id="sidebarMenu" class="sidenavbar expanded">
+    <div class="accordion" id="accordianparent">
+        <div class="accordion-item">
+            <a class="accordion-button collapsed text-dark" data-bs-toggle="collapse" data-bs-target="#charts-collapsable"
+                aria-expanded="false" aria-controls="charts-collapsable">
+                <div class="accordiancontent">
+                    <i class="fa-solid fa-chart-pie me-3"></i>
+                    <span class="accordianspan">Charts</span>
+                </div>
+            </a>
+            <div id="charts-collapsable" class="accordion-collapse collapse" data-bs-parent="#accordianparent">
+                <div class="accordion-body">
+                    <ul>
+                        <li class="accordian-sub_Btn">
+                            <a asp-action="Needs" asp-controller="Charts" asp-route-scenid="@scenid" asp-route-fromscenario="@fromscenario"
+                                class="accordianlink" url='needs'>
+                                <span class="accordianspan">Needs</span>
+                            </a>
+                        </li>
+                        <li class="accordian-sub_Btn">
+                            <a asp-action="PotentialBenefits" asp-controller="Charts" asp-route-scenid="@scenid" asp-route-fromscenario="@fromscenario"
+                                class="accordianlink" url='potentialbenefits'>
+                                <span class="accordianspan">Potential Benefits</span>
+                            </a>
+                        </li>
+                        <li class="accordian-sub_Btn">
+                            <a asp-action="Budget" asp-controller="Charts" asp-route-scenid="@scenid" asp-route-fromscenario="@fromscenario"
+                                class="accordianlink" url="budget">
+                                <span class="accordianspan">Budget</span>
+                            </a>
+                        </li>
+                        <li class="accordian-sub_Btn">
+                            <a asp-action="BudgetSpent" asp-controller="Charts" asp-route-scenid="@scenid" asp-route-fromscenario="@fromscenario"
+                                class="accordianlink" url="budgetspent">
+                                <span class="accordianspan">Budget Spent</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="accordion-item">
+            <a class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#reports-collapsable"
+                aria-expanded="false" aria-controls="reports-collapsable">
+                <div class="accordiancontent">
+                    <i class="fa-solid fa-file-invoice me-3"></i>
+                    <span class="accordianspan">Reports</span>
+                </div>
+            </a>
+            <div id="reports-collapsable" class="accordion-collapse collapse" data-bs-parent="#accordianparent">
+                <div class="accordion-body">
+                    <ul>
+                        <li class="accordian-sub_Btn">
+                            <a asp-action="ProjectSummary" asp-controller="Reports" asp-route-scenid="@scenid" asp-route-fromscenario="@fromscenario"
+                                class="accordianlink" url='projectsummary'>
+                                <span class="accordianspan">Project Summary</span>
+                            </a>
+                        </li>
+                        <li class="accordian-sub_Btn">
+                            <a asp-action="TreatmentSummary" asp-controller="Reports" asp-route-scenid="@scenid" asp-route-fromscenario="@fromscenario"
+                                class="accordianlink" url='treatmentsummary'>
+                                <span class="accordianspan">Treatment Summary</span>
+                            </a>
+                        </li>
+                        <li class="accordian-sub_Btn">
+                            <a asp-action="CombinedProjects" asp-controller="Reports" asp-route-scenid="@scenid" asp-route-fromscenario="@fromscenario"
+                                class="accordianlink" url="combinedprojects">
+                                <span class="accordianspan">Combined Projects</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <a asp-controller="Projects" asp-action="Index" asp-route-scenid="@scenid" asp-route-fromscenario="@fromscenario"  class="accordianbtn rounded"
+            url="projects">
+            <div class="accordiancontent">
+                <i class="fa-solid fa-clipboard me-3"></i>
+                <span class="accordianspan">Projects</span>
+            </div>
+        </a>
+    </div>
+</nav>
+
+<script>
+    $(function () {
+        try {
+            var controller = (document.location.pathname || '').split('/')[1]?.split('?')[0].toLowerCase();
+            var action = (document.location.pathname || '').split('/')[2]?.split('?')[0].toLowerCase();
+        } finally {
+            $('#accordianparent').find('a[url]').each(function () {
+                var urlvalue = $(this).attr('url');
+                if (action === urlvalue || controller === urlvalue) 
+                {
+                    var firstchild = $(this).children().first();
+                    if (firstchild.hasClass('accordiancontent'))
+                    {
+                        firstchild.addClass('selected');
+                    } 
+                    else 
+                    {
+                        $(this).addClass('selected');
+                    }
+                    var collapable = $(this).closest('.collapse');
+                    collapable.addClass("show");
+                    var accordian = collapable.siblings('.accordion-button').first();
+                    accordian.removeClass('collapsed');
+                }
+            });
+        }
+    })
+</script>

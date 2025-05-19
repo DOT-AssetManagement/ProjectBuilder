@@ -1,0 +1,22 @@
+﻿@{
+    var scenid = ViewContext.HttpContext.Request.Query["scenid"].FirstOrDefault();
+}
+
+
+<nav  id="sidebarMenu" class="d-lg-block" style="z-index:100;height:100%;">
+
+    <div b-qi7u8qm8v7="" class="position-sticky">
+        <div b-qi7u8qm8v7="" class="list-group list-group-flush  mt-4">
+            <a asp-action="Index" asp-controller="ARAEnumeration" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="administration_SetUp">ARA Enumerations</a>
+            <a asp-action="Index" asp-controller="BridgeToPavements" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="administration_SetUp">Bridge To Pavements</a>
+            <a asp-action="Index" asp-controller="County" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="administration_SetUp">County</a>
+            <a asp-action="Index" asp-controller="DefaultSlack" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="administration_SetUp">Slack Periods</a>
+            <a asp-action="Index" asp-controller="ImportSessions" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="administration_SetUp">Import Sessions</a>
+            <a asp-action="Index" asp-controller="Parameter" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="administration_SetUp">Parameters</a>
+            <a asp-action="Index" asp-controller="TreatmentCancellationMatrix" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="administration_SetUp">Treatment Cancellation Matrix</a>
+            <a asp-action="Index" asp-controller="TreatmentParameter" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="administration_SetUp">User Treatment Parameters</a>
+            <a asp-action="Index" asp-controller="UserTreatments" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="administration_SetUp">User Treatments</a>
+            <a asp-action="Index" asp-controller="TreatmentType" class="list-group-item list-group-item-action py-2 text-white gradient-hover-effect" submenu="administration_SetUp">Treatment Types</a>
+        </div>
+    </div>
+</nav>

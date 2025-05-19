@@ -1,0 +1,185 @@
+@using ProjectBuilder.Web.MVC.Models;
+@model ScenarioParametersViewModel
+
+@{
+    ViewData["Title"] = "Scenario Parameters";
+    // string selectedScenario = "";
+}
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.js"></script>
+<div class="scenarioedit_main-container">
+    <partial name="~/Views/Shared/navbarshared/_scenarionavbar.cshtml" />
+    <div class="scenarioedit_maincontent">
+        <div class="scenarioedit_header">
+            <h1>Parameters</h1>
+            <h1>@Model.ScenarioName</h1>
+        </div>
+        <div class="scenarioedit_body">
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="scenarioparameterstable" class="table table-bordered table-hover table-striped">
+                            <thead class="bg-success text-white">
+                                <tr>
+                                    <th>
+                                        @Html.DisplayName("Parameter Name")
+                                    </th>
+                                    <th>
+                                        @Html.DisplayName("Paramater Value")
+                                    </th>
+                                    <th>
+                                        @Html.DisplayName("Actions")
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var parameter in Model.ScenarioParameters)
+                                {
+                                    <tr>
+                                        <td>
+                                            @Html.DisplayFor(modelItem => parameter.ParameterName)
+                                        </td>
+                                        <td>
+                                            @if (parameter.ParameterId == "YFST" || parameter.ParameterId == "YLST")
+                                            {
+                                                @Html.DisplayFor(modelItem => parameter.ParameterValue)
+                                            }
+                                            else @if (parameter.ParameterValue == 1 && (parameter.ParameterId == "BINR" || parameter.ParameterId == "MIXB" || parameter.ParameterId == "STEP"))
+                                            {
+                                                @Html.DisplayName("True")
+                                            }
+                                            else if (parameter.ParameterValue == 0 && (parameter.ParameterId == "BINR" || parameter.ParameterId == "MIXB" || parameter.ParameterId == "STEP"))
+                                            {
+                                                @Html.DisplayName("False")
+                                            }
+                                            else
+                                            {
+                                                @Html.DisplayFor(modelItem => parameter.ParameterValue)
+                                            }
+                                        </td>
+                                        <td>
+                                            <button type="button" value="@parameter.ParameterId"
+                                                onclick="onscenarioparametercontextmenu.bind(this,event)()"
+                                                class="circlebutton" context-menu>
+                                                <i context-menu class="fa-solid fa-ellipsis-vertical"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="contextmenu" class="contextmenu-container">
+        <ul class="menu">
+            <li class="menuitem">
+                <button type="button" data-bs-toggle="modal" data-bs-target="#editscenarioparameters">
+                    <i class="fa-regular fa-pen-to-square"></i>
+                    <span>Edit</span>
+                </button>
+            </li>
+            <hr />
+            <li class="menuitem">
+                <button type="button" id="deletescen" data-bs-toggle="modal" data-bs-target="#deletealert">
+                    <i class="fa-regular fa-trash-can"></i>
+                    <span>Delete</span>
+                </button>
+            </li>
+        </ul>
+    </div>
+    <div class="modal fade" id="editscenarioparameters" tabindex="-1" role="dialog"
+        aria-labelledby="scenarioparameterslabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="scenarioparameterslabel">Update Scenario Parameter</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="scenarioparametersform" class="needs-validation" asp-controller="EditScenario"
+                    asp-action="UpdateScenarioParameter" asp-route-scenid="@Model.ScenarioId" method="post" novalidate>
+                    <div class="modal-body">
+                        <input name="parameterid" id="parameterid" hidden type="text" />
+                        <div class="mb-3">
+                            <label for="parametername" class="form-label">Parameter Name</label>
+                            <input type="text" name="parametername" id="parametername" class="form-control" readonly />
+                            <div class="invalid-feedback">Field is required</div>
+                        </div>
+                        <div id="paramvalueparent" class="mb-3">
+                            <label for="parametervalue" class="form-label">Parameter Value</label>
+                            <input name="parametervalue" id="parametervalue" type="text" class="form-control"
+                                required />
+                            <div class="invalid-feedback">Field is required</div>
+                        </div>
+                        <div id="boolvalueparent" class="form-check form-switch mb-3" style="display:none;">
+                            <input class="form-check-input" type="checkbox" name="boolvalue" id="boolvalue">
+                            <label class="form-check-label" for="boolvalue">Parameter value</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success">Update</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="deletealert" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+         aria-labelledby="deletealertLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deletealertLabel">Delete Project Treatment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body d-flex align-items-center">
+                    <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                    <span>
+                        Are you sure you want to delete the selected Project Treatment?
+                    </span>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <form id="deleterecordform" asp-antiforgery="true" asp-action="DeleteScenarioParameter" asp-controller="EditScenario" method="post">
+                        <input hidden name="scenparamid" id="scenparamid" />
+                        <input hidden name="scenid" id="scenarioid" value="@Model.ScenarioId"/>
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @section Styles{
+        <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.css" />
+        <link rel="stylesheet" href="~/css/scenarioedit_styles.css" />
+    }
+</div>
+<script>
+    $(document).ready(function () {
+        var table = $('#scenarioparameterstable').DataTable({
+            searching: false
+        }); 
+        $('#deletescen').on('click', function () {
+            $('#scenparamid').val($(this).attr('current-id'));
+        });
+
+        $('#boolvalue').on('change', function () {
+            if ($(this).is(":checked")) {
+                boolvalue = "True";
+            } else {
+                boolvalue = "False";
+            }
+            $('#boolvalueparent label').text(boolvalue);
+        });
+
+
+    });
+    function onscenarioparametercontextmenu(event) {
+        oncontextmenuclicked.bind(this, event)();
+        oneditingscenparam(this);
+    }
+</script>
