@@ -1,0 +1,242 @@
+@page
+@using System.Globalization
+@model ProjectBuilder.Web.Pages.EditScenario.ParametersModel
+@{
+    Layout = "~/Pages/Shared/PBDSSLayout.cshtml";
+    ViewData["PBVariant"] = "app";
+    ViewData["PBActivePage"] = "scenarios";
+    ViewData["Title"] = "Parameters";
+
+    var spending = new[] { "STEP", "MIXB", "IDSB", "IDSP", "IOTB", "IOTP", "IRWB", "IRWP", "IUTB", "IUTP", "SNGL" };
+    var logistics = new[] { "YFST", "YLST", "MXGM", "NXML", "MXGL", "NXMI", "MXGC", "NXSC", "HFTL", "HFTR" };
+    var tuning = new[] { "BCFB", "BCFP", "BINR" };
+    var boolParams = new[] { "MIXB", "STEP", "SNGL", "BINR" };
+    var validTabs = new[] { "tab-spending", "tab-logistics", "tab-tuning", "tab-shift" };
+    var activeTab = validTabs.Contains(Model.ActiveTab) ? Model.ActiveTab : "tab-spending";
+
+    string Val2(double? v) => v.HasValue ? v.Value.ToString("0.00", CultureInfo.InvariantCulture) : "";
+    string ValInt(double? v) => v.HasValue ? Math.Round(v.Value).ToString("0", CultureInfo.InvariantCulture) : "";
+    string NavCls(string tab) => "nav-link" + (tab == activeTab ? " active" : "");
+    string PaneCls(string tab) => "tab-pane fade" + (tab == activeTab ? " show active" : "");
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/pbdss/scenarioedit.css" />
+    <style>
+        .param-table { width: 100%; }
+        .param-table th { background: rgb(28,48,92); color:#fff; font-size:13px; }
+        .param-table td, .param-table th { padding: 8px 12px; vertical-align: middle; }
+        .param-table tr td:first-child { width: 60%; font-weight: 600; color:#344563; font-size:13px; }
+        .param-slider-wrap { display:flex; align-items:center; gap:12px; }
+        .param-slider-wrap .form-range { flex:1; }
+        .nav-tabs .nav-link { color: rgb(28,48,92); font-weight:600; font-size:13px; }
+        .nav-tabs .nav-link.active { color: rgb(0,86,179); font-weight:800; }
+    </style>
+}
+
+<partial name="_ScenarioNav" model="Model" />
+
+<div class="editscen-content">
+    <div class="editscen-content__header"><h1>Scenario Parameters</h1><button class="btn-guide" id="btnGuide"><span class="q">?</span> Guide</button></div>
+
+    <div class="editscen-card">
+        @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+        {
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                @Model.ErrorMessage
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+        @if (Model.Saved)
+        {
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                Scenario parameters saved.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        <form method="post" asp-route-scenid="@Model.Scenid" id="parametersForm">
+            <input type="hidden" name="activeTab" id="activeTabInput" value="@activeTab" />
+            <div class="modal-footer mt-1 mb-3" style="border-top:none;">
+                <button class="btn btn-success loadBtn" type="submit">Save</button>
+                <button class="btn btn-secondary" type="reset">Reset</button>
+            </div>
+
+            <ul class="nav nav-tabs" id="paramTab" role="tablist">
+                <li class="nav-item"><button class="@NavCls("tab-spending")" data-bs-toggle="tab" data-bs-target="#tab-spending" type="button" role="tab">Spending Rules</button></li>
+                <li class="nav-item"><button class="@NavCls("tab-logistics")" data-bs-toggle="tab" data-bs-target="#tab-logistics" type="button" role="tab">Project Logistics</button></li>
+                <li class="nav-item"><button class="@NavCls("tab-tuning")" data-bs-toggle="tab" data-bs-target="#tab-tuning" type="button" role="tab">Simulation Tuning</button></li>
+                <li class="nav-item"><button class="@NavCls("tab-shift")" data-bs-toggle="tab" data-bs-target="#tab-shift" type="button" role="tab">Treatment Shift</button></li>
+            </ul>
+
+            <div class="tab-content pt-3">
+                @* ── Spending Rules ── *@
+                <div class="@PaneCls("tab-spending")" id="tab-spending" role="tabpanel">
+                    <table class="table table-bordered table-striped param-table">
+                        <thead><tr><th>Parameter Name</th><th>Parameter Value</th></tr></thead>
+                        <tbody>
+                            @foreach (var p in Model.Parameters.Where(x => spending.Contains(x.ParameterId)))
+                            {
+                                <tr>
+                                    <td>@p.ParameterName</td>
+                                    <td>
+                                        @if (boolParams.Contains(p.ParameterId))
+                                        {
+                                            <select class="form-select form-select-sm" name="parameter[@p.ParameterId]" style="max-width:140px;">
+                                                <option value="1" selected="@(p.ParameterValue == 1)">True</option>
+                                                <option value="0" selected="@(p.ParameterValue != 1)">False</option>
+                                            </select>
+                                        }
+                                        else
+                                        {
+                                            <div class="param-slider-wrap">
+                                                <input type="range" class="form-range param-range" min="0" max="1.5" step="0.01" value="@Val2(p.ParameterValue)" data-target="pv_@p.ParameterId" />
+                                                <input type="number" class="form-control form-control-sm param-number" id="pv_@p.ParameterId" name="parameter[@p.ParameterId]" min="0" max="1.5" step="0.01" value="@Val2(p.ParameterValue)" style="max-width:110px;" />
+                                            </div>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @* ── Project Logistics ── *@
+                <div class="@PaneCls("tab-logistics")" id="tab-logistics" role="tabpanel">
+                    <table class="table table-bordered table-striped param-table">
+                        <thead><tr><th>Parameter Name</th><th>Parameter Value</th></tr></thead>
+                        <tbody>
+                            @foreach (var p in Model.Parameters.Where(x => logistics.Contains(x.ParameterId)))
+                            {
+                                <tr>
+                                    <td>@p.ParameterName</td>
+                                    <td>
+                                        @if (p.ParameterId == "YFST" || p.ParameterId == "YLST")
+                                        {
+                                            var selectedYear = p.ParameterValue.HasValue ? (int)p.ParameterValue.Value : 0;
+                                            // Year options follow the scenario's First/Last Year (Scenario Settings),
+                                            // with a 2000..2049 fallback when those are unset.
+                                            var yearStart = Model.FirstYear ?? 2000;
+                                            var yearEnd = Model.LastYear ?? 2049;
+                                            if (selectedYear > 0)
+                                            {
+                                                yearStart = Math.Min(yearStart, selectedYear);
+                                                yearEnd = Math.Max(yearEnd, selectedYear);
+                                            }
+                                            <select class="form-select form-select-sm" name="parameter[@p.ParameterId]" style="max-width:140px;">
+                                                <option value="">Select Year</option>
+                                                @for (int y = yearStart; y <= yearEnd; y++)
+                                                {
+                                                    <option value="@y" selected="@(selectedYear == y)">@y</option>
+                                                }
+                                            </select>
+                                        }
+                                        else
+                                        {
+                                            <input type="number" class="form-control form-control-sm" name="parameter[@p.ParameterId]" value="@ValInt(p.ParameterValue)" min="0" max="999" step="1" style="max-width:140px;" />
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @* ── Simulation Tuning ── *@
+                <div class="@PaneCls("tab-tuning")" id="tab-tuning" role="tabpanel">
+                    <table class="table table-bordered table-striped param-table">
+                        <thead><tr><th>Parameter Name</th><th>Parameter Value</th></tr></thead>
+                        <tbody>
+                            @foreach (var p in Model.Parameters.Where(x => tuning.Contains(x.ParameterId)))
+                            {
+                                <tr>
+                                    <td>@p.ParameterName</td>
+                                    <td>
+                                        @if (boolParams.Contains(p.ParameterId))
+                                        {
+                                            <select class="form-select form-select-sm" name="parameter[@p.ParameterId]" style="max-width:140px;">
+                                                <option value="1" selected="@(p.ParameterValue == 1)">True</option>
+                                                <option value="0" selected="@(p.ParameterValue != 1)">False</option>
+                                            </select>
+                                        }
+                                        else
+                                        {
+                                            <div class="param-slider-wrap">
+                                                <input type="range" class="form-range param-range" min="0" max="1.5" step="0.01" value="@Val2(p.ParameterValue)" data-target="pv_@p.ParameterId" />
+                                                <input type="number" class="form-control form-control-sm param-number" id="pv_@p.ParameterId" name="parameter[@p.ParameterId]" min="0" max="1.5" step="0.01" value="@Val2(p.ParameterValue)" style="max-width:110px;" />
+                                            </div>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @* ── Treatment Shift ── *@
+                <div class="@PaneCls("tab-shift")" id="tab-shift" role="tabpanel">
+                    <table class="table table-bordered table-striped param-table">
+                        <thead><tr><th>Treatment</th><th>Max Accelerate</th><th>Max Delay</th></tr></thead>
+                        <tbody>
+                            @if (Model.TreatmentShifts.Count == 0)
+                            {
+                                <tr><td colspan="3" class="text-center text-muted">No treatments found for this scenario.</td></tr>
+                            }
+                            else
+                            {
+                                @for (var i = 0; i < Model.TreatmentShifts.Count; i++)
+                                {
+                                    var s = Model.TreatmentShifts[i];
+                                    <tr>
+                                        <td>
+                                            <input type="hidden" name="treatmentShift[@i].Treatment" value="@s.Treatment" />
+                                            @s.Treatment
+                                        </td>
+                                        <td><input type="number" min="0" max="999" step="1" class="form-control form-control-sm" name="treatmentShift[@i].MaxAccelerate" value="@s.MaxAccelerate" style="max-width:120px;" /></td>
+                                        <td><input type="number" min="0" max="999" step="1" class="form-control form-control-sm" name="treatmentShift[@i].MaxDelay" value="@s.MaxDelay" style="max-width:120px;" /></td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999; justify-content:center; align-items:center;">
+    <div style="text-align:center; color:#fff;">
+        <div class="spinner-border text-light" role="status"></div>
+        <div>Please wait...</div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ScenarioRunScript" />
+    <script>
+        // Sync each range slider with its companion number input (both directions).
+        document.querySelectorAll('.param-range').forEach(function (range) {
+            var target = document.getElementById(range.getAttribute('data-target'));
+            if (!target) return;
+            range.addEventListener('input', function () { target.value = range.value; });
+            target.addEventListener('input', function () {
+                var v = parseFloat(target.value);
+                if (!isNaN(v)) range.value = v;
+            });
+        });
+
+        // Keep the hidden activeTab field in sync so Save round-trips back to whichever
+        // tab the user was on, instead of always landing back on Spending Rules.
+        document.querySelectorAll('#paramTab button[data-bs-toggle="tab"]').forEach(function (btn) {
+            btn.addEventListener('shown.bs.tab', function () {
+                document.getElementById('activeTabInput').value = btn.getAttribute('data-bs-target').substring(1);
+            });
+        });
+
+        // Show overlay on submit.
+        document.getElementById('parametersForm').addEventListener('submit', function () {
+            document.getElementById('overlay').style.display = 'flex';
+        });
+    </script>
+}

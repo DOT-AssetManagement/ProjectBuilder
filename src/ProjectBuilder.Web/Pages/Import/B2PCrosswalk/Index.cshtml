@@ -1,0 +1,51 @@
+@page
+@model ProjectBuilder.Web.Pages.Import.B2PCrosswalk.IndexModel
+@{
+    ViewData["Title"] = "Import B2P Crosswalk";
+    Layout = "Shared/AdminLayout";
+    ViewData["SubMenu"] = "ImportB2P";
+}
+
+<div class="editscen-content__header"><h1>Import B2P Crosswalk</h1></div>
+
+<div class="mx-3 mt-3" style="max-width:520px">
+
+    <div id="b2pImportStatusBanner" class="job-status-banner" role="alert">
+        <span class="run-status-spinner"></span>
+        <span class="job-status-message"></span>
+        <button type="button" class="run-status-close" title="Dismiss">&times;</button>
+    </div>
+
+    <p class="text-muted">Upload an Excel file to import Bridge-to-Pavement (B2P) crosswalk data into the system.</p>
+
+    <form id="b2pImportForm" method="post" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Excel File <span class="text-danger">*</span></label>
+            <input type="file" class="form-control" name="excelfile" accept=".xlsx,.xls" required />
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Tab Name</label>
+            <input type="text" class="form-control" name="tabname" placeholder="Bridge" />
+        </div>
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-file-import me-1"></i> Import
+            </button>
+            <button type="reset" class="btn btn-secondary">Cancel</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script src="~/js/import-job.js"></script>
+    <script>
+        initBackgroundImportForm({
+            formId: 'b2pImportForm',
+            bannerId: 'b2pImportStatusBanner',
+            storageKey: 'importB2PJobId',
+            runningMessage: 'B2P Crosswalk import running in the background…',
+            successMessage: 'B2P Crosswalk data imported successfully.'
+        });
+    </script>
+}

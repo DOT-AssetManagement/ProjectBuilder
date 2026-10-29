@@ -1,0 +1,47 @@
+@page
+@using Volo.Abp.AspNetCore.Mvc.UI.Layout
+@using Microsoft.AspNetCore.Mvc.Localization
+@using Volo.Abp.SettingManagement.Localization
+@using Volo.Abp.SettingManagement.Web.Navigation
+@using Volo.Abp.SettingManagement.Web.Pages.SettingManagement
+@model IndexModel
+@inject IHtmlLocalizer<AbpSettingManagementResource> L
+@inject IPageLayout PageLayout
+@{
+    Layout = "Shared/DSSLayout";
+    ViewData["Menu"] = "DSSAdminMenus.Settings";
+
+    PageLayout.Content.Title = L["Settings"].Value;
+    PageLayout.Content.MenuItemName = SettingManagementMenuNames.GroupName;
+}
+@section scripts {
+    <abp-script-bundle name="@typeof(IndexModel).FullName">
+        <abp-script src="/client-proxies/settingManagement-proxy.js" />
+        <abp-script src="/Pages/SettingManagement/Index.js" />
+    </abp-script-bundle>
+}
+
+<div id="SettingManagementWrapper">
+    <abp-card>
+        <abp-card-body>
+            <div class="row">
+                <div class="col-md-3">
+                    <ul class="nav flex-column nav-pills" id="tabs-nav" role="tablist">
+                        @for (var i = 0; i < Model.SettingPageCreationContext.Groups.Count; i++)
+                        {
+                            var group = Model.SettingPageCreationContext.Groups[i];
+                            var active = i == 0 ? "active" : string.Empty;
+                            <li class="nav-item">
+                                <a href="javascript:;" class="nav-link @active" data-id="@group.Id" data-bs-toggle="pill" role="tab">@group.DisplayName</a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+                <div class="col-md-9">
+                    <div class="tab-content" id="tab-content">
+                    </div>
+                </div>
+            </div>
+        </abp-card-body>
+    </abp-card>
+</div>

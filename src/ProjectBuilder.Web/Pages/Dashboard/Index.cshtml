@@ -1,0 +1,123 @@
+@page
+@model ProjectBuilder.Web.Pages.Dashboard.IndexModel
+@{
+    Layout = "~/Pages/Shared/PBDSSLayout.cshtml";
+    ViewData["Title"] = "Dashboard";
+    ViewData["PBVariant"] = "app";
+    ViewData["PBShowNav"] = "false";
+}
+
+@section Styles {
+    <style>
+        body { overflow: hidden; }
+
+        main { margin-top: 0; background: transparent; overflow: hidden; }
+        .dashboard-landing-page {
+            width: 100%; height: calc(100vh - 70px - 44px);
+            padding: 30px 40px 20px;
+            background-color: rgb(238,244,255);
+            color: rgb(21,56,109);
+            box-sizing: border-box; overflow: hidden;
+            display: flex; align-items: center;
+        }
+        .dashboard-landing-shell { width: 100%; max-width: 1500px; margin: 0 auto; display: flex; flex-direction: column; }
+        .dashboard-landing-hero { margin-bottom: 20px; }
+        .dashboard-landing-title { margin: 0 0 10px; color: rgb(23,60,116); font-size: 32px; font-weight: 800; line-height: 1.1; }
+        .dashboard-landing-copy { max-width: 900px; margin: 0; color: rgb(23,60,116); font-size: 20px; line-height: 1.4; }
+        .dashboard-landing-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 15px; align-items: stretch; margin-bottom: 25px; }
+        .dashboard-landing-card {
+            position: relative; display: flex; height: 340px;
+            border-radius: 16px; overflow: hidden;
+            background: rgb(35,62,126); color: #fff;
+            box-shadow: rgba(0,0,0,.15) 0 10px 25px;
+            transition: transform .18s,box-shadow .18s;
+        }
+        .dashboard-landing-card:hover { transform: translateY(-4px); box-shadow: rgba(0,0,0,.25) 0 16px 35px; }
+        .dashboard-landing-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(rgba(34,63,127,.08) 0%,rgba(34,63,127,.3) 100%); pointer-events: none; }
+        .dashboard-landing-card-content { position: relative; z-index: 1; display: flex; flex: 1; flex-direction: column; padding: 30px 15px 0; text-align: center; }
+        .dashboard-landing-card-content h2 { margin: 0; padding: 0; color: #fff; font-weight: 800; line-height: 1.2; text-wrap: balance; font-size: 20px !important; }
+        .dashboard-landing-card-title { min-height: 60px; }
+        .dashboard-landing-card-image { width: 100%; margin-top: auto; display: block; object-fit: contain; }
+        .dashboard-landing-actions { display: flex; justify-content: flex-end; margin-top: auto; padding-bottom: 20px; }
+        .dashboard-landing-continue {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 150px; min-height: 48px; padding: 10px 30px;
+            border-radius: 10px; background: rgb(35,62,126); color: #fff;
+            font-size: 18px; font-weight: 800; font-family: Montserrat,sans-serif;
+            text-decoration: none; box-shadow: rgba(0,0,0,.2) 0 4px 10px;
+            transition: background .2s; border: none; cursor: pointer;
+        }
+        .dashboard-landing-continue:hover { color: #fff; background: rgb(29,57,113); }
+
+        @@media(max-width:1200px) {
+            .dashboard-landing-page { height: auto; min-height: calc(100vh - 86px - 44px); padding-top: 40px; overflow: auto; }
+            body, main { overflow: auto; height: auto; }
+            .dashboard-landing-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+        }
+        @@media(max-width:860px) {
+            .dashboard-landing-page { padding: 40px 20px; }
+            .dashboard-landing-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+            .dashboard-landing-actions { justify-content: center; }
+        }
+        @@media(max-width:560px) {
+            .dashboard-landing-grid { grid-template-columns: 1fr; }
+            .dashboard-landing-card { min-height: 280px; }
+            .dashboard-landing-card-title { min-height: 0; }
+            .dashboard-landing-continue { width: 100%; }
+        }
+    </style>
+}
+
+<div class="dashboard-landing-page">
+    <div class="dashboard-landing-shell">
+
+        <div class="dashboard-landing-hero">
+            <h1 class="dashboard-landing-title">Project Builder</h1>
+            <p class="dashboard-landing-copy">Centralized workspace for analyzing bridge integrity, pavement quality, and multi-modal safety enhancements across the network.</p>
+        </div>
+
+        <div class="dashboard-landing-grid">
+
+            <article class="dashboard-landing-card">
+                <div class="dashboard-landing-card-content">
+                    <div class="dashboard-landing-card-title"><h2>Analyze Bridge Work</h2></div>
+                    <img class="dashboard-landing-card-image" src="~/images/pbdss/dashboard/card-bridge.png" alt="Bridge work illustration" />
+                </div>
+            </article>
+
+            <article class="dashboard-landing-card">
+                <div class="dashboard-landing-card-content">
+                    <div class="dashboard-landing-card-title"><h2>Analyze Pavement Work</h2></div>
+                    <img class="dashboard-landing-card-image" src="~/images/pbdss/dashboard/card-pavement.png" alt="Pavement work illustration" />
+                </div>
+            </article>
+
+            <article class="dashboard-landing-card">
+                <div class="dashboard-landing-card-content">
+                    <div class="dashboard-landing-card-title"><h2>Analyze Safety, Mobility, Multimodal and Other Work</h2></div>
+                    <img class="dashboard-landing-card-image" src="~/images/pbdss/dashboard/card-safety.png" alt="Safety and multimodal work illustration" />
+                </div>
+            </article>
+
+            <article class="dashboard-landing-card">
+                <div class="dashboard-landing-card-content">
+                    <div class="dashboard-landing-card-title"><h2>View Projects Map</h2></div>
+                    <img class="dashboard-landing-card-image" src="~/images/pbdss/dashboard/card-map.png" alt="Projects map illustration" />
+                </div>
+            </article>
+
+            <article class="dashboard-landing-card">
+                <div class="dashboard-landing-card-content">
+                    <div class="dashboard-landing-card-title"><h2>Build Projects from Candidates</h2></div>
+                    <img class="dashboard-landing-card-image" src="~/images/pbdss/dashboard/card-build.png" alt="Construction work illustration" />
+                </div>
+            </article>
+
+        </div>
+
+        <div class="dashboard-landing-actions">
+            <a href="/Scenarios" class="dashboard-landing-continue">CONTINUE</a>
+        </div>
+
+    </div>
+</div>

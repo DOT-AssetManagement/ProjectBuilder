@@ -1,4 +1,0 @@
-﻿namespace ProjectBuilder.DataAccess
-{
-
-}

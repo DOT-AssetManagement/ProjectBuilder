@@ -1,0 +1,36 @@
+@page
+@model ProjectBuilder.Web.Pages.SetUp.OtherParameter.CreateModel
+@{
+    Layout = "Shared/AdminLayout";
+    ViewData["Menu"] = "DSSAdminMenus.Setup";
+    ViewData["SubMenu"] = "OtherParameter";
+}
+
+<div class="card mt-5" style="width:70%;margin-left:10%">
+
+    <div class="card-body">
+        <div class="card-header">
+            <h3 class="card-title">Create Other Parameter</h3>
+        </div>
+        <form method="post" asp-page-handler="Create">
+            <div class="form-group">
+                <label for="Code">Code:</label>
+                <input type="text" class="form-control" required placeholder="Code" name="Code" value="">
+            </div><br />
+            <div class="form-group">
+                <label for="Description">Description:</label>
+                <input type="text" class="form-control" required placeholder="Description" name="Description" value="">
+            </div><br />
+            <div class="form-group">
+                <label for="Value">Value:</label>
+                <input type="number" class="form-control" required placeholder="Value" name="Val" value="">
+            </div>
+            <div class="form-group">
+                <div class="text-right">
+                    <a href="/SetUp/OtherParameter/List" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-info">Submit</button>
+                </div>
+            </div>
+        </form>
+</div>
+</div>

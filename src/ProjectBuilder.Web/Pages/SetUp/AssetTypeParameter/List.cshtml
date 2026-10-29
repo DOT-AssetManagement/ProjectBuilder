@@ -1,0 +1,134 @@
+@page
+@using System.Linq
+@model ProjectBuilder.Web.Pages.SetUp.AssetTypeParameter.ListModel
+@{
+    ViewData["Title"] = "Asset Type Parameter";
+    Layout = "Shared/AdminLayout";
+    ViewData["SubMenu"] = "AssetTypeParameter";
+
+    var rows = Model.AssetTypeParameters.Select(a => new {
+        id                   = a.Id,
+        assetType            = a.AssetType,
+        benefitScalingFactor = a.BenefitScalingFactor,
+        createdBy            = a.CreatedBy,
+        createdAt            = a.CreatedAt
+    }).ToList();
+}
+
+@section Styles {
+    <link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet" />
+}
+
+<div class="editscen-content__header"><h1>Asset Type Parameter</h1></div>
+
+<div class="search-bar">
+    <label>Search in Asset Type Parameter</label>
+    <div class="search-input-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="searchInput" placeholder="" />
+    </div>
+    <button class="btn btn-primary btn-sm" id="btnSearch">Search</button>
+    <button class="btn-reset btn-sm" id="btnReset">Reset</button>
+</div>
+
+<div class="table-wrap">
+    <div id="admin-table"></div>
+</div>
+
+<!-- Edit Modal -->
+<div id="editModal" class="modal fade" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-page-handler="Edit">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Asset Type Parameter</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editId" name="id" />
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Asset Type</label>
+                        <input type="text" class="form-control" id="editAssetType" name="assetType" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Benefit Scaling Factor</label>
+                        <input type="number" step="any" class="form-control" id="editBenefitScalingFactor" name="benefitScalingFactor" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete form -->
+<form id="deleteForm" method="post" asp-page-handler="Delete" style="display:none">
+    @Html.AntiForgeryToken()
+    <input type="hidden" id="deleteId" name="id" />
+</form>
+
+@section Scripts {
+    <script src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
+    <script src="~/js/pbdss/table.js"></script>
+    <script>
+        var tableData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(rows));
+
+        var table = createTable('#admin-table', {
+            data: tableData,
+            maxHeightEl: '.table-wrap',
+            actions: [
+                {
+                    label: 'Edit', icon: 'fa-solid fa-pen',
+                    onClick: function (d) {
+                        document.getElementById('editId').value = d.id;
+                        document.getElementById('editAssetType').value = d.assetType || '';
+                        document.getElementById('editBenefitScalingFactor').value = d.benefitScalingFactor !== null ? d.benefitScalingFactor : '';
+                        bootstrap.Modal.getOrCreateInstance(document.getElementById('editModal')).show();
+                    }
+                },
+                {
+                    label: 'Delete', icon: 'fa-solid fa-trash', type: 'delete',
+                    onClick: function (d) {
+                        if (confirm('Delete asset type parameter "' + d.assetType + '"?')) {
+                            document.getElementById('deleteId').value = d.id;
+                            document.getElementById('deleteForm').submit();
+                        }
+                    }
+                }
+            ],
+            columns: [
+                { title: 'Asset Type',              field: 'assetType',            minWidth: 160, headerSort: false },
+                { title: 'Benefit Scaling Factor',   field: 'benefitScalingFactor', minWidth: 180, hozAlign: 'right', headerSort: false },
+                { title: 'Created By',               field: 'createdBy',            minWidth: 160, headerSort: false },
+                { title: 'Created At',                field: 'createdAt',            minWidth: 160, headerSort: false }
+            ]
+        });
+
+        function applySearchFilter() {
+            var v = document.getElementById('searchInput').value.trim().toLowerCase();
+            table.clearFilter();
+            if (v) table.setFilter(function (d) { return Object.values(d).some(function (x) { return String(x).toLowerCase().includes(v); }); });
+            table.pbSaveFilters({ search: v });
+        }
+        document.getElementById('btnSearch').addEventListener('click', applySearchFilter);
+        document.getElementById('searchInput').addEventListener('keypress', function (e) { if (e.key === 'Enter') document.getElementById('btnSearch').click(); });
+        document.getElementById('btnReset').addEventListener('click', function () {
+            document.getElementById('searchInput').value = '';
+            table.clearFilter();
+            table.pbSaveFilters({ search: '' });
+        });
+
+        // Restore a filter saved before navigating away, or before an edit/delete post-back.
+        (function restoreSearchFilter() {
+            var saved = table.pbSavedFilters;
+            if (saved && saved.search) {
+                document.getElementById('searchInput').value = saved.search;
+                applySearchFilter();
+            }
+        })();
+    </script>
+}

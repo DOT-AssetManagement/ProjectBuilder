@@ -1,0 +1,105 @@
+{
+  "template": "app",
+  "imports": {
+    "Volo.Abp.LeptonXLiteTheme": {
+      "version": "4.0.5",
+      "isInstalled": true
+    },
+    "Volo.Abp.Account": {
+      "version": "9.0.4",
+      "isInstalled": true
+    },
+    "Volo.Abp.OpenIddict": {
+      "version": "9.0.4",
+      "isInstalled": true
+    },
+    "Volo.Abp.Identity": {
+      "version": "9.0.4",
+      "isInstalled": true
+    },
+    "Volo.Abp.TenantManagement": {
+      "version": "9.0.4",
+      "isInstalled": true
+    },
+    "Volo.Abp.SettingManagement": {
+      "version": "9.0.4",
+      "isInstalled": true
+    },
+    "Volo.Abp.PermissionManagement": {
+      "version": "9.0.4",
+      "isInstalled": true
+    },
+    "Volo.Abp.FeatureManagement": {
+      "version": "9.0.4",
+      "isInstalled": true
+    }
+  },
+  "folders": {
+    "items": {
+      "src": {},
+      "test": {}
+    }
+  },
+  "packages": {
+    "ProjectBuilder.Application": {
+      "path": "src/ProjectBuilder.Application/ProjectBuilder.Application.abppkg",
+      "folder": "src"
+    },
+    "ProjectBuilder.Application.Tests": {
+      "path": "test/ProjectBuilder.Application.Tests/ProjectBuilder.Application.Tests.abppkg",
+      "folder": "test"
+    },
+    "ProjectBuilder.Domain.Shared": {
+      "path": "src/ProjectBuilder.Domain.Shared/ProjectBuilder.Domain.Shared.abppkg",
+      "folder": "src"
+    },
+    "ProjectBuilder.Application.Contracts": {
+      "path": "src/ProjectBuilder.Application.Contracts/ProjectBuilder.Application.Contracts.abppkg",
+      "folder": "src"
+    },
+    "ProjectBuilder.HttpApi": {
+      "path": "src/ProjectBuilder.HttpApi/ProjectBuilder.HttpApi.abppkg",
+      "folder": "src"
+    },
+    "ProjectBuilder.HttpApi.Client": {
+      "path": "src/ProjectBuilder.HttpApi.Client/ProjectBuilder.HttpApi.Client.abppkg",
+      "folder": "src"
+    },
+    "ProjectBuilder.Web": {
+      "path": "src/ProjectBuilder.Web/ProjectBuilder.Web.abppkg",
+      "folder": "src"
+    },
+    "ProjectBuilder.Web.Tests": {
+      "path": "test/ProjectBuilder.Web.Tests/ProjectBuilder.Web.Tests.abppkg",
+      "folder": "test"
+    },
+    "ProjectBuilder.EntityFrameworkCore.Tests": {
+      "path": "test/ProjectBuilder.EntityFrameworkCore.Tests/ProjectBuilder.EntityFrameworkCore.Tests.abppkg",
+      "folder": "test"
+    },
+    "ProjectBuilder.EntityFrameworkCore": {
+      "path": "src/ProjectBuilder.EntityFrameworkCore/ProjectBuilder.EntityFrameworkCore.abppkg",
+      "folder": "src"
+    },
+    "ProjectBuilder.TestBase": {
+      "path": "test/ProjectBuilder.TestBase/ProjectBuilder.TestBase.abppkg",
+      "folder": "test"
+    },
+    "ProjectBuilder.Domain.Tests": {
+      "path": "test/ProjectBuilder.Domain.Tests/ProjectBuilder.Domain.Tests.abppkg",
+      "folder": "test"
+    },
+    "ProjectBuilder.HttpApi.Client.ConsoleTestApp": {
+      "path": "test/ProjectBuilder.HttpApi.Client.ConsoleTestApp/ProjectBuilder.HttpApi.Client.ConsoleTestApp.abppkg",
+      "folder": "test"
+    },
+    "ProjectBuilder.DbMigrator": {
+      "path": "src/ProjectBuilder.DbMigrator/ProjectBuilder.DbMigrator.abppkg",
+      "folder": "src"
+    },
+    "ProjectBuilder.Domain": {
+      "path": "src/ProjectBuilder.Domain/ProjectBuilder.Domain.abppkg",
+      "folder": "src"
+    }
+  }
+}

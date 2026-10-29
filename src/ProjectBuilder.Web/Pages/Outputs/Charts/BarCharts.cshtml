@@ -1,0 +1,162 @@
+@page
+@model ProjectBuilder.Web.Pages.Outputs.Charts.BarChartsModel
+@{
+    Layout = "Shared/OutputsLayout";
+    ViewData["Menu"] = "DSSMenus.Outputs";
+    ViewData["SubMenu"] = "Charts";
+    ViewData["SubSubMenu"] = "BarCharts";
+    ViewData["poolId"] = Model.PoolId != Guid.Empty ? Model.PoolId.ToString() : "";
+}
+
+<script src="https://d3js.org/d3.v4.min.js"></script>
+
+<style>
+    #chartTabs {
+        margin-top: 28px;
+    }
+    #chartTabs .nav-link {
+        font-weight: 600;
+        color: #6b7280;
+        padding: 10px 20px;
+    }
+    #chartTabs .nav-link.active {
+        color: #1f3bb5;
+    }
+    #chartTabsContent {
+        border: 1px solid #dee2e6;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        background: #fff;
+        padding: 24px 20px 12px;
+    }
+    #chartTabsContent svg {
+        width: 100%;
+    }
+    #chartTabsContent .axis path,
+    #chartTabsContent .axis line {
+        stroke: #cfd4da;
+    }
+    #chartTabsContent .axis text {
+        font-size: 10px;
+        fill: #6b7280;
+    }
+</style>
+
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Bar Charts</h1>
+
+    <div class="card mb-4">
+        <div class="card-body">
+
+            @if (Model.PoolId != Guid.Empty && (Model.ProjectCandidates == null || Model.ProjectCandidates.Count == 0))
+            {
+                <div class="alert alert-warning">No projects were found for this candidate +.</div>
+            }
+
+            @if (Model.PoolId != Guid.Empty && Model.ProjectCandidates != null && Model.ProjectCandidates.Count > 0)
+            {
+                <ul class="nav nav-tabs" id="chartTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-cost" data-chart-key="cost" type="button" role="tab">Cost</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-benefit" data-chart-key="benefit" type="button" role="tab">Benefit</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-score" data-chart-key="score" type="button" role="tab">Total Score</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-efficiency" data-chart-key="efficiency" type="button" role="tab">Efficiency</button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="chartTabsContent">
+                    <div class="tab-pane fade show active" id="tab-cost" role="tabpanel"><svg id="chart-cost"></svg></div>
+                    <div class="tab-pane fade" id="tab-benefit" role="tabpanel"><svg id="chart-benefit"></svg></div>
+                    <div class="tab-pane fade" id="tab-score" role="tabpanel"><svg id="chart-score"></svg></div>
+                    <div class="tab-pane fade" id="tab-efficiency" role="tabpanel"><svg id="chart-efficiency"></svg></div>
+                </div>
+            }
+
+        </div>
+    </div>
+
+</div>
+
+@if (Model.PoolId != Guid.Empty && Model.ProjectCandidates != null && Model.ProjectCandidates.Count > 0)
+{
+<div id="chartData" hidden data-json="@Model.json"></div>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var data = JSON.parse(document.getElementById('chartData').dataset.json || '[]');
+
+        function drawBarChart(svgSelector, field, color) {
+            var svg = d3.select(svgSelector);
+            svg.selectAll('*').remove(); // clear any previous draw before redrawing on tab reactivation
+
+            // Full project descriptions rotated -45deg need real room underneath the axis to
+            // avoid the same clipping problem fixed on the other charts' rotated labels.
+            var margin = { top: 10, right: 16, bottom: 160, left: 55 },
+                width = svg.node().parentNode.clientWidth - margin.left - margin.right,
+                height = 420 - margin.top - margin.bottom;
+
+            svg.attr('height', height + margin.top + margin.bottom);
+
+            var g = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+
+            var x = d3.scaleBand()
+                .domain(data.map(function (d) { return d.Label; }))
+                .range([0, width])
+                .padding(0.2);
+
+            var y = d3.scaleLinear()
+                .domain([0, d3.max(data, function (d) { return +d[field] || 0; })])
+                .nice()
+                .range([height, 0]);
+
+            g.append('g')
+                .attr('class', 'axis')
+                .attr('transform', 'translate(0,' + height + ')')
+                .call(d3.axisBottom(x))
+                .selectAll('text')
+                .attr('transform', 'rotate(-45)')
+                .style('text-anchor', 'end');
+
+            g.append('g')
+                .attr('class', 'axis')
+                .call(d3.axisLeft(y).ticks(5));
+
+            g.selectAll('.bar')
+                .data(data)
+                .enter().append('rect')
+                .attr('class', 'bar')
+                .attr('x', function (d) { return x(d.Label); })
+                .attr('y', function (d) { return y(+d[field] || 0); })
+                .attr('width', x.bandwidth())
+                .attr('height', function (d) { return height - y(+d[field] || 0); })
+                .attr('fill', color);
+        }
+
+        var charts = {
+            cost: { field: 'Cost', color: '#1f6fd6' },
+            benefit: { field: 'Benefit', color: '#e08a16' },
+            score: { field: 'Score', color: '#1faa4c' },
+            efficiency: { field: 'Efficiency', color: '#0f9b8e' }
+        };
+
+        // A hidden (inactive) tab-pane has zero rendered width, so drawing into it up front
+        // would measure width as 0 — draw each chart only once its own tab is actually shown.
+        function renderTab(key) {
+            var c = charts[key];
+            drawBarChart('#chart-' + key, c.field, c.color);
+        }
+
+        renderTab('cost'); // the initially-active tab
+
+        document.querySelectorAll('#chartTabs button[data-bs-toggle="tab"]').forEach(function (btn) {
+            btn.addEventListener('shown.bs.tab', function (e) {
+                renderTab(e.target.getAttribute('data-chart-key'));
+            });
+        });
+    });
+</script>
+}

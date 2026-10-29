@@ -1,0 +1,883 @@
+@page
+@model ProjectBuilder.Web.Pages.Pools.IndexModel
+@using Volo.Abp.Authorization.Permissions
+@using ProjectBuilder.Permissions
+@inject IPermissionChecker PermissionChecker
+@{
+    Layout = "~/Pages/Shared/PBDSSLayout.cshtml";
+    ViewData["PBVariant"] = "app";
+    ViewData["PBActivePage"] = "supplementalcandidates";
+    ViewData["Title"] = "Candidates +";
+
+    var canCreate = await PermissionChecker.IsGrantedAsync(SupplementalCandidatesPermissions.PoolsPageActions.Create);
+    var canEdit = await PermissionChecker.IsGrantedAsync(SupplementalCandidatesPermissions.PoolsPageActions.Edit);
+    var canClear = await PermissionChecker.IsGrantedAsync(SupplementalCandidatesPermissions.PoolsPageActions.Clear);
+    var canImportWork = await PermissionChecker.IsGrantedAsync(SupplementalCandidatesPermissions.PoolsPageActions.ImportWorkCandidates);
+    var canImportConfig = await PermissionChecker.IsGrantedAsync(SupplementalCandidatesPermissions.PoolsPageActions.ImportConfiguration);
+    var canWorkCandidates = await PermissionChecker.IsGrantedAsync(SupplementalCandidatesPermissions.PoolsPageActions.WorkCandidates.Default);
+    var canConfiguration = await PermissionChecker.IsGrantedAsync(SupplementalCandidatesPermissions.PoolsPageActions.Configuration.Default);
+    var canRun = await PermissionChecker.IsGrantedAsync(SupplementalCandidatesPermissions.PoolsPageActions.Run);
+    var canOutput = await PermissionChecker.IsGrantedAsync(SupplementalCandidatesPermissions.PoolsPageActions.Map);
+    var canExport = await PermissionChecker.IsGrantedAsync(SupplementalCandidatesPermissions.PoolsPageActions.ExportProjectsOrCandidate);
+
+    var isAdmin = Model.IsAdmin;
+    var currentUserId = Model.CurrentUserId;
+
+    var tableData = new List<object>();
+    if (Model.Pools != null)
+    {
+        foreach (var pool in Model.Pools)
+        {
+            tableData.Add(new
+            {
+                Id = pool.Id,
+                UserId = pool.UserId,
+                Name = pool.Name,
+                Description = pool.Description,
+                WorkCandidateCount = Model.WorkCandidateCounts.GetValueOrDefault(pool.Id),
+                CreatedAt = pool.CreatedAt?.ToString("yyyy-MM-dd HH:mm:ss"),
+                UpdatedAt = pool.UpdatedAt?.ToString("yyyy-MM-dd HH:mm:ss"),
+                IsActive = pool.IsActive,
+                IsShared = pool.IsShared,
+                ScenarioName = pool.SceName
+            });
+        }
+    }
+    var jsonTableData = System.Text.Json.JsonSerializer.Serialize(tableData);
+    var hasPools = Model.Pools != null && Model.Pools.Any();
+}
+
+@section Styles {
+    <link href="https://unpkg.com/tabulator-tables/dist/css/tabulator.min.css" rel="stylesheet">
+    <style>
+        main {
+            display: flex;
+            flex-direction: row;
+            margin-top: 0;
+            padding: 0;
+            width: 100%;
+            overflow: hidden;
+            background-color: rgb(248,248,248);
+            height: calc(100vh - 70px - 44px);
+        }
+
+        .pools-sidebar {
+            width: 60px;
+            background: #c8d8e8;
+            flex-shrink: 0;
+            height: 100%;
+        }
+
+        .pools-content {
+            flex: 1;
+            min-width: 0;
+            padding: 20px 24px;
+            overflow: hidden;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #candidatepoolstable {
+            flex: 1;
+            min-height: 0;
+        }
+
+        .pools-banner {
+            background: linear-gradient(90deg, #006699, #333333);
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 60px;
+            text-align: center;
+            color: #fff;
+            font-weight: bold;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .errorMsg { color: red; }
+
+        /* Run status notification banner */
+        #runStatusBanner { display: none; align-items: center; gap: 10px; padding: 10px 16px; margin-bottom: 10px; border-radius: 4px; font-size: 14px; }
+        #runStatusBanner.run-status-running { background: #fff3cd; border: 1px solid #ffc107; color: #856404; }
+        #runStatusBanner.run-status-success { background: #d4edda; border: 1px solid #28a745; color: #155724; }
+        #runStatusBanner.run-status-error   { background: #f8d7da; border: 1px solid #dc3545; color: #721c24; }
+        .run-status-spinner { width: 16px; height: 16px; border: 3px solid rgba(0,0,0,.2); border-top-color: currentColor; border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
+        .run-status-close { background: none; border: none; cursor: pointer; font-size: 18px; line-height: 1; padding: 0 4px; margin-left: auto; color: inherit; }
+        @@keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+}
+
+<div class="pools-sidebar"></div>
+
+<div class="pools-content">
+
+        @if (!hasPools)
+        {
+            <div class="pools-banner">Create new candidate + to begin</div>
+        }
+
+        <div id="runStatusBanner" role="alert">
+            <span class="run-status-spinner" id="runStatusSpinner"></span>
+            <span id="runStatusMessage"></span>
+            <button class="run-status-close" onclick="hideRunStatus()" title="Dismiss">&times;</button>
+        </div>
+
+        <form id="antiforgery-form" method="post" style="display:none;">
+            @Html.AntiForgeryToken()
+        </form>
+
+        <div class="search-bar">
+            <label>Search in Candidates +</label>
+            <div class="search-input-wrap">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="searchInput" placeholder="" value="@Model.SearchString" />
+            </div>
+            <button class="btn btn-primary btn-sm" id="btnSearch">Search</button>
+            <button class="btn-reset btn-sm" id="btnReset">Reset</button>
+            <label class="my-scenarios-check">
+                <input type="checkbox" id="myPools" checked /> My Candidates +
+            </label>
+            @if (isAdmin)
+            {
+            <label class="my-scenarios-check">
+                <input type="checkbox" id="otherPools" checked /> Other Candidates +
+            </label>
+            }
+            <div class="ms-auto-btns">
+                @if (canCreate)
+                {
+                <button class="btn-new" id="btnCreatePool">Create New Candidate +</button>
+                }
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <div id="candidatepoolstable"></div>
+        </div>
+
+</div>
+
+@* ── Create Candidate + Pool ── *@
+<div class="modal fade" id="CreateLibraryForm" tabindex="-1" role="dialog" aria-labelledby="createlibraryheader" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createlibraryheader">Create Candidate +</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="createLibraryForm1" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="Name" class="form-label">Candidate + Name</label>
+                        <input type="text" name="Name" class="form-control" maxlength="50" required />
+                        <div><span class="errorMsg nameError"></span></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="Description" class="form-label">Candidate + Description</label>
+                        <input name="Description" type="text" class="form-control" required />
+                    </div>
+                    <div class="form-check mb-3 d-none">
+                        <input class="form-check-input" type="radio" name="IsActive" value="true" checked>
+                        <label class="form-check-label" for="IsActive">Create an empty candidate +</label>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="IsSharedLibrary" name="IsSharedLibrary" value="true">
+                            <label class="form-check-label" for="IsSharedLibrary">Shared</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@* ── Edit Candidate + Pool ── *@
+<div class="modal fade" id="EditLibraryForm" tabindex="-1" role="dialog" aria-labelledby="editlibraryheader" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editlibraryheader">Edit Candidate +</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editlibrary" class="needs-validation" method="post" asp-page-handler="UpdatePool" novalidate>
+                <div class="modal-body">
+                    <input type="hidden" id="poolId" name="input.Id">
+                    <div class="mb-3">
+                        <label for="editlibraryname" class="form-label">Candidate + Name</label>
+                        <input type="text" id="editlibraryname" name="input.Name" class="pool-name form-control" maxlength="50" required />
+                        <div id="editnamefeedback" class="invalid-feedback">Field is required</div>
+                        <div><span class="errorMsg nameError"></span></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editlibrarydescription" class="form-label">Candidate + Description</label>
+                        <input type="text" id="editlibrarydescription" name="input.Description" class="pool-description form-control" required />
+                        <div id="editdescriptionfeedback" class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="input.IsSharedLibrary" id="isshared" value="true">
+                            <label class="form-check-label" for="isshared">Shared</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@* ── Import ── *@
+<div class="modal fade" id="importcandiates" tabindex="-1" role="dialog" aria-labelledby="importtreatmentlabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Import</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="treatmentimportform" class="needs-validation" method="post" enctype="multipart/form-data" novalidate asp-page-handler="ImportWorkCandidates">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="libraries" class="form-label">Candidate +</label>
+                        <input class="form-control" type="text" name="candidatepool_name" id="candidatepool_name" readonly>
+                        <input class="form-control" type="hidden" name="PoolId" id="candidatepoolid">
+                    </div>
+                    <div class="mb-3">
+                        <label>
+                            <input type="radio" name="option" value="deleteAll" checked onchange="updateFromScratch()"> Delete All
+                            <input type="checkbox" id="fromScratch" name="fromScratch" checked value="true" hidden />
+                        </label> &nbsp;&nbsp;
+                        <label>
+                            <input type="radio" name="option" value="keepUserCreated" onchange="updateFromScratch()"> Keep User Created
+                        </label> &nbsp;&nbsp;
+                        <label>
+                            <input type="radio" name="option" value="keepAll" onchange="updateFromScratch()"> Keep All
+                            <input type="checkbox" id="keepAll" name="keepAll" value="false" hidden />
+                        </label>
+                    </div>
+                    <div class="mb-3">
+                        <label for="formFile" class="form-label">Excel File</label>
+                        <input class="form-control" type="file" id="excelfile" name="excelfile" accept=".xlsx,.xls">
+                        <div id="excelvalidation" class="invalid-feedback">Field is required</div>
+                        <div id="fileSizeError" class="invalid-feedback d-none">the excel file must be under 128Mb in size</div>
+                    </div>
+                    <div class="mb-3 d-none">
+                        <label for="formFile" class="form-label">Tab Name</label>
+                        <input class="form-control" type="text" name="tabname" value="WorkCandidates">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Import</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@* ── Run Candidate + Confirm ── *@
+<div class="modal fade" id="runPoolConfirm" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="runpoolheader" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="runpoolheader">Run Candidate +</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span id="runPoolConfirmMsg">Do you want to run this candidate +?</span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="confirmRunPoolBtn" class="btn btn-primary">Run</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ── Run blocked: no work candidates ── *@
+<div class="modal fade" id="runPoolNoCandidates" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="runpoolnocandidatesheader" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="runpoolnocandidatesheader">Run Candidate +</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span>No work candidates available for this candidate +.</span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ── Delete Candidate + Confirm ── *@
+<div class="modal fade" id="deletePoolConfirm" tabindex="-1" role="dialog" aria-labelledby="deletepoolheader" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deletepoolheader">Delete Candidate +</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span id="deletePoolConfirmMsg">Are you sure you want to delete this candidate +?</span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="confirmDeletePoolBtn" class="btn btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ── Export Projects & Candidates ── *@
+<div class="modal fade" id="exportScenario" tabindex="-1" role="dialog" aria-labelledby="exportheader" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exportheader">Export Projects & Candidates</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="exportProjectsForm" method="post" asp-page-handler="Export" novalidate>
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="Name" class="form-label">Candidate + Name</label>
+                        <input type="text" id="Name" class="form-control" required readonly />
+                        <input type="hidden" name="poolId" id="exportPoolId" class="form-control" required readonly />
+                    </div>
+                    <div class="mb-3">
+                        <label for="effThreshold" class="form-label">Relative efficiency threshold</label>
+                        <input name="effThreshold" id="effThreshold" type="text" class="form-control" value="0" placeholder="0.0 - 1.0 (0 = include all projects)" required />
+                        <div id="effThresholdFeedback" class="invalid-feedback">Enter a number from 0.0 to 1.0. Blank spaces are not allowed.</div>
+                    </div>
+                    <div id="exportFormError" class="alert alert-danger d-none" role="alert"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Export</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script type="text/javascript" src="https://unpkg.com/tabulator-tables/dist/js/tabulator.min.js"></script>
+    <script type="text/javascript" src="~/js/pbdss/table.js"></script>
+    <script>
+        var tableData = @Html.Raw(jsonTableData);
+        var isAdmin = @(isAdmin ? "true" : "false");
+        var currentUserId = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(currentUserId.ToString()));
+
+        function antiToken() { return $('input[name="__RequestVerificationToken"]').first().val(); }
+
+        function isMinePool(row) {
+            return (row.UserId || '').toLowerCase() === (currentUserId || '').toLowerCase();
+        }
+        // Mirrors /Scenarios/Index: a shared + candidate pool created by another user can be
+        // viewed in the list but not opened/managed — only the owner (or an admin) may Import,
+        // Work Candidates, Configuration, Run, Edit, or Delete it. Outputs and Export Projects &
+        // Candidates stay enabled for everyone (matches Scenarios keeping Analysis/Treatment
+        // Pool Library enabled regardless of ownership).
+        function canManagePool(row) { return isAdmin || isMinePool(row); }
+
+        // ── Run scenario: POST + background-job polling (mirrors /Scenarios/Index) ──
+        var _poolPollTimer = null;
+
+        function showRunStatus(state, message) {
+            var banner = document.getElementById('runStatusBanner');
+            var spinner = document.getElementById('runStatusSpinner');
+            banner.className = 'run-status-banner run-status-' + state;
+            document.getElementById('runStatusMessage').textContent = message;
+            spinner.style.display = (state === 'running') ? 'block' : 'none';
+            banner.style.display = 'flex';
+        }
+
+        function hideRunStatus() {
+            if (_poolPollTimer) { clearInterval(_poolPollTimer); _poolPollTimer = null; }
+            document.getElementById('runStatusBanner').style.display = 'none';
+        }
+
+        function pollPoolJobStatus(jobId, scenName) {
+            if (_poolPollTimer) clearInterval(_poolPollTimer);
+            var label = scenName ? '"' + scenName + '"' : 'Scenario';
+            function checkStatus() {
+                $.get('/Scenarios/Index?handler=JobStatus', { jobId: jobId }, function (res) {
+                    if (res.status === 'Succeeded') {
+                        clearInterval(_poolPollTimer); _poolPollTimer = null;
+                        sessionStorage.removeItem('poolPendingJobId');
+                        sessionStorage.removeItem('poolPendingJobName');
+                        sessionStorage.setItem('poolRunSuccess', label + ' run completed successfully.');
+                        location.reload();
+                    } else if (res.status === 'Failed') {
+                        clearInterval(_poolPollTimer); _poolPollTimer = null;
+                        sessionStorage.removeItem('poolPendingJobId');
+                        sessionStorage.removeItem('poolPendingJobName');
+                        showRunStatus('error', label + ' run failed: ' + (res.message || 'Unknown error'));
+                    }
+                    // Enqueued / Processing — keep polling
+                });
+            }
+            // Check immediately so a job that already finished offscreen doesn't wait a full interval to clear.
+            checkStatus();
+            _poolPollTimer = setInterval(checkStatus, 3000);
+        }
+
+        var _pendingRunPool = null;
+        function runPool(d) {
+            $.get('/Pools/Index?handler=HasWorkCandidates', { id: d.Id })
+                .done(function (res) {
+                    if (!res || !res.hasWorkCandidates) {
+                        $('#runPoolNoCandidates').modal('show');
+                        return;
+                    }
+                    _pendingRunPool = d;
+                    $('#runPoolConfirmMsg').text('Do you want to run "' + (d.ScenarioName || d.Name) + '"?');
+                    $('#runPoolConfirm').modal('show');
+                })
+                .fail(function () {
+                    showRunStatus('error', 'Unable to check work candidates for this candidate +.');
+                });
+        }
+
+        $('#confirmRunPoolBtn').on('click', function () {
+            $('#runPoolConfirm').modal('hide');
+            if (!_pendingRunPool) return;
+            startScenarioRun(_pendingRunPool);
+            _pendingRunPool = null;
+        });
+
+        // DSS pools run through the DEA engine (tbl_dss_Scenarios), not the PB treatment
+        // optimizer (tbl_pb_Scenarios) — a pool has no library treatments, so running it
+        // through the PB pipeline always reports "produced no projects".
+        function startScenarioRun(d) {
+            $.ajax({
+                type: 'POST', url: '/Pools/Index?handler=RunDssScenario',
+                data: { poolId: d.Id },
+                headers: { 'RequestVerificationToken': antiToken() },
+                success: function (res) {
+                    sessionStorage.setItem('poolPendingJobId', res.jobId);
+                    sessionStorage.setItem('poolPendingJobName', d.ScenarioName || d.Name || '');
+                    showRunStatus('running', (d.ScenarioName ? '"' + d.ScenarioName + '"' : 'Scenario') + ' run queued and running in the background…');
+                    pollPoolJobStatus(res.jobId, d.ScenarioName || d.Name);
+                },
+                error: function (xhr) {
+                    var msg = (xhr.responseJSON && xhr.responseJSON.error) || xhr.responseText || 'Unable to run scenario.';
+                    showRunStatus('error', msg);
+                }
+            });
+        }
+
+        // Resume polling for a job left running before a manual refresh, or show a success
+        // banner that was stored just before the last auto-reload.
+        (function () {
+            var successMsg = sessionStorage.getItem('poolRunSuccess');
+            if (successMsg) {
+                sessionStorage.removeItem('poolRunSuccess');
+                showRunStatus('success', successMsg);
+                return;
+            }
+            var pendingJobId = sessionStorage.getItem('poolPendingJobId');
+            if (pendingJobId) {
+                var pendingName = sessionStorage.getItem('poolPendingJobName') || '';
+                showRunStatus('running', (pendingName ? '"' + pendingName + '"' : 'Scenario') + ' run is still in progress…');
+                pollPoolJobStatus(pendingJobId, pendingName);
+            }
+
+            // Pool created/updated flash message (set server-side via TempData/Session) —
+            // shown through the same success banner style used across the pb pages
+            // instead of the dark gradient .pools-banner.
+            var serverFlashMsg = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SessionMsg));
+            if (serverFlashMsg) {
+                showRunStatus('success', serverFlashMsg);
+            }
+        })();
+
+        // ── helpers reused by row actions ──
+        function openImportModal(poolId) {
+            $.ajax({
+                url: '/Pools/Index?handler=GetPool&id=' + poolId,
+                type: 'GET',
+                dataType: 'json',
+                success: function (data) {
+                    $("#importcandiates #candidatepool_name").val(data.name);
+                    $("#importcandiates #candidatepoolid").val(data.id);
+                    $("#importcandiates").modal("show");
+                },
+                error: function (xhr, status, error) { console.error('Error fetching pool:', error); }
+            });
+        }
+
+        function openEditModal(poolId) {
+            $.ajax({
+                url: '/Pools/Index?handler=GetPool&id=' + poolId,
+                type: 'GET',
+                dataType: 'json',
+                success: function (data) {
+                    $("#EditLibraryForm .nameError").text('');
+                    $("#EditLibraryForm .pool-name").val(data.name).removeClass('is-invalid');
+                    $("#EditLibraryForm .pool-description").val(data.description).removeClass('is-invalid');
+                    $("#EditLibraryForm #poolId").val(data.id);
+                    $("#EditLibraryForm #isshared").prop("checked", data.isSharedLibrary);
+                    $("#EditLibraryForm button[type=submit]").prop("disabled", false);
+                    $("#EditLibraryForm").modal("show");
+                },
+                error: function (xhr, status, error) { console.error('Error fetching pool:', error); }
+            });
+        }
+
+        var _pendingDeletePool = null;
+        function deletePool(d) {
+            _pendingDeletePool = d;
+            $('#deletePoolConfirmMsg').text('Are you sure you want to delete "' + (d.Name || 'this candidate +') + '"?');
+            $('#deletePoolConfirm').modal('show');
+        }
+
+        $('#confirmDeletePoolBtn').on('click', function () {
+            $('#deletePoolConfirm').modal('hide');
+            if (!_pendingDeletePool) return;
+            var poolId = _pendingDeletePool.Id;
+            _pendingDeletePool = null;
+            $.ajax({
+                url: '/Pools/Index?handler=DeletePool&id=' + poolId,
+                type: 'GET',
+                dataType: 'json',
+                success: function () { location.reload(); },
+                error: function (xhr) {
+                    var msg = (xhr.responseJSON && xhr.responseJSON.message) || xhr.responseText || 'Unable to delete pool.';
+                    showRunStatus('error', msg);
+                }
+            });
+        });
+
+        function isActiveFormatter(cell) {
+            return cell.getValue() ? '<span class="shared-y">Yes</span>' : '<span class="shared-n">No</span>';
+        }
+        function isSharedFormatter(cell) {
+            return cell.getValue() ? 'Yes' : 'No';
+        }
+
+        // ── Play button: jump straight into Work Candidates / Configuration for this pool ──
+        var canOpenSettings = @((canWorkCandidates || canConfiguration) ? "true" : "false");
+        function playFormatter(cell) {
+            var d = cell.getRow().getData();
+            if (!canManagePool(d)) {
+                return '<button class="btn-run" disabled title="Shared candidates + from other users cannot be opened here."><i class="fa-solid fa-gear"></i></button>';
+            }
+            return '<button class="btn-run" title="Open"><i class="fa-solid fa-gear"></i></button>';
+        }
+
+        // ── Search / visibility filters (client-side, mirrors /Scenarios) ──
+        // Regular users get one "My + Candidates" toggle (checked by default → own +
+        // shared, which is all the server sends them). Admins get "My + Candidates" +
+        // "Other + Candidates" (both checked by default → everything; each toggle
+        // controls its half of the data).
+        function visibilityFilter(v, mine, others) {
+            return function (row) {
+                if (v) {
+                    var haystack = [row.Name, row.Description].map(function (s) { return (s || '').toLowerCase(); }).join(' ');
+                    if (haystack.indexOf(v) === -1) return false;
+                }
+                if (isAdmin) return (mine && isMinePool(row)) || (others && !isMinePool(row));
+                return mine ? isMinePool(row) : true;
+            };
+        }
+        function currentFilterArgs() {
+            var otherEl = document.getElementById('otherPools');
+            return {
+                v: document.getElementById('searchInput').value.trim().toLowerCase(),
+                mine: document.getElementById('myPools').checked,
+                others: otherEl ? otherEl.checked : false
+            };
+        }
+
+        // Restore filters saved before navigating away so the initial visibility filter —
+        // baked in below via initialFilter to avoid a construction-time race — reflects
+        // them from the very first paint instead of a post-build setFilter flicker.
+        (function restoreFilterState() {
+            var saved = PBTableState.load(location.pathname + location.search);
+            var filters = saved && saved.filters;
+            if (!filters) return;
+            document.getElementById('searchInput').value = filters.v || '';
+            document.getElementById('myPools').checked = !!filters.mine;
+            var otherEl = document.getElementById('otherPools');
+            if (otherEl) otherEl.checked = !!filters.others;
+        })();
+
+        var columns = [
+            { title: 'Name', field: 'Name', minWidth: 180, headerSort: false },
+            { title: 'Description', field: 'Description', minWidth: 200, headerSort: false },
+            { title: 'Work Candidate Count', field: 'WorkCandidateCount', width: 185, hozAlign: 'right', headerSort: false },
+            { title: 'Created At', field: 'CreatedAt', width: 175, headerSort: false },
+            { title: 'Updated At', field: 'UpdatedAt', width: 175, headerSort: false },
+            { title: 'Is Active', field: 'IsActive', width: 110, hozAlign: 'center', headerSort: false, formatter: isActiveFormatter },
+            { title: 'Shared', field: 'IsShared', width: 100, hozAlign: 'center', headerSort: false, formatter: isSharedFormatter }
+        ];
+        if (canOpenSettings) {
+            columns.unshift({ title: '', field: 'Id', width: 46, hozAlign: 'center', headerSort: false, formatter: playFormatter, tooltip: false, cssClass: 'cell-no-overflow' });
+        }
+
+        var table = createTable('#candidatepoolstable', {
+            data: tableData,
+            maxHeightEl: '.table-wrap',
+            paginationSize: 10,
+            initialFilter: (function () {
+                var a = currentFilterArgs();
+                return visibilityFilter(a.v, a.mine, a.others);
+            })(),
+            actions: [
+                @if (canRun) { <text>{ label: 'Run', icon: 'fa-solid fa-play', disabled: function (d) { return !canManagePool(d); }, onClick: function (d) { runPool(d); } },</text> }
+                @if (canConfiguration) { <text>{ label: 'Configuration', icon: 'fa-solid fa-gear', disabled: function (d) { return !canManagePool(d); }, onClick: function (d) { window.location.href = '/Pools/PoolScoreParameters?poolId=' + d.Id; } },</text> }
+                @if (canWorkCandidates) { <text>{ label: 'Work Candidates', icon: 'fa-solid fa-pen-to-square', disabled: function (d) { return !canManagePool(d); }, onClick: function (d) { window.location.href = '/WorkCandidates?id=' + d.Id; } },</text> }
+                @if (canImportWork) { <text>{ label: 'Import Work Candidates', icon: 'fa-solid fa-file-import', disabled: function (d) { return !canManagePool(d); }, onClick: function (d) { window.location.href = '/WorkCandidates?id=' + d.Id + '&import=true'; } },</text> }
+                @if (canImportConfig) { <text>{ label: 'Import Configuration', icon: 'fa-solid fa-file-arrow-down', disabled: function (d) { return !canManagePool(d); }, onClick: function (d) { window.location.href = '/Pools/PoolScoreParameters?poolId=' + d.Id + '&import=true'; } },</text> }
+                @if (canExport) { <text>{ label: 'Export Projects & Candidates', icon: 'fa-solid fa-file-export', onClick: function (d) { $("#exportScenario #Name").val(d.Name); $("#exportScenario #exportPoolId").val(d.Id); $("#effThreshold").val('0').removeClass('is-invalid'); $("#exportScenario").modal("show"); } },</text> }
+                @if (canOutput) { <text>{ label: 'Outputs', icon: 'fa-solid fa-chart-bar', onClick: function (d) { window.location.href = '/Outputs/Reports/Projects?poolId=' + d.Id; } },</text> }
+                @if (canEdit) { <text>{ label: 'Edit', icon: 'fa-solid fa-pen', disabled: function (d) { return !canManagePool(d); }, onClick: function (d) { openEditModal(d.Id); } },</text> }
+                @if (canClear) { <text>{ label: 'Delete', icon: 'fa-solid fa-trash', type: 'delete', disabled: function (d) { return !canManagePool(d); }, onClick: function (d) { deletePool(d); } }</text> }
+            ],
+            columns: columns
+        });
+
+        // Play button click → open Work Candidates (or Configuration if that's all this user has).
+        table.on('cellClick', function (e, cell) {
+            if (cell.getColumn().getField() === 'Id' && e.target.closest('.btn-run')) {
+                var d = cell.getRow().getData();
+                @if (canWorkCandidates)
+                {
+                    <text>window.location.href = '/WorkCandidates?id=' + d.Id;</text>
+                }
+                else if (canConfiguration)
+                {
+                    <text>window.location.href = '/Pools/PoolScoreParameters?poolId=' + d.Id;</text>
+                }
+            }
+        });
+
+        // ── search / visibility (client-side) ──
+        function applySearch() {
+            var a = currentFilterArgs();
+            table.setFilter(visibilityFilter(a.v, a.mine, a.others));
+            table.pbSaveFilters(a);
+        }
+        $('#btnSearch').on('click', applySearch);
+        $('#searchInput').on('keypress', function (e) { if (e.key === 'Enter') applySearch(); });
+        $('#myPools').on('change', applySearch);
+        $('#otherPools').on('change', applySearch);
+        $('#btnReset').on('click', function () {
+            $('#searchInput').val('');
+            applySearch();
+        });
+        // The default "My + Candidates" filter is baked in via initialFilter above, so no
+        // post-build applySearch() call is needed here (mirrors /Scenarios/Index).
+
+        // ── create modal ──
+        $('#btnCreatePool').on('click', function () {
+            $('#createLibraryForm1 .nameError').text('');
+            $('#createLibraryForm1 button[type=submit]').removeAttr("disabled");
+            $('#CreateLibraryForm').modal('show');
+        });
+
+        // Reset the form on every close (Cancel, X, backdrop click, Esc) so leftover
+        // text from a cancelled entry doesn't reappear the next time it's opened.
+        $('#CreateLibraryForm').on('hidden.bs.modal', function () {
+            $('#createLibraryForm1')[0].reset();
+            $('#createLibraryForm1 .nameError').text('');
+            $('#createLibraryForm1 button[type=submit]').removeAttr("disabled");
+        });
+
+        // Same leftover-message guard for the Edit modal (it had none — a stale
+        // "name exists" / validation error from one edit would reappear on the next).
+        $('#EditLibraryForm').on('hidden.bs.modal', function () {
+            $('#editlibrary')[0].reset();
+            $('#editlibrary .nameError').text('');
+            $('#editlibrary .is-invalid').removeClass('is-invalid');
+            $('#editlibrary button[type=submit]').prop("disabled", false);
+        });
+
+        $('#exportScenario').on('hidden.bs.modal', function () {
+            var form = document.getElementById('exportProjectsForm');
+            if (form) form.reset();
+            $('#effThreshold').val('0').removeClass('is-invalid');
+            $('#exportFormError').addClass('d-none').text('');
+        });
+        $('#effThreshold').on('input', function () {
+            $(this).removeClass('is-invalid');
+            $('#exportFormError').addClass('d-none').text('');
+        });
+        $('#exportProjectsForm').on('submit', async function (e) {
+            e.preventDefault();
+            var form = this;
+            var input = document.getElementById('effThreshold');
+            var raw = (input.value || '').trim();
+            input.value = raw;
+            var n = Number(raw);
+            if (!raw || Number.isNaN(n) || n < 0 || n > 1) {
+                input.classList.add('is-invalid');
+                return;
+            }
+
+            var submitBtn = form.querySelector('button[type=submit]');
+            var errorBox = document.getElementById('exportFormError');
+            errorBox.classList.add('d-none');
+            errorBox.textContent = '';
+            submitBtn.disabled = true;
+
+            try {
+                var response = await fetch(form.action, { method: 'POST', body: new FormData(form) });
+                if (response.ok) {
+                    var blob = await response.blob();
+                    var url = URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'Export.xlsx';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(url);
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('exportScenario')).hide();
+                } else {
+                    var message = await response.text();
+                    errorBox.textContent = message || 'Export failed. Please try again.';
+                    errorBox.classList.remove('d-none');
+                }
+            } catch (err) {
+                errorBox.textContent = 'Export failed. Please try again.';
+                errorBox.classList.remove('d-none');
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+
+        $(document).on("keyup", '#createLibraryForm1 input[name=Name]', function () {
+            $("#createLibraryForm1 .nameError").text("");
+            $('#createLibraryForm1 button[type=submit]').removeAttr("disabled");
+        });
+        $(document).on("input", '#editlibraryname, #editlibrarydescription', function () {
+            $(this).removeClass('is-invalid');
+            $("#editlibrary .nameError").text("");
+            $('#editlibrary button[type=submit]').prop("disabled", false);
+        });
+
+        $(document).on("submit", '#createLibraryForm1', function (e) {
+            e.preventDefault();
+            $('#createLibraryForm1 button[type=submit]').attr("disabled", true);
+            $.ajax({
+                type: 'POST',
+                url: '@Url.Page("/Pools/Index")?handler=Create',
+                data: $(this).serialize(),
+                dataType: "json",
+                success: function (response) {
+                    if (response.success) { location.reload(); }
+                    else {
+                        $("#createLibraryForm1 .nameError").text(response.message);
+                        $('#createLibraryForm1 button[type=submit]').removeAttr("disabled");
+                    }
+                },
+                error: function (xhr, status, error) { console.error('Error creating pool: ' + error); }
+            });
+        });
+
+        $(document).on("submit", '#editlibrary', function (e) {
+            e.preventDefault();
+            var nameInput = document.getElementById('editlibraryname');
+            var descInput = document.getElementById('editlibrarydescription');
+            var name = (nameInput.value || '').trim();
+            var description = (descInput.value || '').trim();
+            nameInput.value = name;
+            descInput.value = description;
+            var valid = true;
+            if (!name) {
+                nameInput.classList.add('is-invalid');
+                document.getElementById('editnamefeedback').innerText = 'Field is required';
+                valid = false;
+            }
+            if (!description) {
+                descInput.classList.add('is-invalid');
+                document.getElementById('editdescriptionfeedback').innerText = 'Field is required';
+                valid = false;
+            }
+            if (!valid) return;
+
+            var submitBtn = this.querySelector('[type=submit]');
+            submitBtn.disabled = true;
+            $.ajax({
+                type: 'POST',
+                url: '@Url.Page("/Pools/Index")?handler=UpdatePool',
+                data: $(this).serialize(),
+                headers: { 'RequestVerificationToken': antiToken() },
+                dataType: "json",
+                success: function (response) {
+                    if (response.success) { location.reload(); }
+                    else {
+                        $("#editlibrary .nameError").text(response.message);
+                        submitBtn.disabled = false;
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error updating pool: ' + error);
+                    submitBtn.disabled = false;
+                }
+            });
+        });
+
+        // ── import validation ──
+        $('#treatmentimportform').on('submit', function (event) {
+            var fileInput = $('#excelfile');
+            var file = fileInput[0].files[0];
+            $('#excelvalidation, #fileSizeError').addClass('d-none');
+            fileInput.removeClass('is-invalid');
+            if (!file) {
+                $('#excelvalidation').removeClass('d-none');
+                fileInput.addClass('is-invalid');
+                event.preventDefault();
+            } else if (file.size > 128 * 1024 * 1024) {
+                $('#fileSizeError').removeClass('d-none');
+                fileInput.addClass('is-invalid');
+                event.preventDefault();
+            }
+        });
+
+        $('#excelfile').on('change', function () {
+            $('#excelvalidation, #fileSizeError').addClass('d-none');
+            $(this).removeClass('is-invalid');
+        });
+
+        $('#importcandiates').on('hidden.bs.modal', function () {
+            $('#treatmentimportform').trigger('reset');
+            $('#excelvalidation, #fileSizeError').addClass('d-none');
+            $('#excelfile').removeClass('is-invalid');
+        });
+
+        // ── auto-open on import deep-link / empty state ──
+        $(document).ready(function () {
+            if (@(string.Equals(Model.Import, "true", StringComparison.OrdinalIgnoreCase) ? "true" : "false")) {
+                $("#importcandiates #candidatepool_name").val('@Model.PoolName');
+                $("#importcandiates #candidatepoolid").val('@Model.PoolId');
+                $("#importcandiates").modal("show");
+            }
+            @if (!hasPools)
+            {
+                <text>
+                $("#createLibraryForm1 button[type=submit]").removeAttr("disabled");
+                $("#CreateLibraryForm").modal("show");
+                </text>
+            }
+        });
+    </script>
+}

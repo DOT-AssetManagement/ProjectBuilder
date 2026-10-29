@@ -1,0 +1,93 @@
+@page
+@model ProjectBuilder.Web.Pages.EditScenario.ScenarioSettingsModel
+@{
+    Layout = "~/Pages/Shared/PBDSSLayout.cshtml";
+    ViewData["PBVariant"] = "app";
+    ViewData["PBActivePage"] = "scenarios";
+    ViewData["Title"] = "Scenario Settings";
+    var currentYear = DateTime.UtcNow.Year;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/pbdss/scenarioedit.css" />
+    <style>
+        #btnResetScenarioSettings { font-family: Montserrat, sans-serif; font-size: 13px; font-weight: 700; padding: 7px 18px; }
+    </style>
+}
+
+<partial name="_ScenarioNav" model="Model" />
+
+<div class="editscen-content">
+    <div class="editscen-content__header"><h1>Scenario Settings</h1><button class="btn-guide" id="btnGuide"><span class="q">?</span> Guide</button></div>
+
+    <div class="editscen-card">
+
+        @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+        {
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                @Model.ErrorMessage
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        @if (Model.Saved)
+        {
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                Scenario settings saved.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        @if (Model.Settings != null && Model.Settings.Stale && !string.IsNullOrWhiteSpace(Model.Settings.ScenarioNotes))
+        {
+            <div class="alert alert-warning" role="alert">@Model.Settings.ScenarioNotes</div>
+        }
+
+        <form method="post" asp-route-scenid="@Model.Scenid" id="scenarioSettingsForm">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="Input.ScenarioName" class="form-label">Scenario Name</label>
+                    <input asp-for="Input.ScenarioName" class="form-control" maxlength="255" required data-original-value="@Model.Settings?.ScenarioName" />
+                    <span asp-validation-for="Input.ScenarioName" class="text-danger"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Input.FirstYear" class="form-label">First Year</label>
+                    <input asp-for="Input.FirstYear" type="number" class="form-control" min="2021" required data-original-value="@Model.Settings?.FirstYear" />
+                    <span asp-validation-for="Input.FirstYear" class="text-danger"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Input.LastYear" class="form-label">Last Year</label>
+                    <input asp-for="Input.LastYear" type="number" class="form-control" min="@currentYear" required data-original-value="@Model.Settings?.LastYear" />
+                    <span asp-validation-for="Input.LastYear" class="text-danger"></span>
+                </div>
+                <div class="col-md-12">
+                    <div class="form-check form-switch">
+                        <input asp-for="Input.IsShared" class="form-check-input" data-original-checked="@(Model.Settings?.IsShared == true ? "true" : "false")" />
+                        <label asp-for="Input.IsShared" class="form-check-label">Shared</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer mt-3 mb-1">
+                <button class="btn btn-success" type="submit">Save</button>
+                <button class="btn btn-secondary" type="button" id="btnResetScenarioSettings">Reset</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ScenarioRunScript" />
+    <script>
+        document.getElementById('btnResetScenarioSettings').addEventListener('click', function () {
+            document.querySelectorAll('#scenarioSettingsForm [data-original-value]').forEach(function (el) {
+                el.value = el.dataset.originalValue || '';
+                el.setCustomValidity('');
+                el.classList.remove('is-invalid');
+            });
+            document.querySelectorAll('#scenarioSettingsForm [data-original-checked]').forEach(function (el) {
+                el.checked = el.dataset.originalChecked === 'true';
+            });
+        });
+    </script>
+}

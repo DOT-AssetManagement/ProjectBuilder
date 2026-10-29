@@ -1,0 +1,148 @@
+﻿@page
+@using Microsoft.AspNetCore.Mvc.Localization
+@using Microsoft.Extensions.Localization
+@using Volo.Abp.AspNetCore.Mvc.UI.Bootstrap.TagHelpers.Modal
+@using Volo.Abp.Identity.Localization
+@using Volo.Abp.Identity.Web.Pages.Identity.Users
+@using Volo.Abp.Localization
+@using Volo.Abp.ObjectExtending
+@using Volo.Abp.Data
+@using Volo.Abp.Identity
+@model CustomCreateModalModel
+@inject IHtmlLocalizer<IdentityResource> L
+@inject IStringLocalizerFactory StringLocalizerFactory
+
+@{
+    Layout = null;
+}
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.3/jquery.validate.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/3.2.12/jquery.validate.unobtrusive.min.js"></script>
+}
+
+<form method="POST" asp-page-handler="Create">
+    <abp-modal>
+        <abp-modal-header title="@L["NewUser"].Value"></abp-modal-header>
+        <abp-modal-body>
+            <div class="container">
+                <ul class="nav nav-tabs" id="myTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="user-info-tab" data-bs-toggle="tab" data-bs-target="#user-info" type="button" role="tab" aria-controls="user-info" aria-selected="true">User Information</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="roles-tab" data-bs-toggle="tab" data-bs-target="#roles" type="button" role="tab" aria-controls="roles" aria-selected="false">Roles</button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="myTabContent">
+                    <!-- User Information Tab -->
+                    <div class="tab-pane fade show active" id="user-info" role="tabpanel" aria-labelledby="user-info-tab">
+                        <div class="mb-3">
+                            <label asp-for="UserInfo.UserName" class="form-label">User Name</label>
+                            <input type="text" class="form-control" asp-for="UserInfo.UserName" required />
+                            <span asp-validation-for="UserInfo.UserName" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="UserInfo.Name" class="form-label">Name</label>
+                            <input type="text" class="form-control" asp-for="UserInfo.Name" required />
+                            <span asp-validation-for="UserInfo.Name" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="UserInfo.Surname" class="form-label">Surname</label>
+                            <input type="text" class="form-control" asp-for="UserInfo.Surname">
+                            <span asp-validation-for="UserInfo.Name" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="UserInfo.Password" class="form-label">@L["Password"] *</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" autocomplete="new-password" maxlength="@IdentityUserConsts.MaxPasswordLength" asp-for="UserInfo.Password" />
+                                <button class="btn btn-secondary" type="button" id="PasswordVisibilityButton"><i class="fa fa-eye-slash" aria-hidden="true"></i></button>
+                            </div>
+                            <span asp-validation-for="UserInfo.Password"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="UserInfo.Email" class="form-label">Email</label>
+                            <input type="email" class="form-control" asp-for="UserInfo.Email" required />
+                            <span asp-validation-for="UserInfo.Email" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="UserInfo.PhoneNumber" class="form-label">Phone Number</label>
+                            <input type="text" class="form-control" asp-for="UserInfo.PhoneNumber">
+                            <span asp-validation-for="UserInfo.PhoneNumber" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="IsActive" name="IsActive">
+                                <label class="form-check-label" for="IsActive">Active</label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="LockoutEnabled" name="LockoutEnabled">
+                                <label class="form-check-label" for="LockoutEnabled">Lockout Enabled</label>
+                            </div>
+                        </div>
+                    </div>
+                    @foreach (var propertyInfo in ObjectExtensionManager.Instance.GetProperties<CreateModalModel.UserInfoViewModel>())
+                    {
+                        if (!propertyInfo.Name.EndsWith("_Text"))
+                        {
+                            if (propertyInfo.Type.IsEnum || !propertyInfo.Lookup.Url.IsNullOrEmpty())
+                            {
+                                if (propertyInfo.Type.IsEnum)
+                                {
+                                    Model.UserInfo.ExtraProperties.ToEnum(propertyInfo.Name, propertyInfo.Type);
+                                }
+                                <abp-select asp-for="UserInfo.ExtraProperties[propertyInfo.Name]"
+                                            label="@propertyInfo.GetLocalizedDisplayName(StringLocalizerFactory)"
+                                            autocomplete-api-url="@propertyInfo.Lookup.Url"
+                                            autocomplete-selected-item-name="@Model.UserInfo.GetProperty(propertyInfo.Name+"_Text")"
+                                            autocomplete-selected-item-value="@Model.UserInfo.GetProperty(propertyInfo.Name)"
+                                            autocomplete-filter-param-name="@propertyInfo.Lookup.FilterParamName"
+                                            autocomplete-items-property-name="@propertyInfo.Lookup.ResultListPropertyName"
+                                            autocomplete-display-property-name="@propertyInfo.Lookup.DisplayPropertyName"
+                                            autocomplete-value-property-name="@propertyInfo.Lookup.ValuePropertyName"></abp-select>
+                            }
+                            else
+                            {
+                                <abp-input type="@propertyInfo.GetInputType()"
+                                           asp-for="UserInfo.ExtraProperties[propertyInfo.Name]"
+                                           label="@propertyInfo.GetLocalizedDisplayName(StringLocalizerFactory)"
+                                           asp-format="@propertyInfo.GetInputFormatOrNull()"
+                                           value="@propertyInfo.GetInputValueOrNull(Model.UserInfo.GetProperty(propertyInfo.Name))" />
+                            }
+                        }
+                    }
+                    <!-- Roles Tab -->
+                    <div class="tab-pane fade" id="roles" role="tabpanel" aria-labelledby="roles-tab">
+                        <div>
+                            @for (var i = 0; i < Model.Roles.Length; i++)
+                            {
+                                var role = Model.Roles[i];
+                                <abp-input abp-id-name="@Model.Roles[i].IsAssigned" asp-for="@role.IsAssigned" label="@role.Name" class="role-checkbox" />
+                                <input abp-id-name="@Model.Roles[i].Name" asp-for="@role.Name" />
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </abp-modal-body>
+        <abp-modal-footer buttons="@(AbpModalButtons.Cancel|AbpModalButtons.Save)"></abp-modal-footer>
+    </abp-modal>
+</form>
+
+<script>
+    $(document).ready(function () {
+        debugger;
+        $(".role-checkbox").on('click', function () {
+            var $box = $(this);
+            if ($box.is(":checked")) {
+                $(".role-checkbox").prop("checked", false);
+                $box.prop("checked", true);
+            }
+        });
+    });
+</script>
+
+
+
+

@@ -1,0 +1,43 @@
+@page
+@model ProjectBuilder.Web.Pages.Administration.BackgroundJobsModel
+@{
+    ViewData["Title"] = "Background Jobs";
+    Layout = "Shared/AdminLayout";
+    ViewData["SubMenu"] = "BackgroundJobs";
+}
+
+@section Styles {
+    <style>
+        .hangfire-frame-wrap {
+            height: calc(100vh - 70px - 44px - 48px);
+            min-height: 520px;
+            background: #fff;
+            border: 1px solid #d8dee8;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .hangfire-frame-wrap iframe {
+            width: 100%;
+            height: 100%;
+            border: 0;
+            display: block;
+        }
+    </style>
+}
+
+<div class="mt-2 px-2">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <div>
+            <h2 class="mb-1">Background Jobs</h2>
+            <p class="text-muted mb-0">Monitor, retry, or delete queued scenario runs, imports, and other background tasks.</p>
+        </div>
+        <a href="/hangfire" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">
+            <i class="fa-solid fa-up-right-from-square me-1"></i> Open full page
+        </a>
+    </div>
+
+    <div class="hangfire-frame-wrap">
+        <iframe src="/hangfire" title="Hangfire Dashboard" loading="lazy"></iframe>
+    </div>
+</div>

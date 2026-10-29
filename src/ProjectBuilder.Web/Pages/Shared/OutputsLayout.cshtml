@@ -1,0 +1,280 @@
+@inject Volo.Abp.Users.ICurrentUser CurrentUser
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@using System.Security.Claims
+@using ProjectBuilder.Permissions
+@using ProjectBuilder.Models.Pool
+@using ProjectBuilder.Repositories
+@using Volo.Abp.Authorization.Permissions
+@inject IPermissionChecker PermissionChecker
+@inject IDssScenarioRepository DssScenarioRepository
+@inject IPoolAppService PoolAppService
+@inject IProjectCandidateRepository ProjectCandidateRepository
+@{
+    var subMenu    = ViewData["SubMenu"]?.ToString() ?? "";
+    var subSubMenu = ViewData["SubSubMenu"]?.ToString() ?? "";
+    var poolId     = ViewData["poolId"]?.ToString() ?? "";
+    var poolIdUrl  = poolId != "" ? "?poolId=" + poolId : "";
+
+    Guid? dssScenarioId = null;
+    string poolName = null;
+    // Defaults true so a lookup error never wrongly disables the Maps nav link.
+    bool hasProjects = true;
+    if (Guid.TryParse(poolId, out var poolGuid) && poolGuid != Guid.Empty)
+    {
+        var dssScenario = await DssScenarioRepository.GetByPoolIdAsync(poolGuid);
+        dssScenarioId = dssScenario?.Id;
+
+        try
+        {
+            var pool = await PoolAppService.GetAsync(poolGuid);
+            poolName = pool?.Name;
+        }
+        catch (Volo.Abp.Domain.Entities.EntityNotFoundException)
+        {
+            poolName = null;
+        }
+
+        try
+        {
+            hasProjects = await ProjectCandidateRepository.HasProjectsByPoolIdAsync(poolGuid);
+        }
+        catch
+        {
+            hasProjects = true;
+        }
+    }
+
+    var displayUserName = User.Identity?.Name
+        ?? CurrentUser.Name
+        ?? CurrentUser.UserName
+        ?? CurrentUser.Email
+        ?? User.FindFirstValue(ClaimTypes.Email)
+        ?? string.Empty;
+
+    string A(string key) => subSubMenu == key ? "active" : "";
+
+    bool inCharts  = subMenu == "Charts";
+    bool inReports = subMenu == "Reports";
+
+    string SectionClass(bool active) => active ? "collapse show" : "collapse";
+    string BtnClass(bool active)     => active ? "sidebar-section-hdr" : "sidebar-section-hdr collapsed";
+
+    var canOutputs = await PermissionChecker.IsGrantedAsync(DSSPermissions.TopBarPermissions.Outputs);
+    var canDssMap = await PermissionChecker.IsGrantedAsync(SupplementalCandidatesPermissions.PoolsPageActions.Map);
+    var canCharts = await PermissionChecker.IsGrantedAsync(ChartsPermissions.Charts.Default);
+    var canReports = await PermissionChecker.IsGrantedAsync(ReportsPermissions.Reports.Default);
+    var canFlowDiagram = await PermissionChecker.IsGrantedAsync(ChartsPermissions.Charts.ProjectsAndGoalsFlowDiagram);
+    var canEfficiency = await PermissionChecker.IsGrantedAsync(ChartsPermissions.Charts.ProjectEfficiencyAndCost);
+    var canPctContrib = await PermissionChecker.IsGrantedAsync(ChartsPermissions.Charts.ProjectsAndGoalsPercentageContribution);
+    var canActualContrib = await PermissionChecker.IsGrantedAsync(ChartsPermissions.Charts.ProjectsAndGoalsActualContribution);
+    var canArcMapping = await PermissionChecker.IsGrantedAsync(ChartsPermissions.Charts.ProjectToScoreArcMapping);
+    var canBarCharts = await PermissionChecker.IsGrantedAsync(ChartsPermissions.Charts.BarCharts);
+    var canReportProjects = await PermissionChecker.IsGrantedAsync(ReportsPermissions.Reports.Projects);
+    var canReportSummary = await PermissionChecker.IsGrantedAsync(ReportsPermissions.Reports.WorkCandidateSummary);
+    var canReportDetail = await PermissionChecker.IsGrantedAsync(ReportsPermissions.Reports.WorkCandidateDetail);
+
+    // Every page using this layout lives under "+ Candidates" (Outputs/Charts/Reports for a
+    // pool) — set centrally here, rather than per-page, so the top nav's "+ Candidates"
+    // underline (rendered by Shared/_PermissionNav off this same ViewData key) doesn't depend
+    // on each content page remembering to set it. Only Outputs/Reports/Projects.cshtml ever did.
+    ViewData["PBActivePage"] = "supplementalcandidates";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>@(ViewData["Title"] ?? "Outputs") — Project Builder</title>
+    <link rel="icon" type="image/x-icon" href="~/images/favicon.ico" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    @RenderSection("Styles", required: false)
+    @* Layout chrome CSS is loaded last so page-injected style bundles can never override the navbar/sidebar. *@
+    <link rel="stylesheet" href="~/css/pbdss/layout.css" />
+    <link rel="stylesheet" href="~/css/pbdss/scenarioedit.css" />
+    <style>
+        /* No .editscen-sidebar / .editscen-menu color/background overrides here -- this layout
+           relies on scenarioedit.css's base styling (white sidebar, #f0f4fb hover/active) so it
+           looks identical to _AnalysisNav's sidebar, just with extra sub-sections below. */
+        /* Flat items directly under the sidebar title (Maps, Pool Projects) -- same padding/size
+           as _AnalysisNav's items so the two sidebars read as one consistent menu style. */
+        .editscen-menu--l1 a {
+            padding-left: 20px;
+            font-size: 14px;
+        }
+        /* Items nested under a collapsible sub-section (Charts / Reports children) -- indented
+           relative to the l1 items above, but same font size as the rest of the menu. */
+        .editscen-menu--l2 a {
+            padding-left: 36px;
+            font-size: 14px;
+        }
+        /* scenarioedit.css sets .editscen-menu { flex: 1 }, meant for a single menu list filling the
+           sidebar. This layout has several small sibling lists/sections (Maps, Charts, Reports), so
+           without this override the first one (Maps) stretches to fill all leftover space and pushes
+           Charts/Reports down, leaving a large empty gap right under Maps. */
+        .editscen-sidebar .editscen-menu--l1,
+        .editscen-sidebar .editscen-menu--l2 {
+            flex: 0 0 auto;
+        }
+        /* Collapsible section header -- styled as a plain flat menu row (like _AnalysisNav's
+           items) rather than a bold/uppercase section title, so Charts/Reports read the same
+           as the flat Maps/Map links above them; the caret is still the expand/collapse cue. */
+        .sidebar-section-hdr {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            width: 100%;
+            margin: 0;
+            padding: 13px 20px;
+            background: none;
+            border: none;
+            border-left: 3px solid transparent;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: rgb(28, 48, 92);
+            text-align: left;
+            transition: background .15s;
+        }
+        .sidebar-section-hdr:hover {
+            background: #f0f4fb;
+            color: rgb(28, 48, 92);
+        }
+        .sidebar-section-hdr:not(.collapsed) {
+            background: #f0f4fb;
+            border-left-color: rgb(0, 86, 179);
+            font-weight: 800;
+        }
+        .sidebar-section-hdr .section-caret {
+            font-size: 13px;
+            color: #9aa3b0;
+            transition: transform .2s ease;
+        }
+        .sidebar-section-hdr:not(.collapsed) .section-caret {
+            color: rgb(0, 86, 179);
+        }
+        .sidebar-section-hdr.collapsed .section-caret {
+            transform: rotate(-90deg);
+        }
+    </style>
+</head>
+<body>
+
+    @* Loaded before RenderBody() (unlike the other PBDSS layouts) because every Outputs/Charts/Reports
+       page ported from DSS puts its jQuery-dependent <script> inline in the body instead of using
+       @section Scripts, so it needs $ to already be defined at that point in the document. *@
+    @if (ViewData["SkipDefaultScripts"] is not true)
+    {
+        <script src="~/lib/jquery/dist/jquery.min.js"></script>
+        <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    }
+
+    <nav id="main-navbar">
+        <div class="navbar_maincontainer">
+            <div class="logos-container">
+                <img src="~/images/pbdss/logo.png" alt="PennDOT" style="height:70px;object-fit:contain" />
+                <div class="verticalline"></div>
+                <a href="/Dashboard" class="navbar-projectbuilder-link" title="Dashboard" aria-label="Go to Dashboard">
+                    <img src="~/images/pbdss/SecondaryLogo.svg" alt="Project Builder" style="height:70px;object-fit:contain" />
+                </a>
+            </div>
+
+            <div class="navbar_navigation-container">
+                @await Html.PartialAsync("Shared/_PermissionNav")
+            </div>
+
+            <div class="navbar_userinfo-container">
+                <i class="fa-solid fa-user" aria-hidden="true"></i>
+                @if (!string.IsNullOrWhiteSpace(displayUserName))
+                {
+                    <p class="navbar-username" title="@displayUserName">@displayUserName</p>
+                }
+                <div class="verticalline"></div>
+                <a href="/Account/Logout" class="circle" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></a>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <nav class="editscen-sidebar" aria-label="Outputs Menu">
+            <div class="editscen-sidebar__title">
+                Outputs
+                @if (!string.IsNullOrWhiteSpace(poolName))
+                {
+                    <span class="editscen-sidebar__name" title="@poolName">@poolName</span>
+                }
+            </div>
+
+            <ul class="editscen-menu editscen-menu--l1">
+                @if (canOutputs && canDssMap)
+                {
+                <li>
+                    @if (hasProjects)
+                    {
+                        <a class="@(subMenu == "Maps" || subMenu == "DssMap" ? "active" : "")" href="/DssMap?scenid=@dssScenarioId">
+                            <span>Maps</span><i class="fa-solid fa-map icon-right"></i>
+                        </a>
+                    }
+                    else
+                    {
+                        <a class="disabled" aria-disabled="true" tabindex="-1" title="Scenario has no projects">
+                            <span>Maps</span><i class="fa-solid fa-map icon-right"></i>
+                        </a>
+                    }
+                </li>
+                }
+            </ul>
+
+            @if (canCharts)
+            {
+            <!-- Charts Section -->
+            <button class="@BtnClass(inCharts)" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#col-charts" aria-expanded="@(inCharts ? "true" : "false")">
+                <span>Charts</span><i class="fa-solid fa-angle-down section-caret"></i>
+            </button>
+            <div class="@SectionClass(inCharts)" id="col-charts">
+                <ul class="editscen-menu editscen-menu--l2">
+                    @if (canFlowDiagram) { <li><a href="/Outputs/Charts/ProjectsAndGoalsFlowDiagram@(poolIdUrl)"             class="@A("ProjectsAndGoalsFlowDiagram")">Projects And Goals Flow Diagram <i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                    @if (canEfficiency) { <li><a href="/Outputs/Charts/ProjectEfficiencyAndCost@(poolIdUrl)"                class="@A("ProjectEfficiencyAndCost")">Project Efficiency and Cost <i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                    @if (canPctContrib) { <li><a href="/Outputs/Charts/ProjectsAndGoalsPercentageContribution@(poolIdUrl)"  class="@A("ProjectsAndGoalsPercentageContribution")">Projects and Goals Percentage Contribution <i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                    @if (canActualContrib) { <li><a href="/Outputs/Charts/ProjectsAndGoalsActualContribution@(poolIdUrl)"      class="@A("ProjectsAndGoalsActualContribution")">Projects &amp; Goals Actual Contribution to Total Score <i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                    @if (canArcMapping) { <li><a href="/Outputs/Charts/ProjectToScoreArcMapping@(poolIdUrl)"                class="@A("ProjectToScoreArcMapping")">Project to Score Arc Mapping <i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                    @if (canBarCharts) { <li><a href="/Outputs/Charts/BarCharts@(poolIdUrl)"                    class="@A("BarCharts")">Bar Charts <i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                </ul>
+            </div>
+            }
+
+            @if (canReports)
+            {
+            <!-- Reports Section -->
+            <button class="@BtnClass(inReports)" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#col-reports" aria-expanded="@(inReports ? "true" : "false")">
+                <span>Reports</span><i class="fa-solid fa-angle-down section-caret"></i>
+            </button>
+            <div class="@SectionClass(inReports)" id="col-reports">
+                <ul class="editscen-menu editscen-menu--l2">
+                    @if (canReportProjects) { <li><a href="/Outputs/Reports/Projects@(poolIdUrl)"              class="@A("Projects")">              Projects                 <i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                    @if (canReportSummary) { <li><a href="/Outputs/Reports/WorkCandidateSummary@(poolIdUrl)"  class="@A("WorkCandidateSummary")">  Work Candidate Summary   <i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                    @if (canReportDetail) { <li><a href="/Outputs/Reports/WorkCandidateDetail@(poolIdUrl)"   class="@A("WorkCandidateDetail")">   Work Candidate Detail    <i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                </ul>
+            </div>
+            }
+        </nav>
+
+        <div class="editscen-content">
+            <div id="AbpContentToolbar">
+                @RenderSection("content_toolbar", required: false)
+            </div>
+            @RenderBody()
+        </div>
+    </main>
+
+    <footer>
+        <div class="app-footer"><div class="app-footer__content">ProjectBuilder &copy; 2026 v@(Configuration["App:Version"]) &mdash; ALL RIGHTS RESERVED</div></div>
+    </footer>
+
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

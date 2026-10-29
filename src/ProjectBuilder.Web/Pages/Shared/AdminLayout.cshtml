@@ -1,0 +1,337 @@
+@inject Volo.Abp.Users.ICurrentUser CurrentUser
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@using System.Linq
+@using System.Security.Claims
+@using ProjectBuilder.Permissions
+@using Volo.Abp.Authorization.Permissions
+@using Volo.Abp.Identity
+@inject IPermissionChecker PermissionChecker
+@{
+    var subMenu         = ViewData["SubMenu"]?.ToString() ?? "";
+    var displayUserName = User.Identity?.Name
+        ?? CurrentUser.Name
+        ?? CurrentUser.UserName
+        ?? CurrentUser.Email
+        ?? User.FindFirstValue(ClaimTypes.Email)
+        ?? string.Empty;
+
+    string A(string key) => subMenu == key ? "active" : "";
+
+    var lookupPbKeys  = new HashSet<string>{ "AraEnumerations","BridgeToPavements","MaintainableAssetsSegmentation","BridgeReferenceData","Counties","DefaultSlack","ImportSessions","Parameters","UserTreatments","TreatmentTypes" };
+    var lookupDssKeys = new HashSet<string>{ "AssetTypeParameter","OtherParameter" };
+    var lookupKeys   = new HashSet<string>(lookupPbKeys.Concat(lookupDssKeys));
+    var identityKeys = new HashSet<string>{ "Users","Roles" };
+    var importKeys  = new HashSet<string>{ "ImportMAS","ImportB2P","ImportSuperAssets","ImportBridgeRef","ImportScreen" };
+    var importPbKeys         = new HashSet<string>{ "ImportMAS","ImportB2P","ImportSuperAssets","ImportBridgeRef" };
+    var importCandidatesKeys = new HashSet<string>{ "ImportScreen" };
+    var systemKeys  = new HashSet<string>{ "Users", "Roles", "BackgroundJobs" };
+
+    bool inLookup    = lookupKeys.Contains(subMenu);
+    bool inLookupPb  = lookupPbKeys.Contains(subMenu);
+    bool inLookupDss = lookupDssKeys.Contains(subMenu);
+    bool inIdentity = identityKeys.Contains(subMenu);
+    bool inImport   = importKeys.Contains(subMenu);
+    bool inImportPb         = importPbKeys.Contains(subMenu);
+    bool inImportCandidates = importCandidatesKeys.Contains(subMenu);
+
+    bool inApplication = inLookup || inImport || subMenu == "Queue";
+    bool inSystem       = systemKeys.Contains(subMenu);
+
+    string SectionClass(bool active)  => active ? "collapse show" : "collapse";
+    string BtnClass(bool active)      => active ? "sidebar-section-hdr" : "sidebar-section-hdr collapsed";
+
+    var canLookups = await PermissionChecker.IsGrantedAsync(SetUpLookupsPermissions.Default);
+    var canOtherParam = await PermissionChecker.IsGrantedAsync(DSSPermissions.OtherParameterPermissions.Default);
+    var canImport = await PermissionChecker.IsGrantedAsync(DSSPermissions.ImportPermission.Default);
+    var canUsers = await PermissionChecker.IsGrantedAsync(IdentityPermissions.Users.Default);
+    var canRoles = await PermissionChecker.IsGrantedAsync(IdentityPermissions.Roles.Default);
+    var canBackgroundJobs = await PermissionChecker.IsGrantedAsync(BackgroundJobsPermissions.Default);
+    var canAraEnum = await PermissionChecker.IsGrantedAsync(SetUpLookupsPermissions.AraEnumerations);
+    var canB2P = await PermissionChecker.IsGrantedAsync(SetUpLookupsPermissions.BridgeToPavements);
+    var canMas = await PermissionChecker.IsGrantedAsync(SetUpLookupsPermissions.MaintainableAssetsSegmentation);
+    var canBridgeRefData = await PermissionChecker.IsGrantedAsync(SetUpLookupsPermissions.BridgeReferenceData);
+    var canCounties = await PermissionChecker.IsGrantedAsync(SetUpLookupsPermissions.Counties);
+    var canDefaultSlack = await PermissionChecker.IsGrantedAsync(SetUpLookupsPermissions.DefaultSlack);
+    var canImportSessions = await PermissionChecker.IsGrantedAsync(SetUpLookupsPermissions.ImportSessions);
+    var canUserTreatments = await PermissionChecker.IsGrantedAsync(SetUpLookupsPermissions.UserTreatments);
+    var canTreatTypes = await PermissionChecker.IsGrantedAsync(SetUpLookupsPermissions.TreatmentTypes);
+    var canAssetTypeParamPage = await PermissionChecker.IsGrantedAsync(DSSPermissions.AssetTypeParameterPermissions.Default);
+    var canParameters = await PermissionChecker.IsGrantedAsync(SetUpLookupsPermissions.Parameters);
+    var canLookupDss = canAssetTypeParamPage || canOtherParam;
+    var showApplication = (canLookups || canParameters || canLookupDss || canImport || canBackgroundJobs);
+    var showSystem = canUsers || canRoles || canBackgroundJobs;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>@(ViewData["Title"] ?? "Administration") — Project Builder</title>
+    <link rel="icon" type="image/x-icon" href="~/images/favicon.ico" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    @RenderSection("Styles", required: false)
+    @* Layout chrome CSS is loaded last so page-injected style bundles (e.g. LeptonXLite Global) can never override the navbar/sidebar. *@
+    <link rel="stylesheet" href="~/css/pbdss/layout.css" />
+    <link rel="stylesheet" href="~/css/pbdss/scenarioedit.css" />
+    <style>
+        .editscen-sidebar {
+            background: #c8d8e8;
+            border-right: 1px solid #b0c4d8;
+            overflow-y: auto;
+        }
+        .editscen-sidebar__title {
+            color: rgb(28, 48, 92);
+            border-bottom: 1px solid #b0c4d8;
+        }
+        .editscen-menu a,
+        .editscen-menu a:hover,
+        .editscen-menu a:focus,
+        .editscen-menu a:visited,
+        .editscen-menu a:active {
+            color: rgb(28, 48, 92);
+            text-decoration: none;
+        }
+        .editscen-menu a:hover {
+            background: rgba(0, 0, 0, 0.07);
+        }
+        .editscen-menu a.active {
+            background: rgba(0, 0, 0, 0.10);
+            border-left-color: rgb(0, 86, 179);
+        }
+        /* Items nested one level under a top-level section (e.g. System -> Tenants/Users/Roles/Settings) */
+        .editscen-menu--l1 a {
+            padding-left: 36px;
+            font-size: 11px;
+        }
+        /* Items nested two levels deep, under a sub-section (e.g. Application -> Look Up Data -> Enumerations) */
+        .editscen-menu--l2 a {
+            padding-left: 52px;
+            font-size: 11px;
+        }
+        /* Collapsible section header */
+        .sidebar-section-hdr {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            border-bottom: 1px solid #b0c4d8;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .06em;
+            color: rgb(60, 90, 130);
+            text-transform: uppercase;
+            text-align: left;
+        }
+        .sidebar-section-hdr:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        .sidebar-section-hdr .section-caret {
+            margin-left: auto;
+            transition: transform .2s ease;
+        }
+        .sidebar-section-hdr.collapsed .section-caret {
+            transform: rotate(-90deg);
+        }
+        .sidebar-section-hdr .section-icon {
+            margin-right: 8px;
+            width: 14px;
+            text-align: center;
+        }
+        /* Nested (sub) collapsible section header */
+        .sidebar-section-hdr--sub {
+            padding-left: 36px;
+            font-size: 10px;
+            background: rgba(0, 0, 0, 0.03);
+        }
+    </style>
+</head>
+<body>
+
+    <nav id="main-navbar">
+        <div class="navbar_maincontainer">
+            <div class="logos-container">
+                <img src="~/images/pbdss/logo.png" alt="PennDOT" style="height:70px;object-fit:contain" />
+                <div class="verticalline"></div>
+                <a href="/Dashboard" class="navbar-projectbuilder-link" title="Dashboard" aria-label="Go to Dashboard">
+                    <img src="~/images/pbdss/SecondaryLogo.svg" alt="Project Builder" style="height:70px;object-fit:contain" />
+                </a>
+            </div>
+
+            <div class="navbar_navigation-container">
+                @await Html.PartialAsync("Shared/_PermissionNav", new ViewDataDictionary(ViewData) { { "PBActivePage", ViewData["PBActivePage"]?.ToString() ?? "administration" } })
+            </div>
+
+            <div class="navbar_userinfo-container">
+                <i class="fa-solid fa-user" aria-hidden="true"></i>
+                @if (!string.IsNullOrWhiteSpace(displayUserName))
+                {
+                    <p class="navbar-username" title="@displayUserName">@displayUserName</p>
+                }
+                <div class="verticalline"></div>
+                <a href="/Account/Logout" class="circle" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></a>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        @if (ViewData["HideSidebar"] is not true)
+        {
+        <nav class="editscen-sidebar">
+            <div class="editscen-sidebar__title">Administration</div>
+
+            <!-- Application Section -->
+            @if (showApplication)
+            {
+            <button class="@BtnClass(inApplication)" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#col-application" aria-expanded="@(inApplication ? "true" : "false")">
+                <i class="fa-solid fa-layer-group section-icon"></i> Application
+                <i class="fa-solid fa-angle-down section-caret"></i>
+            </button>
+            <div class="@SectionClass(inApplication)" id="col-application">
+
+                @if (canLookups || canParameters || canLookupDss)
+                {
+                <!-- Look Up Data Sub-section -->
+                <button class="@BtnClass(inLookup) sidebar-section-hdr--sub" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#col-lookup" aria-expanded="@(inLookup ? "true" : "false")">
+                    <i class="fa-solid fa-sliders section-icon"></i> Look Up Data
+                    <i class="fa-solid fa-angle-down section-caret"></i>
+                </button>
+                <div class="@SectionClass(inLookup)" id="col-lookup">
+
+                    @if (canLookups || canParameters)
+                    {
+                    <!-- PB Sub-section -->
+                    <button class="@BtnClass(inLookupPb) sidebar-section-hdr--sub" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#col-lookup-pb" aria-expanded="@(inLookupPb ? "true" : "false")" style="padding-left:52px;">
+                        PB
+                        <i class="fa-solid fa-angle-down section-caret"></i>
+                    </button>
+                    <div class="@SectionClass(inLookupPb)" id="col-lookup-pb">
+                        <ul class="editscen-menu editscen-menu--l2">
+                            @if (canAraEnum) { <li><a href="/SetUp/AraEnumerations"             class="@A("AraEnumerations")">            Enumerations              <i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                            @if (canB2P) { <li><a href="/SetUp/BridgeToPavements"           class="@A("BridgeToPavements")">          Bridge To Pavements       <i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                            @if (canMas) { <li><a href="/SetUp/MaintainableAssetsSegmentation" class="@A("MaintainableAssetsSegmentation")"> Maintainable Assets Segmentation <i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                            @if (canBridgeRefData) { <li><a href="/SetUp/BridgeReferenceData"   class="@A("BridgeReferenceData")">        Bridge Reference Data     <i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                            @if (canCounties) { <li><a href="/SetUp/Counties"                    class="@A("Counties")">                   County                    <i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                            @if (canDefaultSlack) { <li><a href="/SetUp/DefaultSlack"                class="@A("DefaultSlack")">               Slack Periods             <i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                            @if (canImportSessions) { <li><a href="/SetUp/ImportSessions"              class="@A("ImportSessions")">             Import Sessions           <i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                            @if (canParameters) { <li><a href="/SetUp/Parameters/List"              class="@A("Parameters")">                 Parameters                <i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                            @if (canUserTreatments) { <li><a href="/SetUp/UserTreatments"              class="@A("UserTreatments")">             User Treatments           <i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                            @if (canTreatTypes) { <li><a href="/SetUp/TreatmentTypes"              class="@A("TreatmentTypes")">             Treatment Types           <i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                        </ul>
+                    </div>
+                    }
+
+                    @if (canLookupDss)
+                    {
+                    <!-- DSS Sub-section -->
+                    <button class="@BtnClass(inLookupDss) sidebar-section-hdr--sub" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#col-lookup-dss" aria-expanded="@(inLookupDss ? "true" : "false")" style="padding-left:52px;">
+                        Candidates +
+                        <i class="fa-solid fa-angle-down section-caret"></i>
+                    </button>
+                    <div class="@SectionClass(inLookupDss)" id="col-lookup-dss">
+                        <ul class="editscen-menu editscen-menu--l2">
+                            @if (canAssetTypeParamPage) { <li><a href="/SetUp/AssetTypeParameter/List" class="@A("AssetTypeParameter")"> Asset Type Parameter     <i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                            @if (canOtherParam) { <li><a href="/SetUp/OtherParameter/List"           class="@A("OtherParameter")">      Other Parameters          <i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                        </ul>
+                    </div>
+                    }
+                </div>
+                }
+
+                @if (canImport)
+                {
+                <!-- Import Sub-section -->
+                <button class="@BtnClass(inImport) sidebar-section-hdr--sub" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#col-import" aria-expanded="@(inImport ? "true" : "false")">
+                    <i class="fa-solid fa-file-import section-icon"></i> Import
+                    <i class="fa-solid fa-angle-down section-caret"></i>
+                </button>
+                <div class="@SectionClass(inImport)" id="col-import">
+
+                    <!-- PB Sub-section -->
+                    <button class="@BtnClass(inImportPb) sidebar-section-hdr--sub" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#col-import-pb" aria-expanded="@(inImportPb ? "true" : "false")" style="padding-left:52px;">
+                        PB
+                        <i class="fa-solid fa-angle-down section-caret"></i>
+                    </button>
+                    <div class="@SectionClass(inImportPb)" id="col-import-pb">
+                        <ul class="editscen-menu editscen-menu--l2">
+                            <li><a href="/Import/MAS"          class="@A("ImportMAS")">         Import MAS             <i class="fa-solid fa-angle-right icon-right"></i></a></li>
+                            <li><a href="/Import/B2PCrosswalk" class="@A("ImportB2P")">         Import B2P Crosswalk   <i class="fa-solid fa-angle-right icon-right"></i></a></li>
+                            <li><a href="/Import/SuperAssets"  class="@A("ImportSuperAssets")"> Import Super Assets    <i class="fa-solid fa-angle-right icon-right"></i></a></li>
+                            <li><a href="/Import/BridgeReferenceData" class="@A("ImportBridgeRef")"> Fetch Bridge Reference Data <i class="fa-solid fa-angle-right icon-right"></i></a></li>
+                        </ul>
+                    </div>
+
+                    <!-- Candidates + Sub-section -->
+                    <button class="@BtnClass(inImportCandidates) sidebar-section-hdr--sub" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#col-import-candidates" aria-expanded="@(inImportCandidates ? "true" : "false")" style="padding-left:52px;">
+                        Candidates +
+                        <i class="fa-solid fa-angle-down section-caret"></i>
+                    </button>
+                    <div class="@SectionClass(inImportCandidates)" id="col-import-candidates">
+                        <ul class="editscen-menu editscen-menu--l2">
+                            <li><a href="/ImportScreen" class="@A("ImportScreen")"> Import Screen <i class="fa-solid fa-angle-right icon-right"></i></a></li>
+                        </ul>
+                    </div>
+                </div>
+                }
+
+                @if (canBackgroundJobs)
+                {
+                <ul class="editscen-menu editscen-menu--l1">
+                    <li><a href="/Administration/Queue" class="@A("Queue")">Queue<i class="fa-solid fa-angle-right icon-right"></i></a></li>
+                </ul>
+                }
+
+            </div>
+            }
+
+            <!-- System Section -->
+            @if (showSystem)
+            {
+            <button class="@BtnClass(inSystem)" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#col-system" aria-expanded="@(inSystem ? "true" : "false")">
+                <i class="fa-solid fa-server section-icon"></i> System
+                <i class="fa-solid fa-angle-down section-caret"></i>
+            </button>
+            <div class="@SectionClass(inSystem)" id="col-system">
+                <ul class="editscen-menu editscen-menu--l1">
+                    @if (canUsers) { <li><a href="/Identity/Users"           class="@A("Users")">   Users   <i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                    @if (canRoles) { <li><a href="/Identity/Roles"           class="@A("Roles")">   Roles   <i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                    @if (canBackgroundJobs) { <li><a href="/Administration/BackgroundJobs" class="@A("BackgroundJobs")">Background Jobs<i class="fa-solid fa-angle-right icon-right"></i></a></li> }
+                </ul>
+            </div>
+            }
+
+        </nav>
+        }
+
+        <div class="editscen-content">
+            <div id="AbpContentToolbar">
+                @RenderSection("content_toolbar", required: false)
+            </div>
+            @RenderBody()
+        </div>
+    </main>
+
+    <footer>
+        <div class="app-footer"><div class="app-footer__content">ProjectBuilder &copy; 2026 v@(Configuration["App:Version"]) &mdash; ALL RIGHTS RESERVED</div></div>
+    </footer>
+
+    @if (ViewData["SkipDefaultScripts"] is not true)
+    {
+        <script src="~/lib/jquery/dist/jquery.min.js"></script>
+        <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    }
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,632 @@
+@page
+@model ProjectBuilder.Web.Pages.Outputs.Charts.ProjectsAndGoalsFlowDiagramModel
+@{
+}
+@{
+    Layout = "Shared/OutputsLayout";
+    ViewData["Menu"] = "DSSMenus.Outputs";
+    ViewData["SubMenu"] = "Charts";
+    ViewData["SubSubMenu"] = "ProjectsAndGoalsFlowDiagram";
+    ViewData["poolId"] = Model.PoolId != Guid.Empty ? Model.PoolId.ToString() : "";
+}
+
+<style>
+    /* ---------------- goal rail ---------------- */
+    #pgRail { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; margin-bottom: 14px; }
+    @@media (max-width: 700px) { #pgRail { grid-template-columns: repeat(2,1fr); } }
+    .pg-goal {
+        position: relative; background: #fff; border: 1px solid #dfe5ee; border-radius: 4px;
+        padding: 10px 10px 8px; text-align: left; cursor: pointer; overflow: hidden; transition: opacity .14s;
+    }
+    .pg-goal::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--c); }
+    .pg-goal[aria-pressed="false"] { opacity: .42; }
+    .pg-goal .pg-gname { display: block; font-size: 12px; font-weight: 700; color: #12233f; padding-left: 6px; }
+    .pg-goal .pg-gval { display: block; font-size: 20px; font-weight: 600; color: var(--c); margin: 4px 0 1px; padding-left: 6px; }
+    .pg-goal .pg-gsub { display: block; font-size: 11px; color: #7c8ba3; padding-left: 6px; }
+    .pg-goal .pg-track { height: 4px; background: #eef2f7; border-radius: 3px; margin: 8px 0 0 6px; overflow: hidden; }
+    .pg-goal .pg-fill { height: 100%; background: var(--c); border-radius: 3px; transition: width .35s ease; }
+
+    /* ---------------- shell ---------------- */
+    .pg-card { background: #fff; border: 1px solid #dfe5ee; border-radius: 4px; }
+    #pgToolbar { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; padding: 10px 12px; border-bottom: 1px solid #eef2f7; }
+    .btn.pg-toggle-active { background: rgb(28,48,92); border-color: rgb(28,48,92); color: #fff; font-weight: 600; }
+    .pg-split { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 16px; align-items: start; }
+    @@media (max-width: 1180px) { .pg-split { grid-template-columns: minmax(0,1fr); } .pg-detail { position: static !important; } }
+    .pg-canvas { padding: 8px 10px 14px; position: relative; min-height: 340px; }
+    .pg-detail { position: sticky; top: 16px; }
+
+    /* ---------------- flow ---------------- */
+    svg.pg-flow { display: block; width: 100%; height: auto; }
+    .pg-pnode { fill: #93a3bd; transition: fill .15s; }
+    .pg-pnode.pg-on { fill: rgb(28,48,92); }
+    .pg-plabel { font-size: 11.5px; fill: #4a5c78; cursor: pointer; }
+    .pg-plabel:hover { fill: rgb(28,48,92); font-weight: 700; }
+    .pg-plabel.pg-on { fill: rgb(28,48,92); font-weight: 700; }
+    .pg-glabel { font-size: 12px; font-weight: 700; fill: #12233f; }
+    .pg-gsub { font-size: 10.5px; fill: #7c8ba3; }
+    .pg-ribbon { opacity: .3; cursor: pointer; transition: opacity .16s; }
+    .pg-ribbon.pg-hot { opacity: .85; }
+    .pg-ribbon.pg-mute { opacity: .05; }
+    .pg-colhead { font-size: 10.5px; fill: #7c8ba3; letter-spacing: .09em; text-transform: uppercase; }
+
+    /* ---------------- matrix ---------------- */
+    table.pg-matrix { width: 100%; border-collapse: separate; border-spacing: 0; }
+    .pg-matrix th, .pg-matrix td { padding: 0; border-bottom: 1px solid #eef2f7; }
+    .pg-matrix thead th {
+        position: sticky; top: 0; z-index: 2; background: #fff; border-bottom: 1px solid #dfe5ee;
+        padding: 8px; font-size: 11px; color: #4a5c78; font-weight: 700; cursor: pointer; text-align: center; vertical-align: bottom;
+    }
+    .pg-matrix thead th:first-child { text-align: left; padding-left: 12px; }
+    .pg-matrix thead th:hover { color: rgb(28,48,92); background: #eef2f7; }
+    .pg-matrix thead th .pg-sw { display: block; height: 3px; border-radius: 2px; margin: 0 auto 6px; width: 70%; }
+    .pg-matrix td.pg-pname { padding: 0 8px 0 12px; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; }
+    .pg-matrix tbody tr { cursor: pointer; }
+    .pg-matrix tbody tr:hover td { background: #f7f9fd; }
+    .pg-matrix tbody tr.pg-sel td { background: #eaf0fb; }
+    .pg-cell { height: 32px; display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 600; border-radius: 3px; margin: 2px; transition: transform .12s; }
+    .pg-cell:hover { transform: scale(1.06); }
+    .pg-totalcell { padding-right: 12px; text-align: right; font-size: 12.5px; font-weight: 700; color: rgb(28,48,92); }
+
+    /* ---------------- mix ---------------- */
+    .pg-mixrow { display: grid; grid-template-columns: 230px minmax(0,1fr) 64px; gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px solid #eef2f7; cursor: pointer; }
+    .pg-mixrow:hover { background: #f7f9fd; }
+    .pg-mixrow.pg-sel { background: #eaf0fb; }
+    .pg-mixname { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pg-mixbar { display: flex; height: 18px; border-radius: 3px; overflow: hidden; background: #eef2f7; }
+    .pg-mixseg { transition: filter .12s; }
+    .pg-mixseg:hover { filter: brightness(1.15); }
+    .pg-mixtotal { text-align: right; font-size: 12.5px; font-weight: 700; color: rgb(28,48,92); }
+    .pg-mixhead { display: grid; grid-template-columns: 230px minmax(0,1fr) 64px; gap: 12px; padding: 6px 0; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: #7c8ba3; }
+    .pg-mixhead span:last-child { text-align: right; }
+    @@media (max-width: 700px) { .pg-mixrow, .pg-mixhead { grid-template-columns: 130px minmax(0,1fr) 54px; } }
+
+    /* ---------------- detail ---------------- */
+    .pg-dhead { padding: 12px 14px; border-bottom: 1px solid #eef2f7; }
+    .pg-dhead .pg-eyebrow { font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: #7c8ba3; }
+    .pg-dhead h2 { margin: 3px 0 0; font-size: 15px; color: rgb(28,48,92); font-weight: 650; line-height: 1.3; }
+    .pg-dmeta { display: flex; gap: 14px; padding: 10px 14px; border-bottom: 1px solid #eef2f7; flex-wrap: wrap; }
+    .pg-dmeta div { min-width: 78px; }
+    .pg-dmeta span { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: #7c8ba3; }
+    .pg-dmeta strong { font-size: 15px; font-weight: 650; color: #12233f; }
+    .pg-dlist { padding: 10px 14px 12px; }
+    .pg-drow { margin-bottom: 10px; }
+    .pg-drow .pg-top { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
+    .pg-drow .pg-top b { font-weight: 600; color: #12233f; }
+    .pg-drow .pg-top em { font-style: normal; color: #4a5c78; }
+    .pg-drow .pg-track { height: 7px; background: #eef2f7; border-radius: 4px; overflow: hidden; }
+    .pg-drow .pg-fill { height: 100%; border-radius: 4px; transition: width .3s; }
+    .pg-note { padding: 0 14px 14px; color: #4a5c78; font-size: 12.5px; }
+    .pg-note b { color: rgb(28,48,92); }
+
+    #pgTip {
+        position: absolute; pointer-events: none; background: rgb(28,48,92); color: #fff; border-radius: 4px;
+        padding: 8px 10px; font-size: 12px; line-height: 1.5; opacity: 0; transition: opacity .12s; z-index: 30; max-width: 260px;
+    }
+    #pgTip.pg-show { opacity: 1; }
+    #pgTip b { display: block; margin-bottom: 2px; }
+    #pgTip span { color: #b9cdea; }
+    .pg-empty { padding: 40px 14px; text-align: center; color: #4a5c78; }
+    .pg-empty strong { display: block; color: rgb(28,48,92); margin-bottom: 4px; }
+</style>
+
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Projects And Goals Flow Diagram</h1>
+
+    <div class="card mb-4">
+        <div class="card-body">
+
+            @if (Model.PoolId != Guid.Empty && (Model.ProjectCandidates == null || Model.ProjectCandidates.Count == 0))
+            {
+                <div class="alert alert-warning">No projects were found for this candidate +.</div>
+            }
+            else if (Model.PoolId != Guid.Empty && !Model.HasScores)
+            {
+                <div class="alert alert-warning">Scores have not been computed for this candidate + yet. Import or update the pool's Score Parameters (Candidates + &gt; Score Parameters) to calculate scores before viewing this chart.</div>
+            }
+
+            @if (Model.PoolId != Guid.Empty && Model.ProjectCandidates != null && Model.ProjectCandidates.Count > 0 && Model.HasScores)
+            {
+                <p class="text-muted small mb-3">How each candidate project contributes to the five program goals. Select a goal to include or exclude it, then switch views to read the same data as flow, matrix, or goal mix.</p>
+
+                <div id="pgRail"></div>
+
+                <div class="pg-split">
+                    <section class="pg-card">
+                        <div id="pgToolbar">
+                            <div class="btn-group btn-group-sm" role="group" aria-label="View">
+                                <button type="button" class="btn btn-outline-secondary pg-toggle-active" data-view="flow" aria-pressed="true">Flow</button>
+                                <button type="button" class="btn btn-outline-secondary" data-view="matrix" aria-pressed="false">Matrix</button>
+                                <button type="button" class="btn btn-outline-secondary" data-view="mix" aria-pressed="false">Goal mix</button>
+                            </div>
+
+                            <input type="search" id="pgSearch" class="form-control form-control-sm" style="max-width:210px" placeholder="Find a project…" aria-label="Find a project" />
+
+                            <select id="pgSort" class="form-select form-select-sm" style="max-width:210px" aria-label="Sort projects">
+                                <option value="total">Total contribution</option>
+                                <option value="focus">Most focused</option>
+                                <option value="balance">Most balanced</option>
+                                <option value="name">Name</option>
+                            </select>
+
+                            <select id="pgTopN" class="form-select form-select-sm" style="max-width:160px" aria-label="Number of projects">
+                                <option value="0">Show all projects</option>
+                                <option value="10">Top 10</option>
+                                <option value="6">Top 6</option>
+                            </select>
+
+                            <span class="ms-auto text-muted small" id="pgCount"></span>
+                            <button class="btn btn-outline-secondary btn-sm" id="pgReset" type="button">Reset</button>
+                        </div>
+
+                        <div class="pg-canvas" id="pgCanvas">
+                            <div id="pgTip" role="status"></div>
+                        </div>
+                    </section>
+
+                    <aside class="pg-card pg-detail" id="pgDetail"></aside>
+                </div>
+            }
+
+        </div>
+    </div>
+
+</div>
+
+@if (Model.PoolId != Guid.Empty && Model.ProjectCandidates != null && Model.ProjectCandidates.Count > 0 && Model.HasScores)
+{
+<div id="chartData" hidden data-json="@Model.json"></div>
+<script>
+(function () {
+    "use strict";
+
+    /* ------------------------------ data ------------------------------ */
+    var jsonString = document.getElementById("chartData").dataset.json || "[]";
+    var rawRows = JSON.parse(jsonString);
+
+    var GOALS = [
+        { id: "Safety",     label: "Safety",                   c: "#2f5fd0" },
+        { id: "Equity",     label: "Equity & access",          c: "#e08c1a" },
+        { id: "Resilience", label: "Resilience & environment", c: "#1f8f68" },
+        { id: "Mobility",   label: "Mobility & economy",       c: "#c9522f" },
+        { id: "Condition",  label: "Condition & performance",  c: "#6a4fbf" }
+    ];
+
+    var PROJECTS = rawRows.map(function (r) {
+        var v = {};
+        GOALS.forEach(function (g) { v[g.id] = typeof r[g.id] === "number" ? r[g.id] : 0; });
+        return {
+            id: String(r.Id),
+            label: r.Description || "(untitled project)",
+            cost: typeof r.TotalCost === "number" ? r.TotalCost : 0,
+            v: v
+        };
+    });
+
+    /* ------------------------------ state ------------------------------ */
+    var state = {
+        view: "flow",
+        active: new Set(GOALS.map(function (g) { return g.id; })),
+        q: "",
+        sort: "total",
+        topn: 0,
+        sel: null,
+        hover: null
+    };
+
+    var $ = function (s) { return document.querySelector(s); };
+    var all = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
+    var NS = "http://www.w3.org/2000/svg";
+    var canvas = $("#pgCanvas");
+    var tip = $("#pgTip");
+
+    var fmtMoney = function (n) { return "$" + Math.round(n).toLocaleString("en-US"); };
+    var fmtShort = function (n) { return n >= 1e6 ? "$" + (n / 1e6).toFixed(n % 1e6 === 0 ? 0 : 1) + "M" : "$" + Math.round(n / 1e3) + "K"; };
+    var el = function (t, a, txt) {
+        var n = document.createElementNS(NS, t);
+        for (var k in a) n.setAttribute(k, a[k]);
+        if (txt != null) n.textContent = txt;
+        return n;
+    };
+    var esc = function (s) { return s.replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
+    var truncate = function (s, n) { return s.length > n ? s.slice(0, n - 1) + "…" : s; };
+    var activeGoals = function () { return GOALS.filter(function (g) { return state.active.has(g.id); }); };
+
+    function total(p) { return activeGoals().reduce(function (s, g) { return s + p.v[g.id]; }, 0); }
+    function topGoal(p) {
+        var best = null;
+        activeGoals().forEach(function (g) { if (!best || p.v[g.id] > p.v[best.id]) best = g; });
+        return best;
+    }
+    function focusPct(p) {
+        var t = total(p), g = topGoal(p);
+        return t && g ? p.v[g.id] / t : 0;
+    }
+
+    function rows() {
+        var list = PROJECTS.filter(function (p) { return total(p) > 0; });
+        if (state.q) {
+            var q = state.q.toLowerCase();
+            list = list.filter(function (p) { return p.label.toLowerCase().indexOf(q) !== -1; });
+        }
+        var cmp = {
+            total: function (a, b) { return total(b) - total(a); },
+            focus: function (a, b) { return focusPct(b) - focusPct(a); },
+            balance: function (a, b) { return focusPct(a) - focusPct(b); },
+            name: function (a, b) { return a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: "base" }); }
+        }[state.sort];
+        list.sort(cmp);
+        if (state.topn) {
+            var byTotal = PROJECTS.slice().sort(function (a, b) { return total(b) - total(a); }).slice(0, state.topn);
+            list = list.filter(function (p) { return byTotal.indexOf(p) !== -1; });
+        }
+        return list;
+    }
+
+    /* ------------------------------ goal rail ------------------------------ */
+    function drawRail() {
+        var list = rows();
+        var totals = {}, grand = { v: 0 };
+        GOALS.forEach(function (g) { totals[g.id] = list.reduce(function (s, p) { return s + p.v[g.id]; }, 0); });
+        activeGoals().forEach(function (g) { grand.v += totals[g.id]; });
+        var max = Math.max.apply(null, GOALS.map(function (g) { return totals[g.id]; })) || 1;
+
+        $("#pgRail").innerHTML = GOALS.map(function (g) {
+            var on = state.active.has(g.id);
+            var share = grand.v ? Math.round(totals[g.id] / grand.v * 100) : 0;
+            return '<button class="pg-goal" type="button" data-goal="' + g.id + '" aria-pressed="' + on + '" style="--c:' + g.c + '">' +
+                '<span class="pg-gname">' + esc(g.label) + '</span>' +
+                '<span class="pg-gval">' + Math.round(totals[g.id]) + '</span>' +
+                '<span class="pg-gsub">' + (on ? share + "% of program score" : "excluded") + '</span>' +
+                '<span class="pg-track"><span class="pg-fill" style="width:' + (on ? totals[g.id] / max * 100 : 0) + '%"></span></span>' +
+                '</button>';
+        }).join("");
+
+        all("#pgRail .pg-goal").forEach(function (b) {
+            b.addEventListener("click", function () {
+                var id = b.dataset.goal;
+                if (state.active.has(id)) { if (state.active.size > 1) state.active.delete(id); }
+                else state.active.add(id);
+                render();
+            });
+        });
+    }
+
+    /* ------------------------------ view: flow ------------------------------ */
+    function drawFlow() {
+        var list = rows(), goals = activeGoals();
+        if (!list.length) return drawEmpty();
+
+        var W = Math.max(700, canvas.clientWidth - 22);
+        var mL = Math.min(300, Math.max(180, W * 0.28)), mR = Math.min(250, Math.max(160, W * 0.24));
+        var H = Math.max(360, list.length * 26 + 70);
+        var top = 34, ih = H - top - 18;
+        var nodeW = 11;
+        var xP = mL, xG = W - mR;
+
+        var linkTotal = list.reduce(function (s, p) { return s + total(p); }, 0) || 1;
+        var gapP = 5, gapG = 14;
+        var kP = (ih - gapP * (list.length - 1)) / linkTotal;
+        var kG = (ih - gapG * (goals.length - 1)) / linkTotal;
+
+        var svg = el("svg", {
+            "class": "pg-flow", viewBox: "0 0 " + W + " " + H, role: "img",
+            "aria-label": "Flow diagram from projects to program goals"
+        });
+        svg.style.height = H + "px";
+
+        svg.appendChild(el("text", { x: mL, y: 14, "text-anchor": "end", "class": "pg-colhead" }, "Projects"));
+        svg.appendChild(el("text", { x: xG + nodeW, y: 14, "class": "pg-colhead" }, "Program goals"));
+
+        var pPos = {}, gPos = {};
+        var y = top;
+        list.forEach(function (p) {
+            var h = Math.max(2, total(p) * kP);
+            pPos[p.id] = { y: y, h: h, off: 0 };
+            y += h + gapP;
+        });
+        y = top;
+        goals.forEach(function (g) {
+            var gt = list.reduce(function (s, p) { return s + p.v[g.id]; }, 0);
+            var h = Math.max(3, gt * kG);
+            gPos[g.id] = { y: y, h: h, off: 0, total: gt };
+            y += h + gapG;
+        });
+
+        var links = [];
+        list.forEach(function (p) {
+            goals.forEach(function (g) {
+                var val = p.v[g.id];
+                if (!val) return;
+                var a = pPos[p.id], b = gPos[g.id];
+                var h0 = val * kP, h1 = val * kG;
+                var y0 = a.y + a.off, y1 = b.y + b.off;
+                a.off += h0; b.off += h1;
+                links.push({ p: p, g: g, val: val, y0: y0, y1: y1, h0: h0, h1: h1 });
+            });
+        });
+        links.sort(function (m, n) { return n.h0 - m.h0; });
+
+        var gRib = el("g", {});
+        links.forEach(function (L) {
+            var x0 = xP + nodeW, x1 = xG, cx = (x0 + x1) / 2;
+            var d = "M" + x0 + "," + L.y0 +
+                "C" + cx + "," + L.y0 + " " + cx + "," + L.y1 + " " + x1 + "," + L.y1 +
+                "L" + x1 + "," + (L.y1 + L.h1) +
+                "C" + cx + "," + (L.y1 + L.h1) + " " + cx + "," + (L.y0 + L.h0) + " " + x0 + "," + (L.y0 + L.h0) + "Z";
+            var hot = state.hover === L.p.id || state.sel === L.p.id || state.hover === L.g.id;
+            var mute = (state.hover || state.sel) && !hot;
+            var path = el("path", { d: d, fill: L.g.c, "class": "pg-ribbon" + (hot ? " pg-hot" : "") + (mute ? " pg-mute" : "") });
+            path.addEventListener("mouseenter", function (e) {
+                showTip(
+                    "<b>" + esc(truncate(L.p.label, 40)) + " → " + esc(L.g.label) + "</b>" +
+                    "<span>Contribution</span> " + L.val.toFixed(1) + " pts<br>" +
+                    "<span>Share of this project</span> " + Math.round(L.val / total(L.p) * 100) + "%<br>" +
+                    "<span>Share of this goal</span> " + Math.round(L.val / gPos[L.g.id].total * 100) + "%", e, L.p.id);
+            });
+            path.addEventListener("mousemove", moveTip);
+            path.addEventListener("mouseleave", hideTip);
+            path.addEventListener("click", function () { select(L.p.id); });
+            gRib.appendChild(path);
+        });
+        svg.appendChild(gRib);
+
+        list.forEach(function (p) {
+            var a = pPos[p.id];
+            var on = state.sel === p.id || state.hover === p.id;
+            var rect = el("rect", { x: xP, y: a.y, width: nodeW, height: a.h, rx: 2, "class": "pg-pnode" + (on ? " pg-on" : "") });
+            var lbl = el("text", {
+                x: xP - 9, y: a.y + a.h / 2 + 4, "text-anchor": "end",
+                "class": "pg-plabel" + (on ? " pg-on" : ""), tabindex: "0", role: "button"
+            }, truncate(p.label, Math.floor(mL / 6.1)));
+            lbl.appendChild(el("title", {}, p.label));
+            [rect, lbl].forEach(function (n) {
+                n.style.cursor = "pointer";
+                n.addEventListener("mouseenter", function (e) { hoverProject(p, e); });
+                n.addEventListener("mousemove", moveTip);
+                n.addEventListener("mouseleave", hideTip);
+                n.addEventListener("click", function () { select(p.id); });
+                n.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(p.id); } });
+            });
+            svg.appendChild(rect); svg.appendChild(lbl);
+        });
+
+        goals.forEach(function (g) {
+            var b = gPos[g.id];
+            var rect = el("rect", { x: xG, y: b.y, width: nodeW, height: b.h, rx: 2, fill: g.c });
+            rect.style.cursor = "pointer";
+            rect.addEventListener("mouseenter", function (e) {
+                state.hover = g.id; drawView();
+                showTip("<b>" + esc(g.label) + "</b>" + b.total.toFixed(1) + " pts from " +
+                    list.filter(function (p) { return p.v[g.id] > 0; }).length + " projects", e, g.id);
+            });
+            rect.addEventListener("mousemove", moveTip);
+            rect.addEventListener("mouseleave", hideTip);
+            svg.appendChild(rect);
+            svg.appendChild(el("text", { x: xG + nodeW + 9, y: b.y + b.h / 2 - 1, "class": "pg-glabel" }, g.label));
+            svg.appendChild(el("text", { x: xG + nodeW + 9, y: b.y + b.h / 2 + 12, "class": "pg-gsub" }, b.total.toFixed(1) + " pts"));
+        });
+
+        canvas.appendChild(svg);
+    }
+
+    function hoverProject(p, e) {
+        state.hover = p.id;
+        drawView();
+        var t = total(p), g = topGoal(p);
+        showTip("<b>" + esc(p.label) + "</b>" +
+            "<span>Total contribution</span> " + t.toFixed(1) + " pts<br>" +
+            (g ? "<span>Leading goal</span> " + esc(g.label) + " (" + Math.round(p.v[g.id] / t * 100) + "%)<br>" : "") +
+            "<span>Cost</span> " + fmtMoney(p.cost) + (p.cost > 0 ? " · " + (t / (p.cost / 1e6)).toFixed(1) + " pts per $1M" : ""), e, p.id);
+    }
+
+    /* ------------------------------ view: matrix ------------------------------ */
+    function drawMatrix() {
+        var list = rows(), goals = activeGoals();
+        if (!list.length) return drawEmpty();
+        var max = Math.max.apply(null, list.map(function (p) { return Math.max.apply(null, goals.map(function (g) { return p.v[g.id]; })); })) || 1;
+
+        var wrap = document.createElement("div");
+        wrap.style.overflow = "auto";
+        wrap.style.maxHeight = "560px";
+        wrap.innerHTML =
+            '<table class="pg-matrix"><thead><tr>' +
+            '<th data-sortcol="name" style="min-width:240px">Project</th>' +
+            goals.map(function (g) { return '<th data-sortcol="' + g.id + '" style="min-width:96px"><span class="pg-sw" style="background:' + g.c + '"></span>' + esc(g.label) + '</th>'; }).join("") +
+            '<th data-sortcol="total" style="text-align:right;padding-right:12px">Total</th>' +
+            '</tr></thead><tbody>' +
+            list.map(function (p) {
+                return '<tr data-id="' + p.id + '" class="' + (state.sel === p.id ? "pg-sel" : "") + '">' +
+                    '<td class="pg-pname" title="' + esc(p.label) + '">' + esc(p.label) + '</td>' +
+                    goals.map(function (g) {
+                        var v = p.v[g.id], a = v / max;
+                        var bg = v ? hexA(g.c, 0.10 + a * 0.80) : "transparent";
+                        var fg = a > 0.55 ? "#fff" : (v ? "#1c2b45" : "#c3cbd9");
+                        return '<td><div class="pg-cell" style="background:' + bg + ';color:' + fg + '" ' +
+                            'title="' + esc(p.label + " → " + g.label) + ': ' + v.toFixed(1) + ' pts">' + (v ? v.toFixed(0) : "·") + '</div></td>';
+                    }).join("") +
+                    '<td class="pg-totalcell">' + total(p).toFixed(1) + '</td></tr>';
+            }).join("") +
+            '</tbody></table>';
+        canvas.appendChild(wrap);
+
+        all(".pg-matrix thead th").forEach(function (th) {
+            th.addEventListener("click", function () {
+                var c = th.dataset.sortcol;
+                if (c === "name" || c === "total") { state.sort = c === "name" ? "name" : "total"; $("#pgSort").value = state.sort; }
+                else { sortByGoal(c); return; }
+                render();
+            });
+        });
+        all(".pg-matrix tbody tr").forEach(function (tr) {
+            tr.addEventListener("click", function () { select(tr.dataset.id); });
+            tr.addEventListener("mouseenter", function () { state.hover = tr.dataset.id; drawDetail(); });
+            tr.addEventListener("mouseleave", function () { state.hover = null; drawDetail(); });
+        });
+    }
+    function sortByGoal(goalId) {
+        PROJECTS.sort(function (a, b) { return b.v[goalId] - a.v[goalId]; });
+        state.sort = "custom";
+        render();
+    }
+
+    /* ------------------------------ view: goal mix ------------------------------ */
+    function drawMix() {
+        var list = rows(), goals = activeGoals();
+        if (!list.length) return drawEmpty();
+        var maxT = Math.max.apply(null, list.map(total)) || 1;
+
+        var wrap = document.createElement("div");
+        wrap.className = "pg-mix";
+        wrap.style.padding = "6px 14px 14px";
+        wrap.innerHTML = '<div class="pg-mixhead"><span>Project</span><span>Goal mix · bar length = total contribution</span><span>Total</span></div>' +
+            list.map(function (p) {
+                var t = total(p);
+                var width = t / maxT * 100;
+                var segs = goals.filter(function (g) { return p.v[g.id] > 0; }).map(function (g) {
+                    return '<div class="pg-mixseg" style="width:' + (p.v[g.id] / t * 100) + '%;background:' + g.c + '" ' +
+                        'title="' + esc(g.label) + ': ' + p.v[g.id].toFixed(1) + ' pts (' + Math.round(p.v[g.id] / t * 100) + '%)"></div>';
+                }).join("");
+                return '<div class="pg-mixrow' + (state.sel === p.id ? " pg-sel" : "") + '" data-id="' + p.id + '">' +
+                    '<div class="pg-mixname" title="' + esc(p.label) + '">' + esc(p.label) + '</div>' +
+                    '<div class="pg-mixbar" style="width:' + width + '%">' + segs + '</div>' +
+                    '<div class="pg-mixtotal">' + t.toFixed(1) + '</div></div>';
+            }).join("");
+        canvas.appendChild(wrap);
+
+        all(".pg-mixrow").forEach(function (r) {
+            r.addEventListener("click", function () { select(r.dataset.id); });
+            r.addEventListener("mouseenter", function () { state.hover = r.dataset.id; drawDetail(); });
+            r.addEventListener("mouseleave", function () { state.hover = null; drawDetail(); });
+        });
+    }
+
+    function drawEmpty() {
+        var d = document.createElement("div");
+        d.className = "pg-empty";
+        d.innerHTML = "<strong>No projects match</strong>Clear the search box or turn a goal back on in the rail above.";
+        canvas.appendChild(d);
+    }
+
+    /* ------------------------------ detail panel ------------------------------ */
+    function drawDetail() {
+        var id = state.sel || state.hover;
+        var p = PROJECTS.filter(function (x) { return x.id === id; })[0];
+        var list = rows();
+        var box = $("#pgDetail");
+
+        if (!p) {
+            var grand = list.reduce(function (s, x) { return s + total(x); }, 0);
+            var lead = activeGoals().slice().sort(function (a, b) {
+                return list.reduce(function (s, x) { return s + x.v[b.id]; }, 0) - list.reduce(function (s, x) { return s + x.v[a.id]; }, 0);
+            })[0];
+            var thin = list.slice().sort(function (a, b) { return focusPct(b) - focusPct(a); })[0];
+            var cost = list.reduce(function (s, x) { return s + x.cost; }, 0);
+            box.innerHTML =
+                '<div class="pg-dhead"><span class="pg-eyebrow">Portfolio</span><h2>' + list.length + ' projects in view</h2></div>' +
+                '<div class="pg-dmeta">' +
+                '<div><span>Total score</span><strong>' + grand.toFixed(1) + '</strong></div>' +
+                '<div><span>Cost</span><strong>' + fmtShort(cost) + '</strong></div>' +
+                '<div><span>Pts / $1M</span><strong>' + (cost > 0 ? (grand / (cost / 1e6)).toFixed(1) : "—") + '</strong></div>' +
+                '</div>' +
+                (lead && thin
+                    ? '<div class="pg-note">Leading goal is <b>' + esc(lead.label) + '</b>. <b>' + esc(truncate(thin.label, 40)) + '</b> is the most single-purpose project, sending ' +
+                      Math.round(focusPct(thin) * 100) + '% of its score to one goal. Select any project to break it down.</div>'
+                    : '<div class="pg-note">Select any project to break it down.</div>');
+            return;
+        }
+
+        var t = total(p), lead = topGoal(p);
+        var maxV = Math.max.apply(null, activeGoals().map(function (g) { return p.v[g.id]; })) || 1;
+        box.innerHTML =
+            '<div class="pg-dhead"><span class="pg-eyebrow">Project</span><h2>' + esc(p.label) + '</h2></div>' +
+            '<div class="pg-dmeta">' +
+            '<div><span>Score</span><strong>' + t.toFixed(1) + '</strong></div>' +
+            '<div><span>Cost</span><strong>' + fmtShort(p.cost) + '</strong></div>' +
+            '<div><span>Pts / $1M</span><strong>' + (p.cost > 0 ? (t / (p.cost / 1e6)).toFixed(1) : "—") + '</strong></div>' +
+            '</div>' +
+            '<div class="pg-dlist">' + activeGoals().map(function (g) {
+                return '<div class="pg-drow"><div class="pg-top"><b>' + esc(g.label) + '</b><em>' + p.v[g.id].toFixed(1) +
+                    ' · ' + (t ? Math.round(p.v[g.id] / t * 100) : 0) + '%</em></div>' +
+                    '<div class="pg-track"><div class="pg-fill" style="width:' + (p.v[g.id] / maxV * 100) + '%;background:' + g.c + '"></div></div></div>';
+            }).join("") + '</div>' +
+            '<div class="pg-note">' + (lead && focusPct(p) > 0.5
+                ? 'Single-purpose: over half its score goes to <b>' + esc(lead.label) + '</b>.'
+                : (lead ? 'Balanced: spread across ' + activeGoals().filter(function (g) { return p.v[g.id] > 0; }).length + ' goals, led by <b>' + esc(lead.label) + '</b>.' : ''))
+            + '</div>';
+    }
+
+    /* ------------------------------ tooltip ------------------------------ */
+    function showTip(html, ev, hoverId) {
+        if (hoverId) state.hover = hoverId;
+        tip.innerHTML = html;
+        tip.classList.add("pg-show");
+        moveTip(ev);
+    }
+    function moveTip(ev) {
+        var r = canvas.getBoundingClientRect();
+        var x = ev.clientX - r.left + 16;
+        var y = ev.clientY - r.top + 14;
+        if (x + 270 > r.width) x = ev.clientX - r.left - 276;
+        tip.style.left = Math.max(4, x) + "px";
+        tip.style.top = y + "px";
+    }
+    function hideTip() {
+        tip.classList.remove("pg-show");
+        state.hover = null;
+        drawView(); drawDetail();
+    }
+    function select(id) {
+        state.sel = state.sel === id ? null : id;
+        render();
+    }
+    function hexA(hex, a) {
+        var n = parseInt(hex.slice(1), 16);
+        return "rgba(" + (n >> 16) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a.toFixed(3) + ")";
+    }
+
+    /* ------------------------------ render ------------------------------ */
+    function drawView() {
+        Array.prototype.slice.call(canvas.children).forEach(function (c) { if (c !== tip) canvas.removeChild(c); });
+        if (state.view === "flow") drawFlow();
+        else if (state.view === "matrix") drawMatrix();
+        else drawMix();
+    }
+    function render() {
+        drawRail();
+        drawView();
+        drawDetail();
+        var n = rows().length;
+        $("#pgCount").textContent = n + " of " + PROJECTS.length + " projects · " + state.active.size + " of 5 goals";
+    }
+
+    /* ------------------------------ events ------------------------------ */
+    all("[data-view]").forEach(function (b) {
+        b.addEventListener("click", function () {
+            state.view = b.dataset.view;
+            all("[data-view]").forEach(function (x) {
+                x.setAttribute("aria-pressed", String(x === b));
+                x.classList.toggle("pg-toggle-active", x === b);
+            });
+            drawView();
+        });
+    });
+    $("#pgSearch").addEventListener("input", function () { state.q = this.value.trim(); render(); });
+    $("#pgSort").addEventListener("change", function () { state.sort = this.value; render(); });
+    $("#pgTopN").addEventListener("change", function () { state.topn = +this.value; render(); });
+    $("#pgReset").addEventListener("click", function () {
+        state.active = new Set(GOALS.map(function (g) { return g.id; }));
+        state.q = ""; $("#pgSearch").value = "";
+        state.sort = "total"; $("#pgSort").value = "total";
+        state.topn = 0; $("#pgTopN").value = "0";
+        state.sel = null; state.hover = null;
+        render();
+    });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") { state.sel = null; render(); } });
+
+    var rz;
+    window.addEventListener("resize", function () { clearTimeout(rz); rz = setTimeout(drawView, 130); });
+
+    render();
+})();
+</script>
+}

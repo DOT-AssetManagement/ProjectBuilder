@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ExcelDataReader" Version="3.7.0" />
+    <PackageReference Include="ExcelDataReader.DataSet" Version="3.7.0" />
+    <PackageReference Include="log4net" Version="3.0.3" />
+    <PackageReference Include="Sylvan.Data.Excel" Version="0.4.25" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.1" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="9.0.2" />
+    <PackageReference Include="VeracodeAttributes" Version="1.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BulkInserter\BulkInserter.csproj" />
+  </ItemGroup>
+
+</Project>

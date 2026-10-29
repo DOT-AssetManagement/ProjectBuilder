@@ -1,0 +1,292 @@
+@using ProjectBuilder.Permissions
+@using Volo.Abp.Authorization.Permissions
+@inject IPermissionChecker PermissionChecker
+@inject Volo.Abp.Users.ICurrentUser CurrentUser
+@{
+    var subMenu    = ViewData["SubMenu"]?.ToString() ?? "";
+    var subSubMenu = ViewData["SubSubMenu"]?.ToString() ?? "";
+    object poolIdObj = ViewData["poolId"];
+    string poolId = poolIdObj != null ? poolIdObj.ToString() : "";
+    string poolIdUrl = poolId != "" ? "?poolId=" + poolId : "";
+
+    var canViewCharts  = await PermissionChecker.IsGrantedAsync(ChartsPermissions.Charts.Default);
+    var canViewReports = await PermissionChecker.IsGrantedAsync(ReportsPermissions.Reports.Default);
+    var canPools = await PermissionChecker.IsGrantedAsync(SupplementalCandidatesPermissions.PoolsPageActions.Default);
+    var canWorkCandidates = await PermissionChecker.IsGrantedAsync(SupplementalCandidatesPermissions.PoolsPageActions.WorkCandidates.Default);
+    var canOutputs = await PermissionChecker.IsGrantedAsync(DSSPermissions.TopBarPermissions.Outputs);
+    var canConfig = await PermissionChecker.IsGrantedAsync(ConfigurationPermissions.ConfigurationPageActions.Default);
+    var canImport = await PermissionChecker.IsGrantedAsync(DSSPermissions.ImportPermission.Default);
+    var canPoolScoreParams = await PermissionChecker.IsGrantedAsync(SupplementalCandidatesPermissions.PoolsPageActions.Configuration.Default);
+    var canCounties = await PermissionChecker.IsGrantedAsync(SetUpLookupsPermissions.Counties);
+    var canOtherParam = await PermissionChecker.IsGrantedAsync(DSSPermissions.OtherParameterPermissions.Default);
+    var canAssetType = await PermissionChecker.IsGrantedAsync(DSSPermissions.AssetTypeParameterPermissions.Default);
+    var canTreatTypes = await PermissionChecker.IsGrantedAsync(SetUpLookupsPermissions.TreatmentTypes);
+    var canAraEnum = await PermissionChecker.IsGrantedAsync(SetUpLookupsPermissions.AraEnumerations);
+    var canB2P = await PermissionChecker.IsGrantedAsync(SetUpLookupsPermissions.BridgeToPavements);
+    var canDefaultSlack = await PermissionChecker.IsGrantedAsync(SetUpLookupsPermissions.DefaultSlack);
+    var canImportSessions = await PermissionChecker.IsGrantedAsync(SetUpLookupsPermissions.ImportSessions);
+    var canFlowDiagram = await PermissionChecker.IsGrantedAsync(ChartsPermissions.Charts.ProjectsAndGoalsFlowDiagram);
+    var canEfficiency = await PermissionChecker.IsGrantedAsync(ChartsPermissions.Charts.ProjectEfficiencyAndCost);
+    var canPctContrib = await PermissionChecker.IsGrantedAsync(ChartsPermissions.Charts.ProjectsAndGoalsPercentageContribution);
+    var canActualContrib = await PermissionChecker.IsGrantedAsync(ChartsPermissions.Charts.ProjectsAndGoalsActualContribution);
+    var canArcMapping = await PermissionChecker.IsGrantedAsync(ChartsPermissions.Charts.ProjectToScoreArcMapping);
+    var canBarCharts = await PermissionChecker.IsGrantedAsync(ChartsPermissions.Charts.BarCharts);
+    var canReportProjects = await PermissionChecker.IsGrantedAsync(ReportsPermissions.Reports.Projects);
+    var canReportSummary = await PermissionChecker.IsGrantedAsync(ReportsPermissions.Reports.WorkCandidateSummary);
+    var canReportDetail = await PermissionChecker.IsGrantedAsync(ReportsPermissions.Reports.WorkCandidateDetail);
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@(ViewData["Title"] ?? "DSS")</title>
+    <link rel="icon" type="image/x-icon" href="~/images/favicon.ico" />
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/styles.css" />
+    <link rel="stylesheet" href="~/css/tabulator_bootstrap5.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    @RenderSection("Styles", required: false)
+
+    <style>
+        body { display: flex; flex-direction: column; min-height: 100vh; margin: 0; }
+
+        /* ── Topbar ── */
+        #dss-topnav {
+            position: fixed; top: 0; left: 0; right: 0; height: 56px; z-index: 1040;
+            background: linear-gradient(90deg, #006699, #333333);
+            display: flex; align-items: center; padding: 0 16px; gap: 12px;
+        }
+        #dss-topnav img  { height: 36px; object-fit: contain; }
+        #dss-topnav .sep { width: 1px; height: 36px; background: rgba(255,255,255,0.3); }
+        #dss-topnav .spacer { flex: 1; }
+        #dss-topnav a.back-btn {
+            color: #fff; text-decoration: none; font-size: .85rem;
+            border: 1px solid rgba(255,255,255,.5); border-radius: 4px; padding: 4px 12px;
+        }
+        #dss-topnav a.back-btn:hover { background: rgba(255,255,255,.15); }
+        #dss-topnav .user-info { color: rgba(255,255,255,.8); font-size: .82rem; }
+
+        /* ── Sidebar ── */
+        #dss-sidebar {
+            position: fixed; top: 56px; left: 0; bottom: 0; width: 240px;
+            background: #212529; overflow-y: auto; z-index: 1030;
+        }
+        #dss-sidebar .sidebar-section { padding: 10px 0 4px 16px; font-size: .7rem;
+            color: rgba(255,255,255,.4); text-transform: uppercase; letter-spacing: .08em; }
+        #dss-sidebar .nav-link {
+            color: rgba(255,255,255,.75); padding: 8px 16px;
+            display: flex; align-items: center; gap: 8px; font-size: .88rem;
+        }
+        #dss-sidebar .nav-link:hover, #dss-sidebar .nav-link.active { color: #fff; background: rgba(255,255,255,.08); }
+        #dss-sidebar .nav-link.section-toggle { cursor: pointer; }
+        #dss-sidebar .nav-link.section-toggle .arrow {
+            margin-left: auto; transition: transform .2s;
+        }
+        #dss-sidebar .nav-link.section-toggle.open .arrow { transform: rotate(90deg); }
+        #dss-sidebar .sub-links { padding-left: 28px; display: none; }
+        #dss-sidebar .sub-links.open { display: block; }
+        #dss-sidebar .sub-links .nav-link { padding: 6px 16px; font-size: .83rem; color: rgba(255,255,255,.6); }
+        #dss-sidebar .sub-links .nav-link:hover, #dss-sidebar .sub-links .nav-link.active { color: #fff; }
+
+        /* ── Content ── */
+        #dss-content {
+            margin-top: 56px; margin-left: 240px;
+            padding: 20px; min-height: calc(100vh - 56px);
+        }
+
+        /* ── Footer ── */
+        #dss-footer {
+            margin-left: 240px; background: #669999; color: #fff;
+            text-align: center; padding: 8px; font-size: .78rem;
+        }
+
+        @@media (max-width: 768px) {
+            #dss-sidebar { width: 100%; position: static; }
+            #dss-content, #dss-footer { margin-left: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Topbar -->
+<nav id="dss-topnav">
+    <a href="/Pools/Index">
+        <img src="~/images/logo/DSS-LOGO.jpg" alt="DSS" />
+    </a>
+    <div class="sep"></div>
+    <a href="/Pools/Index">
+        <img src="~/images/logo/leptonx/pennsylvania-logo.png" alt="PennDOT" />
+    </a>
+    <div class="spacer"></div>
+    <span class="user-info"><i class="fa fa-user me-1"></i>@CurrentUser.UserName</span>
+    <div class="sep"></div>
+    <a href="/Scenarios" class="back-btn"><i class="fa fa-arrow-left me-1"></i>Back to Scenarios</a>
+    <a href="/Account/Logout" class="back-btn ms-1"><i class="fa fa-sign-out-alt me-1"></i>Logout</a>
+</nav>
+
+<!-- Sidebar -->
+<nav id="dss-sidebar">
+
+    <div class="sidebar-section">Main</div>
+    @if (canPools)
+    {
+    <a class="nav-link @(ViewData["Menu"]?.ToString() == "DSSMenus.Pools" ? "active" : "")"
+       href="/Pools/Index">
+        <i class="fa fa-water fa-fw"></i> Candidate Pools
+    </a>
+    }
+    @if (canWorkCandidates)
+    {
+    <a class="nav-link @(ViewData["Menu"]?.ToString() == "DSSMenus.WorkCandidates" ? "active" : "")"
+       href="/WorkCandidates/Index">
+        <i class="fa fa-list-check fa-fw"></i> Work Candidates
+    </a>
+    }
+
+    @if (canOutputs)
+    {
+    <div class="sidebar-section">Outputs</div>
+    <a class="nav-link @(subMenu == "Maps" ? "active" : "")" href="/Outputs/Maps@(poolIdUrl)">
+        <i class="fa fa-map fa-fw"></i> Maps
+    </a>
+
+    @if (canViewCharts)
+    {
+    <a class="nav-link section-toggle @(subMenu == "Charts" ? "open" : "")"
+       data-target="sub-charts">
+        <i class="fa fa-chart-bar fa-fw"></i> Charts
+        <i class="fa fa-chevron-right arrow"></i>
+    </a>
+    <div class="sub-links @(subMenu == "Charts" ? "open" : "")" id="sub-charts">
+        @if (canFlowDiagram) { <a class="nav-link @(subSubMenu == "ProjectsAndGoalsFlowDiagram" ? "active" : "")" href="/Outputs/Charts/ProjectsAndGoalsFlowDiagram@(poolIdUrl)">Flow Diagram</a> }
+        @if (canEfficiency) { <a class="nav-link @(subSubMenu == "ProjectEfficiencyAndCost" ? "active" : "")" href="/Outputs/Charts/ProjectEfficiencyAndCost@(poolIdUrl)">Efficiency &amp; Cost</a> }
+        @if (canPctContrib) { <a class="nav-link @(subSubMenu == "ProjectsAndGoalsPercentageContribution" ? "active" : "")" href="/Outputs/Charts/ProjectsAndGoalsPercentageContribution@(poolIdUrl)">% Contribution</a> }
+        @if (canActualContrib) { <a class="nav-link @(subSubMenu == "ProjectsAndGoalsActualContribution" ? "active" : "")" href="/Outputs/Charts/ProjectsAndGoalsActualContribution@(poolIdUrl)">Actual Contribution</a> }
+        @if (canArcMapping) { <a class="nav-link @(subSubMenu == "ProjectToScoreArcMapping" ? "active" : "")" href="/Outputs/Charts/ProjectToScoreArcMapping@(poolIdUrl)">Score Arc Mapping</a> }
+        @if (canBarCharts) { <a class="nav-link @(subSubMenu == "BarCharts" ? "active" : "")" href="/Outputs/Charts/BarCharts@(poolIdUrl)">Bar Charts</a> }
+    </div>
+    }
+
+    @if (canViewReports)
+    {
+    <a class="nav-link section-toggle @(subMenu == "Reports" ? "open" : "")"
+       data-target="sub-reports">
+        <i class="fa fa-file-alt fa-fw"></i> Reports
+        <i class="fa fa-chevron-right arrow"></i>
+    </a>
+    <div class="sub-links @(subMenu == "Reports" ? "open" : "")" id="sub-reports">
+        @if (canReportProjects) { <a class="nav-link @(subSubMenu == "Projects" ? "active" : "")" href="/Outputs/Reports/Projects@(poolIdUrl)">Projects</a> }
+        @if (canReportSummary) { <a class="nav-link @(subSubMenu == "WorkCandidateSummary" ? "active" : "")" href="/Outputs/Reports/WorkCandidateSummary@(poolIdUrl)">Work Candidate Summary</a> }
+        @if (canReportDetail) { <a class="nav-link @(subSubMenu == "WorkCandidateDetail" ? "active" : "")" href="/Outputs/Reports/WorkCandidateDetail@(poolIdUrl)">Work Candidate Detail</a> }
+    </div>
+    }
+
+    }
+
+    <div class="sidebar-section">Set Up</div>
+    @if (canCounties) {
+    <a class="nav-link @(ViewData["SubMenu"]?.ToString() == "Counties" ? "active" : "")" href="/SetUp/Counties">
+        <i class="fa fa-map-marker fa-fw"></i> Counties
+    </a>
+    }
+    @if (canOtherParam) {
+    <a class="nav-link @(ViewData["SubMenu"]?.ToString() == "OtherParameter" ? "active" : "")" href="/SetUp/OtherParameter/List">
+        <i class="fa fa-cog fa-fw"></i> Other Parameters
+    </a>
+    }
+    @if (canAssetType) {
+    <a class="nav-link @(ViewData["SubMenu"]?.ToString() == "AssetTypeparameter" ? "active" : "")" href="/SetUp/OtherParameter/List">
+        <i class="fa fa-layer-group fa-fw"></i> Asset Type Parameters
+    </a>
+    }
+    @if (canTreatTypes) {
+    <a class="nav-link @(ViewData["SubMenu"]?.ToString() == "TreatmentTypes" ? "active" : "")" href="/SetUp/TreatmentTypes">
+        <i class="fa fa-list fa-fw"></i> Treatment Types
+    </a>
+    }
+    @if (canAraEnum) {
+    <a class="nav-link @(ViewData["SubMenu"]?.ToString() == "AraEnumerations" ? "active" : "")" href="/SetUp/AraEnumerations">
+        <i class="fa fa-table fa-fw"></i> ARA Enumerations
+    </a>
+    }
+    @if (canB2P) {
+    <a class="nav-link @(ViewData["SubMenu"]?.ToString() == "BridgeToPavements" ? "active" : "")" href="/SetUp/BridgeToPavements">
+        <i class="fa fa-road fa-fw"></i> Bridge to Pavements
+    </a>
+    }
+    @if (canDefaultSlack) {
+    <a class="nav-link @(ViewData["SubMenu"]?.ToString() == "DefaultSlack" ? "active" : "")" href="/SetUp/DefaultSlack">
+        <i class="fa fa-clock fa-fw"></i> Default Slack
+    </a>
+    }
+    @if (canImportSessions) {
+    <a class="nav-link @(ViewData["SubMenu"]?.ToString() == "ImportSessions" ? "active" : "")" href="/SetUp/ImportSessions">
+        <i class="fa fa-file-import fa-fw"></i> Import Sessions
+    </a>
+    }
+
+    @if (canConfig)
+    {
+    <div class="sidebar-section">Configuration</div>
+    <a class="nav-link @(ViewData["Menu"]?.ToString() == "DSSMenus.Goals" ? "active" : "")"
+       href="/Configuration/Goals/List">
+        <i class="fa fa-bullseye fa-fw"></i> Goals
+    </a>
+    }
+
+    @if (canImport || canPoolScoreParams)
+    {
+    <div class="sidebar-section">Admin</div>
+    @if (canImport) {
+    <a class="nav-link" href="/ImportScreen/Index">
+        <i class="fa fa-file-import fa-fw"></i> Import Screen
+    </a>
+    }
+    @if (canPoolScoreParams) {
+    <a class="nav-link" href="/Pools/PoolScoreParameters">
+        <i class="fa fa-sliders fa-fw"></i> Pool Score Parameters
+    </a>
+    }
+    }
+
+</nav>
+
+<!-- Main content -->
+<div id="dss-content">
+    <div id="AbpContentToolbar">
+        @RenderSection("content_toolbar", required: false)
+    </div>
+    @RenderBody()
+</div>
+
+<!-- Footer -->
+<footer id="dss-footer">
+    PennDOT Decision Space &copy; 2024 v1.0 &mdash; ALL RIGHTS RESERVED
+</footer>
+
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="~/js/scripts.js"></script>
+
+@RenderSection("Scripts", required: false)
+
+<script>
+    // Sidebar section toggles
+    document.querySelectorAll('.section-toggle').forEach(function (el) {
+        el.addEventListener('click', function (e) {
+            e.preventDefault();
+            var targetId = el.getAttribute('data-target');
+            var sub = document.getElementById(targetId);
+            if (!sub) return;
+            var isOpen = sub.classList.contains('open');
+            sub.classList.toggle('open', !isOpen);
+            el.classList.toggle('open', !isOpen);
+        });
+    });
+</script>
+</body>
+</html>

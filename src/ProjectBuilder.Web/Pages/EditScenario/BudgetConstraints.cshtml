@@ -1,0 +1,527 @@
+@page
+@using System.Globalization
+@model ProjectBuilder.Web.Pages.EditScenario.BudgetConstraintsModel
+@{
+    Layout = "~/Pages/Shared/PBDSSLayout.cshtml";
+    ViewData["PBVariant"] = "app";
+    ViewData["PBActivePage"] = "scenarios";
+    ViewData["Title"] = "Budget Constraints";
+
+    var usd = CultureInfo.GetCultureInfo("en-US");
+    string Money(decimal? v) => v.HasValue ? v.Value.ToString("C2", usd) : "";
+    var canImport = Model.Grid.BridgesCount > 0 || Model.Grid.PavementsCount > 0;
+    var bcIsError = !string.IsNullOrWhiteSpace(Model.ErrorMessage);
+    var bcHasMessage = bcIsError || !string.IsNullOrWhiteSpace(Model.SuccessMessage);
+    var bcMessageText = bcIsError ? Model.ErrorMessage : Model.SuccessMessage;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/pbdss/scenarioedit.css" />
+    <style>
+        .bc-table { width:100%; }
+        .bc-table th { background: rgb(28,48,92); color:#fff; font-size:12px; text-align:right; padding:8px 10px; }
+        .bc-table th:first-child { text-align:left; }
+        .bc-table td { padding:6px 10px; font-size:13px; text-align:right; }
+        .bc-table td:first-child { text-align:left; font-weight:600; }
+        .bcell { cursor:pointer; }
+        .bcell:hover { background:#eef4ff; }
+        .bc-toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+        .bc-toolbar .ms-auto { margin-left:auto; }
+    </style>
+}
+
+<partial name="_ScenarioNav" model="Model" />
+
+<div class="editscen-content">
+    <div class="editscen-content__header"><h1>Budget Constraints</h1><button class="btn-guide" id="btnGuide"><span class="q">?</span> Guide</button></div>
+
+    <div class="editscen-card">
+        <div id="bcMessage" class="alert @(bcIsError ? "alert-danger" : "alert-success") alert-dismissible @(bcHasMessage ? "" : "d-none")" role="alert">
+            <span id="bcMessageText">@bcMessageText</span>
+            <button type="button" class="btn-close" aria-label="Close" onclick="document.getElementById('bcMessage').classList.add('d-none')"></button>
+        </div>
+
+        <div class="bc-toolbar">
+            <button type="button" class="btn btn-primary btn-sm" id="btnAddRow">Add Year</button>
+            <button type="button" class="btn btn-primary btn-sm" id="btnEditBudgets">Edit Criteria</button>
+            @if (Model.Grid.Headers.Any())
+            {
+                <button type="button" class="btn btn-success btn-sm" id="btnSaveBudgets">Save</button>
+            }
+            <div class="ms-auto d-flex gap-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btnImport">Import Budget</button>
+                @if (Model.Grid.Headers.Any())
+                {
+                    <a class="btn btn-outline-secondary btn-sm" href="?handler=Export&scenid=@Model.Scenid">Download Budget</a>
+                }
+                <a class="btn btn-outline-secondary btn-sm" href="?handler=Template&scenid=@Model.Scenid">Download Template</a>
+                @if (Model.Grid.Headers.Any())
+                {
+                    <button type="button" class="btn btn-outline-danger btn-sm" id="btnClearBudget">Clear Budget</button>
+                }
+            </div>
+        </div>
+
+        @if (Model.Grid.Rows.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped bc-table">
+                    <thead>
+                        <tr>
+                            @foreach (var h in Model.Grid.Headers)
+                            {
+                                <th>@h</th>
+                            }
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.Grid.Rows)
+                        {
+                            var rowNumber = row.FirstOrDefault()?.RowNumber;
+                            var yearValue = row.FirstOrDefault()?.Value;
+                            <tr>
+                                @for (var j = 0; j < row.Count; j++)
+                                {
+                                    var cell = row[j];
+                                    if (j == 0)
+                                    {
+                                        <td>@(cell.Value.HasValue ? ((int)cell.Value.Value).ToString() : "")</td>
+                                    }
+                                    else
+                                    {
+                                        <td class="bcell" data-row="@cell.RowNumber" data-col="@cell.BCCId" data-value="@(cell.Value?.ToString(CultureInfo.InvariantCulture))">@Money(cell.Value)</td>
+                                    }
+                                }
+                                <td>
+                                    <button type="button" class="btn btn-link btn-sm text-danger delete-row-btn"
+                                            data-rownumber="@rowNumber" data-year="@(yearValue.HasValue ? ((int)yearValue.Value).ToString() : "0")">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="editscen-placeholder">
+                <i class="fa-solid fa-coins"></i>
+                <h3>No budget constraints yet</h3>
+                <p class="text-muted">Add a criteria column (Edit Criterias), add a budget row (Add Year), or import a budget spreadsheet to get started.</p>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Edit Value Modal -->
+<div class="modal fade" id="editValueModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Edit Budget Value</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <input type="number" step="0.01" class="form-control" id="editValueInput" />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="saveValueBtn">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Criteria List Modal -->
+<div class="modal fade" id="criteriaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Criteria List</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="m-0"></h6>
+                    <button type="button" class="btn btn-primary btn-sm" id="addCriteriaBtn">Add New Criteria</button>
+                </div>
+                <table class="table table-bordered table-striped">
+                    <thead><tr><th style="width:25%">Column Name</th><th style="width:65%">Criteria</th><th style="width:10%">Action</th></tr></thead>
+                    <tbody id="criteriaTableBody">
+                        @foreach (var c in Model.Grid.CriteriaList)
+                        {
+                            <tr>
+                                <td>@c.ColumnName</td>
+                                <td>@c.Criteria</td>
+                                <td>
+                                    <button type="button" class="btn btn-link btn-sm edit-criteria-btn" data-id="@c.ColumnId" data-column="@c.ColumnName" data-criteria="@c.Criteria"><i class="bi bi-pencil-square"></i></button>
+                                    <button type="button" class="btn btn-link btn-sm text-danger delete-criteria-btn" data-id="@c.CriteriaId"><i class="bi bi-trash"></i></button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Criteria Modal -->
+<div class="modal fade" id="editCriteriaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="editCriteriaTitle">Add New Criteria</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <input type="hidden" id="editColumnId" />
+                <div class="mb-2">
+                    <label class="form-label">Column Name</label>
+                    <input type="text" class="form-control" id="editColumnName" />
+                    <div class="text-danger small" id="editColumnNameError"></div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">District</label>
+                    <input type="text" class="form-control" id="editDistrict" placeholder="number or *" />
+                    <div class="text-danger small" id="editDistrictError"></div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Interstate</label>
+                    <select class="form-select" id="editInterstate"><option value="Y">Y</option><option value="N">N</option><option value="*">*</option></select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Asset Type</label>
+                    <select class="form-select" id="editAssetType"><option value="B">B</option><option value="P">P</option><option value="*">*</option></select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Category</label>
+                    <input type="text" class="form-control" id="editAttributeValue" />
+                    <div class="text-danger small" id="editAttributeValueError"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="saveCriteriaBtn">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" asp-page-handler="Import" asp-route-scenid="@Model.Scenid" enctype="multipart/form-data">
+                <div class="modal-header"><h5 class="modal-title">Import Budget</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <input type="file" id="importBudgetFile" name="file" class="form-control" accept=".xlsx" required />
+                    @if (!canImport)
+                    {
+                        <div class="text-muted small mt-2">This library has no bridge or pavement treatments yet.</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success" @(canImport ? "" : "disabled")>Import</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Clear Budget Confirm Modal -->
+<div class="modal fade" id="clearBudgetConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Clear Budget</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span>Clear this scenario's entire budget setup — all values, columns, and criteria? This cannot be undone.</span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="confirmClearBudgetBtn" class="btn btn-danger">Clear Budget</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Budget Row Modal -->
+<div class="modal fade" id="addRowModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Add Budget Row</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <label class="form-label" for="addRowYearInput">Year</label>
+                <input type="text" inputmode="numeric" maxlength="4" class="form-control" id="addRowYearInput" placeholder="e.g. 2027" autocomplete="off" />
+                <div class="text-danger small" id="addRowYearError"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="confirmAddRowBtn">Add</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Budget Row Confirm Modal -->
+<div class="modal fade" id="deleteRowConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Delete Budget Row</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span>Are you sure you want to delete this budget row?</span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="confirmDeleteRowBtn" class="btn btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Criteria Confirm Modal -->
+<div class="modal fade" id="deleteCriteriaConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Delete Criteria</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span>Are you sure you want to delete this criteria?</span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="confirmDeleteCriteriaBtn" class="btn btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form id="antiforgery-form" method="post" style="display:none;">@Html.AntiForgeryToken()</form>
+<div id="overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999; justify-content:center; align-items:center;">
+    <div style="text-align:center; color:#fff;"><div class="spinner-border text-light"></div><div>Please wait...</div></div>
+</div>
+
+@section Scripts {
+    <partial name="_ScenarioRunScript" />
+    <script>
+        var SCENID = @Model.Scenid;
+        function antiToken() { return $('input[name="__RequestVerificationToken"]').first().val(); }
+        function showOverlay() { document.getElementById('overlay').style.display = 'flex'; }
+        function hideOverlay() { document.getElementById('overlay').style.display = 'none'; }
+        var usdFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
+
+        function showMessage(message, isSuccess) {
+            var box = document.getElementById('bcMessage');
+            document.getElementById('bcMessageText').textContent = message;
+            box.classList.remove('d-none', 'alert-success', 'alert-danger');
+            box.classList.add(isSuccess ? 'alert-success' : 'alert-danger');
+        }
+
+        // ── Edit a budget cell ──
+        var currentCell = null;
+        $(document).on('click', '.bcell', function () {
+            currentCell = this;
+            $('#editValueInput').val(this.getAttribute('data-value') || '');
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('editValueModal')).show();
+        });
+        $('#saveValueBtn').on('click', function () {
+            if (!currentCell) return;
+            var v = parseFloat($('#editValueInput').val());
+            if (isNaN(v)) v = 0;
+            currentCell.setAttribute('data-value', v);
+            currentCell.textContent = usdFmt.format(v);
+            bootstrap.Modal.getInstance(document.getElementById('editValueModal')).hide();
+        });
+
+        // ── Save all cells ──
+        $('#btnSaveBudgets').on('click', function () {
+            var cells = [];
+            document.querySelectorAll('.bcell').forEach(function (td) {
+                cells.push({ Row: parseInt(td.getAttribute('data-row')), Col: parseInt(td.getAttribute('data-col')), Value: parseFloat(td.getAttribute('data-value')) || 0 });
+            });
+            showOverlay();
+            fetch('?handler=Update', {
+                method: 'POST',
+                headers: { 'RequestVerificationToken': antiToken(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ScenId: SCENID, Cells: cells })
+            }).then(function (r) { return r.json(); }).then(function (res) {
+                hideOverlay();
+                if (res && res.success) showMessage('Budget constraints saved.', true);
+                else showMessage((res && res.error) || 'Save failed.', false);
+            }).catch(function () { hideOverlay(); showMessage('Save failed.', false); });
+        });
+
+        // ── Add a budget row (year) ──
+        $('#btnAddRow').on('click', function () {
+            $('#addRowYearError').text('');
+            $('#addRowYearInput').val('').removeClass('is-invalid');
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('addRowModal')).show();
+        });
+        $('#addRowYearInput').on('input', function () {
+            this.value = this.value.replace(/\D/g, '').slice(0, 4);
+            $('#addRowYearError').text('');
+            $(this).removeClass('is-invalid');
+        });
+        $('#confirmAddRowBtn').on('click', function () {
+            var raw = ($('#addRowYearInput').val() || '').trim();
+            if (!/^\d{4}$/.test(raw)) {
+                $('#addRowYearError').text('Year must be a 4-digit number (for example 2027).');
+                $('#addRowYearInput').addClass('is-invalid');
+                return;
+            }
+            var year = parseInt(raw, 10);
+            $('#addRowYearError').text('');
+            showOverlay();
+            $.ajax({
+                type: 'POST', url: '?handler=AddRow',
+                data: { scenId: SCENID, year: year },
+                headers: { 'RequestVerificationToken': antiToken() },
+                success: function (res) {
+                    if (res && res.success) {
+                        bootstrap.Modal.getInstance(document.getElementById('addRowModal')).hide();
+                        location.reload();
+                    } else {
+                        hideOverlay();
+                        $('#addRowYearError').text((res && res.message) || 'Unable to add row.');
+                        $('#addRowYearInput').addClass('is-invalid');
+                    }
+                },
+                error: function () { hideOverlay(); $('#addRowYearError').text('Unable to add row.'); }
+            });
+        });
+
+        // ── Delete a budget row ──
+        var pendingDeleteRow = null;
+        $(document).on('click', '.delete-row-btn', function () {
+            pendingDeleteRow = {
+                rowNumber: parseInt(this.getAttribute('data-rownumber')),
+                year: parseInt(this.getAttribute('data-year')),
+                $row: $(this).closest('tr')
+            };
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteRowConfirmModal')).show();
+        });
+        $('#confirmDeleteRowBtn').on('click', function () {
+            if (!pendingDeleteRow) return;
+            var rowNumber = pendingDeleteRow.rowNumber;
+            var year = pendingDeleteRow.year;
+            var $row = pendingDeleteRow.$row;
+            pendingDeleteRow = null;
+            bootstrap.Modal.getInstance(document.getElementById('deleteRowConfirmModal')).hide();
+            showOverlay();
+            $.ajax({
+                type: 'POST', url: '?handler=DeleteRow',
+                data: { scenId: SCENID, yearWork: year, rowNumber: rowNumber },
+                headers: { 'RequestVerificationToken': antiToken() },
+                success: function (res) { hideOverlay(); if (res && res.success) { $row.remove(); } else { showMessage((res && res.message) || 'Delete failed.', false); } },
+                error: function () { hideOverlay(); showMessage('Delete failed.', false); }
+            });
+        });
+
+        // ── Clear all budget values/years (keeps columns + criteria) ──
+        $('#btnClearBudget').on('click', function () {
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('clearBudgetConfirmModal')).show();
+        });
+        $('#confirmClearBudgetBtn').on('click', function () {
+            bootstrap.Modal.getInstance(document.getElementById('clearBudgetConfirmModal')).hide();
+            showOverlay();
+            $.ajax({
+                type: 'POST', url: '?handler=Clear', data: { scenid: SCENID },
+                headers: { 'RequestVerificationToken': antiToken() },
+                success: function (res) { if (res && res.success) { location.reload(); } else { hideOverlay(); showMessage((res && res.message) || 'Clear failed.', false); } },
+                error: function () { hideOverlay(); showMessage('Clear failed.', false); }
+            });
+        });
+
+        // ── Criteria modal ──
+        $('#btnEditBudgets').on('click', function () { bootstrap.Modal.getOrCreateInstance(document.getElementById('criteriaModal')).show(); });
+        $('#btnImport').on('click', function () {
+            $('#importBudgetFile').val('');
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('importModal')).show();
+        });
+        $('#importModal').on('hidden.bs.modal', function () {
+            $('#importBudgetFile').val('');
+        });
+
+        function clearCriteriaErrors() { $('#editColumnNameError,#editDistrictError,#editAttributeValueError').text(''); }
+
+        $('#addCriteriaBtn').on('click', function () {
+            clearCriteriaErrors();
+            $('#editColumnId').val('');
+            $('#editColumnName').val(''); $('#editDistrict').val(''); $('#editAttributeValue').val('');
+            $('#editInterstate').val('Y'); $('#editAssetType').val('B');
+            $('#editCriteriaTitle').text('Add New Criteria');
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('editCriteriaModal')).show();
+        });
+
+        function parseCriteriaFields(criteria) {
+            var out = {};
+            (criteria || '').split(/\bAND\b/).forEach(function (cond) {
+                var m = cond.split('=');
+                if (m.length < 2) return;
+                var field = m[0].replace(/[\[\]]/g, '').trim().toUpperCase();
+                var val = (m[1].match(/'([^']*)'/) || [])[1] || m[1].trim();
+                out[field] = val;
+            });
+            return out;
+        }
+
+        $(document).on('click', '.edit-criteria-btn', function () {
+            clearCriteriaErrors();
+            var id = this.getAttribute('data-id');
+            var column = this.getAttribute('data-column');
+            var criteria = this.getAttribute('data-criteria');
+            var f = parseCriteriaFields(criteria);
+            $('#editColumnId').val(id);
+            $('#editColumnName').val(column);
+            $('#editDistrict').val(f['DISTRICT'] || '');
+            $('#editInterstate').val(f['INTERSTATE'] || 'Y');
+            $('#editAssetType').val(f['ASSETTYPE'] || 'B');
+            $('#editAttributeValue').val(f['CATEGORY'] || '');
+            $('#editCriteriaTitle').text('Edit Criteria');
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('editCriteriaModal')).show();
+        });
+
+        $('#saveCriteriaBtn').on('click', function () {
+            clearCriteriaErrors();
+            var columnName = $('#editColumnName').val().trim();
+            var district = $('#editDistrict').val().trim();
+            var category = $('#editAttributeValue').val().trim();
+            var ok = true;
+            if (!columnName) { $('#editColumnNameError').text('Column name is required.'); ok = false; }
+            if (!(district === '*' || /^\d+$/.test(district))) { $('#editDistrictError').text('District must be a number or *.'); ok = false; }
+            if (!category) { $('#editAttributeValueError').text('Category is required.'); ok = false; }
+            if (!ok) return;
+
+            var criteria = "DISTRICT='" + district + "' AND INTERSTATE='" + $('#editInterstate').val() +
+                "' AND ASSETTYPE='" + $('#editAssetType').val() + "' AND CATEGORY='" + category + "'";
+
+            var columnId = $('#editColumnId').val();
+            var url = columnId ? '?handler=UpdateCriteria' : '?handler=CreateCriteria';
+            var payload = columnId
+                ? { ColumnId: parseInt(columnId), ScenarioId: SCENID, ColumnName: columnName, Criteria: criteria }
+                : { ScenarioId: SCENID, ColumnName: columnName, Criteria: criteria };
+
+            showOverlay();
+            fetch(url, { method: 'POST', headers: { 'RequestVerificationToken': antiToken(), 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+                .then(function (r) { return r.json(); })
+                .then(function (res) { hideOverlay(); if (res && res.success) { location.reload(); } else { showMessage((res && res.error) || 'Save failed.', false); } })
+                .catch(function () { hideOverlay(); showMessage('Save failed.', false); });
+        });
+
+        var pendingDeleteCriteriaId = null;
+        $(document).on('click', '.delete-criteria-btn', function () {
+            pendingDeleteCriteriaId = this.getAttribute('data-id');
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteCriteriaConfirmModal')).show();
+        });
+        $('#confirmDeleteCriteriaBtn').on('click', function () {
+            if (!pendingDeleteCriteriaId) return;
+            var id = pendingDeleteCriteriaId;
+            pendingDeleteCriteriaId = null;
+            bootstrap.Modal.getInstance(document.getElementById('deleteCriteriaConfirmModal')).hide();
+            showOverlay();
+            $.ajax({
+                type: 'POST', url: '?handler=DeleteCriteria', data: { id: id },
+                headers: { 'RequestVerificationToken': antiToken() },
+                success: function (res) { hideOverlay(); if (res && res.success) { location.reload(); } else { showMessage((res && res.message) || 'Delete failed.', false); } },
+                error: function () { hideOverlay(); showMessage('Delete failed.', false); }
+            });
+        });
+    </script>
+}

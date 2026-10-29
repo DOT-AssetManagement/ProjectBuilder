@@ -427,16 +427,10 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
-/ProjectBuilder.Web.MVC/appsettings.json
 *launch.json
 *tasks.json
 *launchSettings.json
-ProjectBuilder.Web.MVC/Properties/launchSettings.json
-/ProjectBuilder.Web.MVC/Properties/launchSettings.json
-/ProjectBuilder.Web.MVC/appsettings.json
-/ProjectBuilder.Web.MVC/appsettings.json
-ProjectBuilder.Web.MVC/appsettings.json
-ProjectBuilder.Web.MVC/appsettings.json
-ProjectBuilder.Web.MVC/appsettings.json
-ProjectBuilder.Web.MVC/appsettings.json
-ProjectBuilder.Web.MVC/appsettings.json
+src/DSS.Web.MVC/Properties/launchSettings.json
+src/DSS.Web.MVC/Properties/launchSettings.json
+src/DSS.Web.MVC/appsettings.json
+src/DSS.Web.MVC/appsettings.json

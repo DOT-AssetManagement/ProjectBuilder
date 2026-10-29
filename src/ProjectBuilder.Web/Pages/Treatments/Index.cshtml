@@ -1,0 +1,1471 @@
+@page "{id:guid?}"
+@using System.Linq
+@using System.Collections.Generic
+@using ProjectBuilder.Models.UserTreatment.Dtos
+@using ProjectBuilder.Permissions
+@using Volo.Abp.Authorization.Permissions
+@inject IPermissionChecker PermissionChecker
+@model ProjectBuilder.Web.Pages.Treatments.IndexModel
+@{
+    ViewData["Title"] = string.IsNullOrWhiteSpace(Model.LibraryName) ? "Treatments" : $"Treatments - {Model.LibraryName}";
+    ViewData["PBVariant"] = "app";
+    ViewData["PBActivePage"] = "treatmentpoollibraries";
+    Layout = "~/Pages/Shared/PBDSSLayout.cshtml";
+    var currentYear = DateTime.Today.Year;
+
+    var canCreate = await PermissionChecker.IsGrantedAsync(TreatmentPoolLibraryPermissions.Treatments.Create);
+    var canEdit = await PermissionChecker.IsGrantedAsync(TreatmentPoolLibraryPermissions.Treatments.Edit);
+    var canDelete = await PermissionChecker.IsGrantedAsync(TreatmentPoolLibraryPermissions.Treatments.Delete);
+
+    var rows = (Model.Treatments ?? new List<UserTreatmentDto>())
+        .Select(t => new
+        {
+            id = t.Id,
+            assetType = t.AssetType,
+            district = t.District,
+            countyId = t.CountyId,
+            county = t.County,
+            route = t.Route,
+            section = t.Section,
+            brkey = t.Brkey,
+            bridgeId = t.BridgeId,
+            treatment = t.Treatment,
+            interstate = t.Interstate,
+            direction = t.Direction,
+            cost = t.Cost,
+            benefit = t.Benefit,
+            risk = t.Risk,
+            priorityOrder = t.PriorityOrder,
+            preferredYear = t.PreferredYear,
+            minYear = t.MinYear,
+            maxYear = t.MaxYear,
+            isCommitted = t.IsCommitted,
+            userTreatmentTypeNo = t.UserTreatmentTypeNo,
+            treatmentType = string.IsNullOrWhiteSpace(t.Category) ? "" : t.Category.Trim(),
+            indirectCostDesign = t.IndirectCostDesign,
+            indirectCostRow = t.IndirectCostRow,
+            indirectCostUtilities = t.IndirectCostUtilities,
+            indirectCostOther = t.IndirectCostOther
+        })
+        .ToList();
+
+    var treatmentTypes = (Model.TreatmentTypes ?? new()).Select(t => new { value = t.Id, text = t.UserTreatmentName }).ToList();
+    var treatmentOptions = (Model.TreatmentOptions ?? new()).Select(o => new { name = o.Name, assetTypes = o.AssetTypes }).ToList();
+}
+
+@section Styles {
+    <link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet" />
+    <style>
+        body { overflow: hidden; }
+        main { display: flex; flex-direction: row; margin-top: 0; padding: 0; width: 100%; overflow: hidden; background-color: rgb(248,248,248); height: calc(100vh - 70px - 44px); }
+        .treatments-sidebar { width: 60px; background: #c8d8e8; flex-shrink: 0; height: 100%; }
+        .treatments-content { flex: 1; min-width: 0; padding: 20px 24px; overflow: hidden; height: 100%; display: flex; flex-direction: column; }
+        #table-treatments { flex: 1; min-height: 0; }
+        .treatments-title { font-family: Montserrat, sans-serif; font-weight: 700; font-size: 18px; color: rgb(28,48,92); margin-bottom: 14px; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+        .treatments-title-scenario { font-size: 13px; font-weight: 600; color: rgb(60,90,130); }
+
+        #overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 9999; justify-content: center; align-items: center; }
+        .overlay-content { text-align: center; color: #fff; }
+        .spinner { border: 6px solid rgba(255,255,255,.3); border-top: 6px solid #fff; border-radius: 50%; width: 50px; height: 50px; animation: spin .8s linear infinite; margin: 0 auto 10px; }
+        @@keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── PBDSS treatment modal theme ── */
+        .trt-modal .modal-header { background: rgb(28,48,92); color: #fff; }
+        .trt-modal .modal-header .btn-close { filter: invert(1) grayscale(100%) brightness(200%); }
+        .trt-modal .modal-title { font-family: Montserrat, sans-serif; font-weight: 700; font-size: 18px; }
+        .trt-section { border: 1px solid #d6dce6; border-radius: 8px; padding: 14px 16px 6px; margin-bottom: 14px; }
+        .trt-section > .trt-section-title { font-family: Montserrat, sans-serif; font-weight: 700; color: rgb(28,48,92); font-size: 13px; text-transform: uppercase; letter-spacing: .4px; border-bottom: 2px solid rgb(28,48,92); padding-bottom: 6px; margin-bottom: 12px; }
+        .trt-modal label.form-label { font-size: 12px; font-weight: 600; color: #344563; margin-bottom: 2px; }
+        .trt-modal .form-control, .trt-modal .form-select { font-size: 13px; }
+        .trt-modal .form-control:disabled, .trt-modal .form-control[readonly] { background-color: #eef1f5; }
+    </style>
+}
+
+<div class="treatments-sidebar"></div>
+
+<div class="treatments-content">
+
+    <div class="treatments-title">
+        <span>Treatments — @Model.LibraryName</span>
+        @if (!string.IsNullOrWhiteSpace(Model.ScenarioName))
+        {
+            <span class="treatments-title-scenario">@Model.ScenarioName</span>
+        }
+    </div>
+
+    <div class="search-bar" id="treatmentFilterBar">
+        <select class="form-select form-select-sm" id="filterAssetType" style="width:auto;">
+            <option value="">Select Asset Type</option>
+        </select>
+        <select class="form-select form-select-sm" id="filterDistrict" style="width:auto;">
+            <option value="">Select District</option>
+        </select>
+        <select class="form-select form-select-sm" id="filterCounty" style="width:auto;">
+            <option value="">Select County</option>
+        </select>
+        <select class="form-select form-select-sm" id="filterRoute" style="width:auto;">
+            <option value="">Select Route</option>
+        </select>
+        <select class="form-select form-select-sm" id="filterSection" style="width:auto;">
+            <option value="">Select Section</option>
+        </select>
+        <select class="form-select form-select-sm" id="filterDirection" style="width:auto;">
+            <option value="">Select Direction</option>
+            <option value="1">South / West</option>
+            <option value="0">North / East</option>
+        </select>
+        <button class="btn btn-primary btn-sm" id="btnApplyTreatmentFilter">Filter</button>
+        <button class="btn btn-outline-secondary btn-sm" id="btnResetTreatmentFilter">Reset</button>
+        <div class="ms-auto-btns">
+            @if (canCreate)
+            {
+                <button class="btn btn-primary btn-sm" id="btnCreateTreatment">Create Treatment</button>
+            }
+            <a class="btn-guide" href="/TreatmentPoolLibraries"><i class="fa-solid fa-arrow-left"></i> Back to Libraries</a>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <div id="table-treatments"></div>
+    </div>
+
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteTreatment" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Treatment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span>Are you sure you want to delete the selected treatment?</span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" id="confirmDeleteTreatment" class="btn btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Treatment Modal -->
+<div class="modal fade trt-modal" id="createTreatmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Treatment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="createTreatmentForm" novalidate>
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- Treatment Information -->
+                        <div class="col-md-6">
+                            <div class="trt-section">
+                                <div class="trt-section-title">Treatment Information</div>
+                                <div class="row g-2">
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Asset Type</label>
+                                        <select class="form-select" name="AssetType" id="c_assetType" required>
+                                            <option value="">Select Asset Type</option>
+                                            <option value="B">Bridge</option>
+                                            <option value="P">Pavement</option>
+                                        </select>
+                                        <div class="invalid-feedback">Field is required</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Treatment</label>
+                                        <select class="form-select" name="Treatment" id="c_treatment" required>
+                                            <option value="">Select Treatment</option>
+                                        </select>
+                                        <div class="invalid-feedback">Field is required</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Treatment Type</label>
+                                        <select class="form-select" name="TreatmentType" id="c_treatmentType" required>
+                                            <option value="">Select Treatment Type</option>
+                                        </select>
+                                        <div class="invalid-feedback">Field is required</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Priority Order</label>
+                                        <select class="form-select" name="PriorityOrder" id="c_priorityOrder" required>
+                                            <option value="0">0</option>
+                                            <option value="1">1</option>
+                                            <option value="2">2</option>
+                                            <option value="3">3</option>
+                                            <option value="4" selected>4</option>
+                                        </select>
+                                        <div class="invalid-feedback">Field is required</div>
+                                    </div>
+                                    <div class="col-sm-6 mt-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="c_isCommitted">
+                                            <label class="form-check-label" for="c_isCommitted">Is Committed</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Location Information -->
+                        <div class="col-md-6">
+                            <div class="trt-section">
+                                <div class="trt-section-title">Location Information</div>
+                                <div class="row g-2">
+                                    <div class="col-sm-6">
+                                        <label class="form-label">District</label>
+                                        <select class="form-select" name="District" id="c_district" required>
+                                            <option value="">Select District</option>
+                                        </select>
+                                        <div class="invalid-feedback">Field is required</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">County</label>
+                                        <select class="form-select" name="CountyId" id="c_county" required>
+                                            <option value="">Select County</option>
+                                        </select>
+                                        <div class="invalid-feedback">Field is required</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Route</label>
+                                        <select class="form-select" name="Route" id="c_route" required>
+                                            <option value="">Select Route</option>
+                                        </select>
+                                        <div class="invalid-feedback">Field is required</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Section</label>
+                                        <select class="form-select" name="Section" id="c_section" required>
+                                            <option value="">Select Section</option>
+                                        </select>
+                                        <div class="invalid-feedback">Field is required</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Interstate</label>
+                                        <select class="form-select" name="Interstate" id="c_interstate" required>
+                                            <option value="">Select</option>
+                                            <option value="true">Yes</option>
+                                            <option value="false">No</option>
+                                        </select>
+                                        <div class="invalid-feedback">Field is required</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Direction</label>
+                                        <select class="form-select" name="Direction" id="c_direction" required>
+                                            <option value="">Select</option>
+                                            <option value="1">South / West</option>
+                                            <option value="0">North / East</option>
+                                        </select>
+                                        <div class="invalid-feedback">Field is required</div>
+                                    </div>
+                                    <div class="col-sm-6 trt-bridge-field" style="display:none;">
+                                        <label class="form-label">BRKey</label>
+                                        <input type="text" class="form-control" name="Brkey" id="c_brkey" list="c_brkeyOptions" autocomplete="off" />
+                                        <datalist id="c_brkeyOptions"></datalist>
+                                    </div>
+                                    <div class="col-sm-6 trt-bridge-field" style="display:none;">
+                                        <label class="form-label">BMS ID</label>
+                                        <input type="number" class="form-control" name="BridgeId" id="c_bridgeId" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- Timing -->
+                        <div class="col-md-6">
+                            <div class="trt-section">
+                                <div class="trt-section-title">Timing</div>
+                                <div class="row g-2">
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Minimum Year</label>
+                                        <input type="number" min="1000" max="9999" class="form-control" name="MinYear" id="c_minYear" required />
+                                        <div class="invalid-feedback" id="c_minYearFeedback">Field is required</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Maximum Year</label>
+                                        <input type="number" min="1000" max="9999" class="form-control" name="MaxYear" id="c_maxYear" required />
+                                        <div class="invalid-feedback" id="c_maxYearFeedback">Field is required</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Preferred Year</label>
+                                        <select class="form-select" name="PreferredYear" id="c_preferredYear" required>
+                                            <option value="">Select Preferred Year</option>
+                                            @for (int y = currentYear; y <= 2050; y++)
+                                            {
+                                                <option value="@y">@y</option>
+                                            }
+                                        </select>
+                                        <div class="invalid-feedback">Field is required</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Costs -->
+                        <div class="col-md-6">
+                            <div class="trt-section">
+                                <div class="trt-section-title">Costs</div>
+                                <div class="row g-2">
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Construction Cost</label>
+                                        <input type="number" step="any" min="0" class="form-control trt-costcalc" name="Cost" id="c_cost" required />
+                                        <div class="invalid-feedback">Must be a positive number</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Indirect Cost Row</label>
+                                        <input type="number" step="any" min="0" class="form-control trt-costcalc" name="IndirectCostRow" id="c_icRow" required />
+                                        <div class="invalid-feedback">Must be a positive number</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Indirect Cost Utilities</label>
+                                        <input type="number" step="any" min="0" class="form-control trt-costcalc" name="IndirectCostUtilities" id="c_icUtil" required />
+                                        <div class="invalid-feedback">Must be a positive number</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Indirect Cost Design</label>
+                                        <input type="number" step="any" min="0" class="form-control trt-costcalc" name="IndirectCostDesign" id="c_icDesign" required />
+                                        <div class="invalid-feedback">Must be a positive number</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Indirect Cost Others</label>
+                                        <input type="number" step="any" min="0" class="form-control trt-costcalc" name="IndirectCostOther" id="c_icOther" required />
+                                        <div class="invalid-feedback">Must be a positive number</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Total Cost</label>
+                                        <input type="number" step="any" class="form-control" id="c_totalCost" readonly />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Create New Treatment Name Modal -->
+<div class="modal fade trt-modal" id="treatmentNameModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New Treatment Name</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <label for="c_newTreatmentName" class="form-label">Treatment Name</label>
+                <input type="text" id="c_newTreatmentName" class="form-control" />
+                <div class="invalid-feedback">Field is required</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="btnAddTreatmentName">Add</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create New Treatment Type Modal -->
+<div class="modal fade trt-modal" id="treatmentTypeNameModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New Treatment Type</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <label for="c_newTreatmentTypeName" class="form-label">Treatment Type Name</label>
+                <input type="text" id="c_newTreatmentTypeName" class="form-control" />
+                <div class="invalid-feedback">Field is required</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="btnAddTreatmentTypeName">Add</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Treatment Modal -->
+<div class="modal fade trt-modal" id="editTreatmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Treatment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editTreatmentForm" novalidate>
+                <input type="hidden" name="Id" id="e_id" />
+                <input type="hidden" name="AssetType" id="e_assetType" />
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- Treatment Information -->
+                        <div class="col-md-6">
+                            <div class="trt-section">
+                                <div class="trt-section-title">Treatment Information</div>
+                                <div class="row g-2">
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Asset Type</label>
+                                        <input type="text" class="form-control" id="e_assetTypeText" readonly />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Treatment</label>
+                                        <input type="text" class="form-control" id="e_treatment" readonly />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Treatment Type</label>
+                                        <select class="form-select" name="UserTreatmentTypeNo" id="e_treatmentType" required>
+                                            <option value="">Select Treatment Type</option>
+                                        </select>
+                                        <div class="invalid-feedback">Field is required</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Priority Order</label>
+                                        <select class="form-select" name="PriorityOrder" id="e_priorityOrder" required>
+                                            <option value="0">0</option>
+                                            <option value="1">1</option>
+                                            <option value="2">2</option>
+                                            <option value="3">3</option>
+                                            <option value="4">4</option>
+                                        </select>
+                                        <div class="invalid-feedback">Field is required</div>
+                                    </div>
+                                    <div class="col-sm-6 mt-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="e_isCommitted">
+                                            <label class="form-check-label" for="e_isCommitted">Is Committed</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Location Information -->
+                        <div class="col-md-6">
+                            <div class="trt-section">
+                                <div class="trt-section-title">Location Information</div>
+                                <div class="row g-2">
+                                    <div class="col-sm-6">
+                                        <label class="form-label">District</label>
+                                        <input type="text" class="form-control" id="e_district" readonly />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">County</label>
+                                        <input type="text" class="form-control" id="e_county" readonly />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Route</label>
+                                        <input type="text" class="form-control" id="e_route" readonly />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Section</label>
+                                        <input type="text" class="form-control" id="e_section" readonly />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Interstate</label>
+                                        <select class="form-select" name="Interstate" id="e_interstate" required>
+                                            <option value="">Select</option>
+                                            <option value="true">Yes</option>
+                                            <option value="false">No</option>
+                                        </select>
+                                        <div class="invalid-feedback">Field is required</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Direction</label>
+                                        <select class="form-select" name="Direction" id="e_direction" required>
+                                            <option value="">Select</option>
+                                            <option value="1">South / West</option>
+                                            <option value="0">North / East</option>
+                                        </select>
+                                        <div class="invalid-feedback">Field is required</div>
+                                    </div>
+                                    <div class="col-sm-6 trt-bridge-field-edit" style="display:none;">
+                                        <label class="form-label">BRKey</label>
+                                        <input type="text" class="form-control" id="e_brkey" readonly />
+                                    </div>
+                                    <div class="col-sm-6 trt-bridge-field-edit" style="display:none;">
+                                        <label class="form-label">BMS ID</label>
+                                        <input type="text" class="form-control" id="e_bridgeId" readonly />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- Timing -->
+                        <div class="col-md-6">
+                            <div class="trt-section">
+                                <div class="trt-section-title">Timing</div>
+                                <div class="row g-2">
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Minimum Year</label>
+                                        <input type="number" min="1000" max="9999" class="form-control" name="MinYear" id="e_minYear" required />
+                                        <div class="invalid-feedback" id="e_minYearFeedback">Field is required</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Maximum Year</label>
+                                        <input type="number" min="1000" max="9999" class="form-control" name="MaxYear" id="e_maxYear" required />
+                                        <div class="invalid-feedback" id="e_maxYearFeedback">Field is required</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Preferred Year</label>
+                                        <select class="form-select" name="PreferredYear" id="e_preferredYear" required>
+                                            <option value="">Select Preferred Year</option>
+                                            @for (int y = currentYear; y <= 2050; y++)
+                                            {
+                                                <option value="@y">@y</option>
+                                            }
+                                        </select>
+                                        <div class="invalid-feedback">Field is required</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Costs -->
+                        <div class="col-md-6">
+                            <div class="trt-section">
+                                <div class="trt-section-title">Costs</div>
+                                <div class="row g-2">
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Construction Cost</label>
+                                        <input type="number" step="any" min="0" class="form-control trt-costcalc-edit" name="Cost" id="e_cost" required />
+                                        <div class="invalid-feedback">Must be a positive number</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Indirect Cost Row</label>
+                                        <input type="number" step="any" min="0" class="form-control trt-costcalc-edit" name="IndirectCostRow" id="e_icRow" required />
+                                        <div class="invalid-feedback">Must be a positive number</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Indirect Cost Utilities</label>
+                                        <input type="number" step="any" min="0" class="form-control trt-costcalc-edit" name="IndirectCostUtilities" id="e_icUtil" required />
+                                        <div class="invalid-feedback">Must be a positive number</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Indirect Cost Design</label>
+                                        <input type="number" step="any" min="0" class="form-control trt-costcalc-edit" name="IndirectCostDesign" id="e_icDesign" required />
+                                        <div class="invalid-feedback">Must be a positive number</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Indirect Cost Others</label>
+                                        <input type="number" step="any" min="0" class="form-control trt-costcalc-edit" name="IndirectCostOther" id="e_icOther" required />
+                                        <div class="invalid-feedback">Must be a positive number</div>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Total Cost</label>
+                                        <input type="number" step="any" class="form-control" id="e_totalCost" readonly />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Benefit</label>
+                                        <input type="number" step="any" class="form-control" name="Benefit" id="e_benefit" readonly />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Risk</label>
+                                        <input type="number" step="any" class="form-control" name="Risk" id="e_risk" readonly />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Notification toast -->
+<div class="position-fixed top-0 end-0 p-3" style="z-index:11000;margin-top:80px;">
+    <div id="mainnotificationmessage" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header text-white bg-primary">
+            <i class="bi bi-info-circle-fill fa-lg me-2"></i>
+            <strong class="me-auto"></strong>
+            <small>now</small>
+            <button type="button" class="btn-close text-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body"></div>
+    </div>
+</div>
+
+<div id="overlay">
+    <div class="overlay-content">
+        <div class="spinner"></div>
+        <div class="overlay-text">Please wait...</div>
+    </div>
+</div>
+
+<form id="antiforgery-form" method="post" style="display:none;">
+    @Html.AntiForgeryToken()
+</form>
+
+@section Scripts {
+    <script src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
+    <script src="~/js/pbdss/table.js"></script>
+    <script>
+        var tableData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(rows));
+        var treatmentTypeData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(treatmentTypes));
+        var treatmentOptionData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(treatmentOptions));
+
+        function showOverlay() { document.getElementById('overlay').style.display = 'flex'; }
+        function hideOverlay() { document.getElementById('overlay').style.display = 'none'; }
+        function antiToken() { return $('input[name="__RequestVerificationToken"]').first().val(); }
+
+        // ── Notification toast (self-contained; PBDSSLayout has no site.js) ──
+        function displaynotification(header, message, state, autohide) {
+            var note = bootstrap.Toast.getOrCreateInstance(document.getElementById('mainnotificationmessage'));
+            var headercontainer = note._element.querySelector('.toast-header');
+            note._config.autohide = !!autohide;
+            $(note._element.querySelector('.toast-body')).html(message);
+            $(note._element.querySelector('.me-auto')).text(header);
+            headercontainer.classList.remove('bg-success', 'bg-danger', 'bg-primary');
+            headercontainer.classList.add(state === 'S' ? 'bg-success' : state === 'E' ? 'bg-danger' : 'bg-primary');
+            note.show();
+        }
+
+        var usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
+        function money(cell) { var v = cell.getValue(); return (v === null || v === undefined || v === '') ? '' : usd.format(v); }
+        function assetTypeFmt(cell) { var v = cell.getValue(); return v === 'B' ? 'Bridge' : v === 'P' ? 'Pavement' : 'Others'; }
+        function sourceFmt(cell) { var v = cell.getRow().getData().assetType; return v === 'B' ? 'BAMS' : v === 'P' ? 'PAMS' : 'DecisionSpace'; }
+        function routeFmt(cell) { var v = cell.getValue(); return (v === null || v === undefined) ? '' : v.toString().padStart(4, '0'); }
+        function interstateFmt(cell) { return cell.getValue() ? 'Y' : 'N'; }
+        function directionFmt(cell) { return cell.getValue() ? 'South / West' : 'North / East'; }
+        function riskFmt(cell) { var v = cell.getValue(); return (v === null || v === undefined) ? '' : Number(v).toFixed(2); }
+        function yesNoFmt(cell) { return cell.getValue() ? 'Yes' : 'No'; }
+
+        var currentDeleteId = null;
+        function openDelete(d) {
+            currentDeleteId = d.id;
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteTreatment')).show();
+        }
+
+
+        var table = createTable('#table-treatments', {
+            data: tableData,
+            maxHeightEl: '.table-wrap',
+            stateKey: 'ptTreatmentsFilter:' + '@Model.LibraryId',
+            actions: [
+                @if (canEdit) { <text>{ label: 'Edit', icon: 'fa-solid fa-pen-to-square', onClick: function (d) { openEdit(d); } },</text> }
+                @if (canCreate) { <text>{ label: 'Copy', icon: 'fa-solid fa-copy', onClick: function (d) { openCopy(d); } },</text> }
+                @if (canDelete) { <text>{ label: 'Delete', icon: 'fa-solid fa-trash', type: 'delete', onClick: function (d) { openDelete(d); } }</text> }
+            ],
+            columns: [
+                { title: 'Asset Type',             field: 'assetType',            minWidth: 110, headerSort: false, formatter: assetTypeFmt },
+                { title: 'Source',                 field: 'assetType',            minWidth: 120, headerSort: false, formatter: sourceFmt },
+                { title: 'District',               field: 'district',             width: 95,  hozAlign: 'right', headerSort: false },
+                { title: 'County',                 field: 'county',               minWidth: 130, headerSort: false },
+                { title: 'Route',                  field: 'route',                width: 90,  hozAlign: 'right', headerSort: false, formatter: routeFmt },
+                { title: 'Section',                field: 'section',              minWidth: 110, headerSort: false },
+                { title: 'BRKey',                  field: 'brkey',                minWidth: 110, headerSort: false },
+                { title: 'BMS ID',                 field: 'bridgeId',             minWidth: 110, headerSort: false },
+                { title: 'Treatment',              field: 'treatment',            minWidth: 180, headerSort: false },
+                { title: 'Interstate',             field: 'interstate',           width: 105, hozAlign: 'center', headerSort: false, formatter: interstateFmt },
+                { title: 'Direction',              field: 'direction',            minWidth: 130, headerSort: false, formatter: directionFmt },
+                { title: 'Cost',                   field: 'cost',                 minWidth: 130, hozAlign: 'right', headerSort: false, formatter: money },
+                { title: 'Benefit',                field: 'benefit',              minWidth: 130, hozAlign: 'right', headerSort: false, formatter: money },
+                { title: 'Risk',                   field: 'risk',                 width: 90,  hozAlign: 'right', headerSort: false, formatter: riskFmt },
+                { title: 'Preferred Year',         field: 'preferredYear',        width: 130, hozAlign: 'right', headerSort: false },
+                { title: 'Min. Year',              field: 'minYear',              width: 110, hozAlign: 'right', headerSort: false },
+                { title: 'Max. Year',              field: 'maxYear',              width: 110, hozAlign: 'right', headerSort: false },
+                { title: 'Is Committed',           field: 'isCommitted',          width: 120, hozAlign: 'center', headerSort: false, formatter: yesNoFmt },
+                { title: 'Treatment Type',         field: 'treatmentType',        minWidth: 170, headerSort: false },
+                { title: 'Indirect Cost Design',   field: 'indirectCostDesign',   minWidth: 165, hozAlign: 'right', headerSort: false, formatter: money },
+                { title: 'Indirect Cost Row',      field: 'indirectCostRow',      minWidth: 160, hozAlign: 'right', headerSort: false, formatter: money },
+                { title: 'Indirect Cost Utilities',field: 'indirectCostUtilities',minWidth: 180, hozAlign: 'right', headerSort: false, formatter: money },
+                { title: 'Indirect Cost Other',    field: 'indirectCostOther',    minWidth: 165, hozAlign: 'right', headerSort: false, formatter: money }
+            ]
+        });
+
+        // ── Location/asset filter bar ──
+        var treatmentFilterState = { assetType: '', district: '', countyId: '', route: '', section: '', direction: '' };
+
+        function applyAllFilters() {
+            table.clearFilter();
+            table.setFilter(function (data) {
+                if (treatmentFilterState.assetType && data.assetType !== treatmentFilterState.assetType) return false;
+                if (treatmentFilterState.district && String(data.district) !== treatmentFilterState.district) return false;
+                if (treatmentFilterState.countyId && String(data.countyId) !== treatmentFilterState.countyId) return false;
+                if (treatmentFilterState.route && String(data.route) !== treatmentFilterState.route) return false;
+                if (treatmentFilterState.section && data.section !== treatmentFilterState.section) return false;
+                if (treatmentFilterState.direction !== '' && String(data.direction) !== treatmentFilterState.direction) return false;
+                return true;
+            });
+            table.pbSaveFilters(treatmentFilterState);
+        }
+
+        // Restore filters saved before navigating away (or before an edit/delete/create-triggered
+        // reload) so the grid comes back exactly as the user left it.
+        function restoreFilterState() {
+            var saved = table.pbSavedFilters;
+            if (!saved) return;
+
+            treatmentFilterState.assetType = saved.assetType || '';
+            $('#filterAssetType').val(treatmentFilterState.assetType);
+            refreshDistrictOptions();
+
+            treatmentFilterState.district = saved.district || '';
+            $('#filterDistrict').val(treatmentFilterState.district);
+            refreshCountyOptions();
+
+            treatmentFilterState.countyId = saved.countyId || '';
+            $('#filterCounty').val(treatmentFilterState.countyId);
+            refreshRouteOptions();
+
+            treatmentFilterState.route = saved.route || '';
+            $('#filterRoute').val(treatmentFilterState.route);
+            refreshSectionOptions();
+
+            treatmentFilterState.section = saved.section || '';
+            $('#filterSection').val(treatmentFilterState.section);
+
+            treatmentFilterState.direction = saved.direction || '';
+            $('#filterDirection').val(treatmentFilterState.direction);
+
+            applyAllFilters();
+        }
+
+        // ── Filter bar: options are derived from this library's own treatments (not a global lookup),
+        // cascading District -> County -> Route -> Section, same relationship as the legacy Treatments page. ──
+        function rowsMatchingUpTo(level) {
+            return tableData.filter(function (d) {
+                if (treatmentFilterState.assetType && d.assetType !== treatmentFilterState.assetType) return false;
+                if (level === 'assetType') return true;
+                if (treatmentFilterState.district && String(d.district) !== treatmentFilterState.district) return false;
+                if (level === 'district') return true;
+                if (treatmentFilterState.countyId && String(d.countyId) !== treatmentFilterState.countyId) return false;
+                if (level === 'county') return true;
+                if (treatmentFilterState.route && String(d.route) !== treatmentFilterState.route) return false;
+                return true;
+            });
+        }
+
+        function populateSelect($select, placeholder, options) {
+            $select.empty().append(new Option(placeholder, ''));
+            options.forEach(function (o) { $select.append(new Option(o.text, o.value)); });
+        }
+
+        function assetTypeLabel(v) { return v === 'B' ? 'Bridge' : v === 'P' ? 'Pavement' : 'Others'; }
+
+        function refreshAssetTypeOptions() {
+            var types = Array.from(new Set(tableData.map(function (d) { return d.assetType; }).filter(Boolean)));
+            populateSelect($('#filterAssetType'), 'Select Asset Type',
+                types.sort().map(function (t) { return { value: t, text: assetTypeLabel(t) }; }));
+        }
+
+        function refreshDistrictOptions() {
+            var districts = Array.from(new Set(rowsMatchingUpTo('assetType')
+                .map(function (d) { return d.district; })
+                .filter(function (d) { return d !== null && d !== undefined; })))
+                .sort(function (a, b) { return a - b; });
+            populateSelect($('#filterDistrict'), 'Select District',
+                districts.map(function (d) { return { value: d, text: 'District ' + d }; }));
+        }
+
+        function refreshCountyOptions() {
+            var seen = {}, counties = [];
+            rowsMatchingUpTo('district').forEach(function (d) {
+                if (d.countyId != null && !seen[d.countyId]) {
+                    seen[d.countyId] = true;
+                    counties.push({ value: d.countyId, text: d.county || d.countyId });
+                }
+            });
+            counties.sort(function (a, b) { return String(a.text).localeCompare(String(b.text)); });
+            populateSelect($('#filterCounty'), 'Select County', counties);
+        }
+
+        function refreshRouteOptions() {
+            var routes = Array.from(new Set(rowsMatchingUpTo('county')
+                .map(function (d) { return d.route; })
+                .filter(function (r) { return r !== null && r !== undefined; })))
+                .sort(function (a, b) { return a - b; });
+            populateSelect($('#filterRoute'), 'Select Route',
+                routes.map(function (r) { return { value: r, text: r.toString().padStart(4, '0') }; }));
+        }
+
+        function refreshSectionOptions() {
+            var sections = Array.from(new Set(rowsMatchingUpTo('route')
+                .map(function (d) { return d.section; })
+                .filter(Boolean)))
+                .sort(function (a, b) { return a.localeCompare(b, undefined, { numeric: true }); });
+            populateSelect($('#filterSection'), 'Select Section',
+                sections.map(function (s) { return { value: s, text: s }; }));
+        }
+
+        $('#filterAssetType').on('change', function () {
+            treatmentFilterState.assetType = this.value;
+            treatmentFilterState.district = treatmentFilterState.countyId = treatmentFilterState.route = treatmentFilterState.section = '';
+            refreshDistrictOptions();
+            populateSelect($('#filterCounty'), 'Select County', []);
+            populateSelect($('#filterRoute'), 'Select Route', []);
+            populateSelect($('#filterSection'), 'Select Section', []);
+        });
+        $('#filterDistrict').on('change', function () {
+            treatmentFilterState.district = this.value;
+            treatmentFilterState.countyId = treatmentFilterState.route = treatmentFilterState.section = '';
+            refreshCountyOptions();
+            populateSelect($('#filterRoute'), 'Select Route', []);
+            populateSelect($('#filterSection'), 'Select Section', []);
+        });
+        $('#filterCounty').on('change', function () {
+            treatmentFilterState.countyId = this.value;
+            treatmentFilterState.route = treatmentFilterState.section = '';
+            refreshRouteOptions();
+            populateSelect($('#filterSection'), 'Select Section', []);
+        });
+        $('#filterRoute').on('change', function () {
+            treatmentFilterState.route = this.value;
+            treatmentFilterState.section = '';
+            refreshSectionOptions();
+        });
+        $('#filterSection').on('change', function () { treatmentFilterState.section = this.value; });
+        $('#filterDirection').on('change', function () { treatmentFilterState.direction = this.value; });
+
+        $('#btnApplyTreatmentFilter').on('click', applyAllFilters);
+        $('#btnResetTreatmentFilter').on('click', function () {
+            treatmentFilterState = { assetType: '', district: '', countyId: '', route: '', section: '', direction: '' };
+            $('#filterAssetType, #filterDirection').val('');
+            refreshDistrictOptions();
+            populateSelect($('#filterCounty'), 'Select County', []);
+            populateSelect($('#filterRoute'), 'Select Route', []);
+            populateSelect($('#filterSection'), 'Select Section', []);
+            applyAllFilters();
+        });
+
+        refreshAssetTypeOptions();
+        refreshDistrictOptions();
+        restoreFilterState();
+
+        // ── Delete confirm ──
+        $('#confirmDeleteTreatment').on('click', function () {
+            bootstrap.Modal.getInstance(document.getElementById('deleteTreatment')).hide();
+            if (!currentDeleteId) return;
+            showOverlay();
+            $.ajax({
+                type: 'POST',
+                url: '?handler=Delete',
+                data: { treatmentId: currentDeleteId },
+                headers: { 'RequestVerificationToken': antiToken() },
+                success: function (res) {
+                    if (res && res.success) { location.reload(); }
+                    else { hideOverlay(); alert('Unable to delete treatment.'); }
+                },
+                error: function (xhr) { hideOverlay(); alert(xhr.responseText || 'Unable to delete treatment.'); }
+            });
+        });
+
+        // ───────────────────────────── Create / Edit ─────────────────────────────
+        function isnumber(value) { return !isNaN(value) && value !== '' && value !== null; }
+
+        // Treatment Type options shared by both modals. "Create New Treatment Type" is always
+        // offered, matching the Treatment field's affordance -- otherwise a pool with no imported
+        // categories yet has nothing selectable and no way to save a treatment at all.
+        function fillTreatmentTypeOptions($select, selectedValue) {
+            $select.find('option:not(:first)').remove();
+            $select.append(new Option('Create New Treatment Type', 'new'));
+            treatmentTypeData.forEach(function (t) {
+                $select.append(new Option(t.text, t.value));
+            });
+            if (selectedValue !== undefined && selectedValue !== null && selectedValue !== '') {
+                $select.val(String(selectedValue));
+            }
+        }
+
+        // Treatment options, optionally filtered by selected asset type. "Create New Treatment"
+        // is always offered (Bridge or Pavement) so the user can name a treatment that doesn't
+        // exist yet for that asset type, matching the legacy Treatments page.
+        function fillCreateTreatmentOptions(assetType) {
+            var $sel = $('#c_treatment');
+            var current = $sel.val();
+            var norm = String(assetType || '').trim().toUpperCase();
+            $sel.empty().append(new Option('Select Treatment', ''));
+            $sel.append(new Option('Create New Treatment', 'new'));
+            treatmentOptionData.forEach(function (o) {
+                var types = String(o.assetTypes || '').split(',').map(function (a) { return a.trim().toUpperCase(); }).filter(Boolean);
+                if (!norm || types.length === 0 || types.indexOf(norm) !== -1) {
+                    $sel.append(new Option(o.name, o.name));
+                }
+            });
+            $sel.val($sel.find('option[value="' + (current || '') + '"]').length ? current : '');
+        }
+
+        // ── Create New Treatment (Treatment dropdown → "Create New Treatment") ──
+        var treatmentNameModalRestoreParent = false;
+
+        $('#c_treatment').on('change', function () {
+            if ($(this).val() === 'new') {
+                treatmentNameModalRestoreParent = true;
+                $('#c_newTreatmentName').removeClass('is-invalid').val('');
+                bootstrap.Modal.getInstance(document.getElementById('createTreatmentModal')).hide();
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('treatmentNameModal')).show();
+            }
+        });
+
+        $('#c_newTreatmentName').on('input', function () { setFieldValid(this); });
+        $('#c_newTreatmentTypeName').on('input', function () { setFieldValid(this); });
+
+        $('#btnAddTreatmentName').on('click', function () {
+            var nameEl = document.getElementById('c_newTreatmentName');
+            var name = (nameEl.value || '').trim();
+            nameEl.value = name;
+            if (!name) {
+                setFieldInvalid(nameEl, 'Field is required');
+                return;
+            }
+            if (!/[a-zA-Z]/.test(name)) {
+                setFieldInvalid(nameEl, 'Must contain at least one letter. Numbers or special characters alone are not allowed.');
+                return;
+            }
+            setFieldValid(nameEl);
+
+            var assetType = $('#c_assetType').val();
+            var norm = assetType ? assetType.toUpperCase() : '';
+            var existing = treatmentOptionData.find(function (o) { return o.name.toLowerCase() === name.toLowerCase(); });
+            if (existing) {
+                var types = String(existing.assetTypes || '').split(',').map(function (a) { return a.trim().toUpperCase(); }).filter(Boolean);
+                if (norm && types.indexOf(norm) === -1) {
+                    types.push(norm);
+                    existing.assetTypes = types.join(',');
+                }
+            } else {
+                treatmentOptionData.push({ name: name, assetTypes: norm });
+                treatmentOptionData.sort(function (a, b) { return a.name.localeCompare(b.name); });
+            }
+
+            fillCreateTreatmentOptions(assetType);
+            $('#c_treatment').val(name);
+            bootstrap.Modal.getInstance(document.getElementById('treatmentNameModal')).hide();
+        });
+
+        $('#treatmentNameModal').on('hidden.bs.modal', function () {
+            $('#c_newTreatmentName').removeClass('is-invalid').val('');
+            if ($('#c_treatment').val() === 'new') {
+                $('#c_treatment').val('');
+            }
+            if (treatmentNameModalRestoreParent) {
+                treatmentNameModalRestoreParent = false;
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('createTreatmentModal')).show();
+            }
+        });
+
+        // ── Create New Treatment Type (Treatment Type dropdown → "Create New Treatment Type") ──
+        // Unlike Treatment (a free-text string), Treatment Type is a required int id, so the new
+        // name has to round-trip to the server to get a real id before it's selectable/savable.
+        var treatmentTypeModalParentSelector = null;
+
+        $(document).on('change', '#c_treatmentType, #e_treatmentType', function () {
+            if ($(this).val() === 'new') {
+                treatmentTypeModalParentSelector = '#' + $(this).closest('.modal').attr('id');
+                $('#c_newTreatmentTypeName').removeClass('is-invalid').val('');
+                bootstrap.Modal.getInstance(document.getElementById(treatmentTypeModalParentSelector.substring(1))).hide();
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('treatmentTypeNameModal')).show();
+            }
+        });
+
+        $('#btnAddTreatmentTypeName').on('click', function () {
+            var nameEl = document.getElementById('c_newTreatmentTypeName');
+            var name = (nameEl.value || '').trim();
+            nameEl.value = name;
+            if (!name) {
+                setFieldInvalid(nameEl, 'Field is required');
+                return;
+            }
+            if (!/[a-zA-Z]/.test(name)) {
+                setFieldInvalid(nameEl, 'Must contain at least one letter. Numbers or special characters alone are not allowed.');
+                return;
+            }
+            setFieldValid(nameEl);
+
+            $.ajax({
+                type: 'POST',
+                url: '?handler=CreateTreatmentType',
+                data: { name: name },
+                headers: { 'RequestVerificationToken': antiToken() },
+                success: function (res) {
+                    if (!res || !res.success) {
+                        alert((res && res.message) || 'Unable to create treatment type.');
+                        return;
+                    }
+                    var existing = treatmentTypeData.find(function (t) { return t.value === res.id; });
+                    if (!existing) {
+                        treatmentTypeData.push({ value: res.id, text: res.name });
+                        treatmentTypeData.sort(function (a, b) { return a.text.localeCompare(b.text); });
+                    }
+                    var $target = $(treatmentTypeModalParentSelector + ' select[id$="treatmentType"]');
+                    fillTreatmentTypeOptions($target, res.id);
+                    bootstrap.Modal.getInstance(document.getElementById('treatmentTypeNameModal')).hide();
+                },
+                error: function (xhr) { alert(xhr.responseText || 'Unable to create treatment type.'); }
+            });
+        });
+
+        $('#treatmentTypeNameModal').on('hidden.bs.modal', function () {
+            $('#c_newTreatmentTypeName').removeClass('is-invalid').val('');
+            if (treatmentTypeModalParentSelector) {
+                var $select = $(treatmentTypeModalParentSelector + ' select[id$="treatmentType"]');
+                if ($select.val() === 'new') { $select.val(''); }
+                bootstrap.Modal.getOrCreateInstance(document.getElementById(treatmentTypeModalParentSelector.substring(1))).show();
+                treatmentTypeModalParentSelector = null;
+            }
+        });
+
+        // BRKey -> BMS ID for every bridge returned by the last loadBridgeInfo() call, so picking
+        // (or typing) a BRKey can fill in the matching BMS ID without another round trip.
+        var bridgeMatchesByKey = {};
+
+        function clearBridgeMatches() {
+            bridgeMatchesByKey = {};
+            $('#c_brkeyOptions').empty();
+        }
+
+        // Bridge fields only apply to Bridge asset type.
+        function toggleBridgeFields(isBridge) {
+            $('.trt-bridge-field').toggle(isBridge);
+            if (!isBridge) { $('#c_brkey, #c_bridgeId').val(''); clearBridgeMatches(); }
+        }
+
+        
+        function loadBridgeInfo(district, county, route, section) {
+            $('#c_brkey, #c_bridgeId').val('');
+            clearBridgeMatches();
+            if ($('#c_assetType').val() !== 'B' || !isnumber(district) || !isnumber(county) || !isnumber(route) || !section) {
+                return;
+            }
+            fetch('?handler=BridgeInfo&district=' + encodeURIComponent(district) + '&county=' + encodeURIComponent(county) +
+                '&route=' + encodeURIComponent(route) + '&section=' + encodeURIComponent(section))
+                .then(function (r) { return r.json(); })
+                .then(function (matches) {
+                    (matches || []).forEach(function (m) {
+                        if (!m.brkey) return;
+                        bridgeMatchesByKey[m.brkey] = m.bridgeId;
+                        $('#c_brkeyOptions').append(new Option(m.brkey, m.brkey));
+                    });
+                    // Only one unambiguous match: keep the old auto-fill convenience. Multiple
+                    // matches: leave BRKey blank so the user picks from the suggestions (or types
+                    // their own) rather than defaulting to whichever came first.
+                    if (matches && matches.length === 1) {
+                        $('#c_brkey').val(matches[0].brkey || '');
+                        $('#c_bridgeId').val(matches[0].bridgeId != null ? matches[0].bridgeId : '');
+                    }
+                });
+        }
+
+        // Selecting a suggested BRKey (or typing one that matches a known bridge) fills BMS ID;
+        // a BRKey with no match leaves BMS ID free for manual entry.
+        $('#c_brkey').on('input', function () {
+            var bridgeId = bridgeMatchesByKey[$(this).val()];
+            if (bridgeId != null) { $('#c_bridgeId').val(bridgeId); }
+        });
+
+        function calcTotal(costSelector, totalSelector) {
+            var total = 0;
+            $(costSelector).each(function () {
+                var v = parseFloat($(this).val());
+                if (!isNaN(v)) total += v;
+            });
+            $(totalSelector).val(total ? total.toFixed(2) : '');
+        }
+
+        // Field-level validity helpers (mirrors legacy setFieldValid/setFieldInvalid): swap the
+        // adjacent .invalid-feedback text and set/clear the native constraint so Bootstrap's
+        // .was-validated styling (red/green icon + message) reflects the real reason inline.
+        function setFieldValid(el) {
+            if (!el) return;
+            el.setCustomValidity('');
+            $(el).removeClass('is-invalid');
+            var $feedback = $(el).siblings('.invalid-feedback').first();
+            if ($feedback.length && $feedback.data('default-message') !== undefined) {
+                $feedback.text($feedback.data('default-message'));
+            }
+        }
+        function setFieldInvalid(el, message) {
+            if (!el) return;
+            var $feedback = $(el).siblings('.invalid-feedback').first();
+            if ($feedback.length) {
+                if ($feedback.data('default-message') === undefined) { $feedback.data('default-message', $feedback.text()); }
+                if (message) { $feedback.text(message); }
+            }
+            el.setCustomValidity(message || 'Invalid value');
+            $(el).addClass('is-invalid');
+        }
+
+        // Cross-field Min/Max/Preferred Year validation, disabled while Is Committed is checked
+        // (those fields are then derived from Preferred Year and not user-editable).
+        function validateMinMaxYears(minId, maxId, preferredId) {
+            var minEl = document.getElementById(minId);
+            var maxEl = document.getElementById(maxId);
+            var preferredEl = preferredId ? document.getElementById(preferredId) : null;
+            if (!minEl || !maxEl || minEl.disabled) { return true; }
+
+            var min = minEl.value.trim();
+            var max = maxEl.value.trim();
+            var preferred = preferredEl ? preferredEl.value.trim() : '';
+            var hasFourDigitMin = /^\d{4}$/.test(min);
+            var hasFourDigitMax = /^\d{4}$/.test(max);
+
+            setFieldValid(minEl);
+            setFieldValid(maxEl);
+            if (preferredEl) { setFieldValid(preferredEl); }
+
+            var ok = true;
+            if (min !== '' && !hasFourDigitMin) { setFieldInvalid(minEl, 'Minimum year must be 4 digits.'); ok = false; }
+            if (max !== '' && !hasFourDigitMax) { setFieldInvalid(maxEl, 'Maximum year must be 4 digits.'); ok = false; }
+            if (ok && hasFourDigitMin && hasFourDigitMax && parseInt(min, 10) > parseInt(max, 10)) {
+                setFieldInvalid(maxEl, 'Maximum year must be greater than or equal to minimum year.');
+                ok = false;
+            }
+            if (ok && preferredEl && preferred !== '' && hasFourDigitMin && hasFourDigitMax) {
+                var preferredNum = parseInt(preferred, 10);
+                if (preferredNum < parseInt(min, 10) || preferredNum > parseInt(max, 10)) {
+                    setFieldInvalid(preferredEl, 'Preferred year must be between minimum year and maximum year.');
+                    ok = false;
+                }
+            }
+            return ok;
+        }
+
+        // ── Cascading dropdowns (Create modal) — master reference data for the selected Asset Type ──
+        var districtsRequestSeq = 0;
+        function loadDistricts(assetType, $districtSel, selected) {
+            var seq = ++districtsRequestSeq;
+            $districtSel.empty().append(new Option('Select District', ''));
+            if (assetType !== 'B' && assetType !== 'P') return Promise.resolve();
+            return fetch('?handler=Districts&assetType=' + encodeURIComponent(assetType))
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    // Only the latest request applies, so Copy's pre-selected district isn't overwritten by the Asset Type change's own load.
+                    if (seq !== districtsRequestSeq) return;
+                    (data || []).forEach(function (d) { if (d != null) $districtSel.append(new Option('District ' + d, d)); });
+                    if (selected !== undefined && selected !== null) $districtSel.val(String(selected));
+                });
+        }
+        function loadCounties(assetType, district, $countySel, selected) {
+            $countySel.empty().append(new Option('Select County', ''));
+            if (!isnumber(district)) return Promise.resolve();
+            return fetch('?handler=Counties&assetType=' + encodeURIComponent(assetType) + '&district=' + encodeURIComponent(district))
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    data.forEach(function (c) { $countySel.append(new Option(c.countyFullName, c.countyId)); });
+                    if (selected !== undefined) $countySel.val(String(selected));
+                });
+        }
+        function loadRoutes(assetType, district, county, $routeSel, selected) {
+            $routeSel.empty().append(new Option('Select Route', ''));
+            if (!isnumber(district) || !isnumber(county)) return Promise.resolve();
+            return fetch('?handler=Routes&assetType=' + encodeURIComponent(assetType) + '&district=' + encodeURIComponent(district) + '&county=' + encodeURIComponent(county))
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    data.forEach(function (rt) { $routeSel.append(new Option(rt.toString().padStart(4, '0'), rt)); });
+                    if (selected !== undefined) $routeSel.val(String(selected));
+                });
+        }
+        function loadSections(assetType, district, county, route, $sectionSel, selected) {
+            $sectionSel.empty().append(new Option('Select Section', ''));
+            if (!isnumber(district) || !isnumber(county) || !isnumber(route)) return Promise.resolve();
+            return fetch('?handler=Sections&assetType=' + encodeURIComponent(assetType) + '&district=' + encodeURIComponent(district) + '&county=' + encodeURIComponent(county) + '&route=' + encodeURIComponent(route))
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    (data || []).forEach(function (s) {
+                        var label = s.fromSection !== s.toSection ? (s.fromSection + ' - ' + s.toSection) : String(s.fromSection);
+                        $sectionSel.append(new Option(label, s.value));
+                    });
+                    if (selected !== undefined) $sectionSel.val(String(selected));
+                });
+        }
+
+        // Default slack -> derive min/max from preferred year (non-committed bridge/pavement).
+        function applyDefaultSlacks() {
+            var assetType = $('#c_assetType').val();
+            var preferred = parseInt($('#c_preferredYear').val(), 10);
+            if ((assetType !== 'B' && assetType !== 'P') || isNaN(preferred) || $('#c_isCommitted').is(':checked')) return;
+
+            if ($('#c_minYear').val().trim() !== '' || $('#c_maxYear').val().trim() !== '') {
+                validateMinMaxYears('c_minYear', 'c_maxYear', 'c_preferredYear');
+                return;
+            }
+
+            fetch('?handler=DefaultSlacks&assetType=' + encodeURIComponent(assetType))
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    $('#c_maxYear').val(preferred + (data.moveAfter || 0));
+                    $('#c_minYear').val(preferred - (data.moveBefore || 0));
+                    validateMinMaxYears('c_minYear', 'c_maxYear', 'c_preferredYear');
+                });
+        }
+
+        function resetFormValidationState(form) {
+            form.classList.remove('was-validated');
+            $(form).find('.is-invalid').removeClass('is-invalid');
+            $(form).find('input, select').each(function () { this.setCustomValidity(''); });
+            // Restore any .invalid-feedback text that validateMinMaxYears rewrote (e.g. "Minimum
+            // year must be 4 digits.") back to its original markup text ("Field is required") —
+            // otherwise the stale message reappears the next time that field goes invalid for any
+            // reason, even after the modal was closed and reopened fresh.
+            $(form).find('.invalid-feedback').each(function () {
+                var $feedback = $(this);
+                if ($feedback.data('default-message') !== undefined) {
+                    $feedback.text($feedback.data('default-message'));
+                }
+            });
+        }
+
+        function resetCreateForm() {
+            var form = document.getElementById('createTreatmentForm');
+            form.reset();
+            resetFormValidationState(form);
+            fillTreatmentTypeOptions($('#c_treatmentType'));
+            fillCreateTreatmentOptions('');
+            $('#c_district, #c_county, #c_route, #c_section').empty();
+            $('#c_district').append(new Option('Select District', ''));
+            $('#c_county').append(new Option('Select County', ''));
+            $('#c_route').append(new Option('Select Route', ''));
+            $('#c_section').append(new Option('Select Section', ''));
+            $('#c_priorityOrder').val('4').prop('disabled', false);
+            $('#c_minYear, #c_maxYear').prop('disabled', false).prop('required', true).val('');
+            $('#c_totalCost').val('');
+            toggleBridgeFields(false);
+        }
+
+        $('#btnCreateTreatment').on('click', function () {
+            resetCreateForm();
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('createTreatmentModal')).show();
+        });
+
+        // ── Copy (pre-fill the Create form from an existing row so the user can review/adjust before submitting) ──
+        function openCopy(d) {
+            resetCreateForm();
+
+            $('#c_assetType').val(d.assetType || '').trigger('change');
+            $('#c_treatment').val(d.treatment || '');
+            fillTreatmentTypeOptions($('#c_treatmentType'), d.userTreatmentTypeNo);
+            $('#c_priorityOrder').val(d.priorityOrder != null ? String(d.priorityOrder) : '4');
+            $('#c_interstate').val(d.interstate === true ? 'true' : d.interstate === false ? 'false' : '');
+            $('#c_direction').val(d.direction != null ? String(d.direction) : '');
+            $('#c_preferredYear').val(d.preferredYear != null ? String(d.preferredYear) : '');
+            $('#c_minYear').val(d.minYear != null ? d.minYear : '');
+            $('#c_maxYear').val(d.maxYear != null ? d.maxYear : '');
+            $('#c_cost').val(d.cost != null ? Number(d.cost).toFixed(2) : '');
+            $('#c_icRow').val(d.indirectCostRow != null ? Number(d.indirectCostRow).toFixed(2) : '');
+            $('#c_icUtil').val(d.indirectCostUtilities != null ? Number(d.indirectCostUtilities).toFixed(2) : '');
+            $('#c_icDesign').val(d.indirectCostDesign != null ? Number(d.indirectCostDesign).toFixed(2) : '');
+            $('#c_icOther').val(d.indirectCostOther != null ? Number(d.indirectCostOther).toFixed(2) : '');
+            calcTotal('.trt-costcalc', '#c_totalCost');
+            $('#c_isCommitted').prop('checked', d.isCommitted === true).trigger('change');
+            validateMinMaxYears('c_minYear', 'c_maxYear', 'c_preferredYear');
+
+            loadDistricts(d.assetType, $('#c_district'), d.district)
+                .then(function () { return loadCounties(d.assetType, d.district, $('#c_county'), d.countyId); })
+                .then(function () { return loadRoutes(d.assetType, d.district, d.countyId, $('#c_route'), d.route); })
+                .then(function () { return loadSections(d.assetType, d.district, d.countyId, d.route, $('#c_section'), d.section); })
+                .then(function () {
+                    // Set the known BRKey/BMS ID last so the section cascade's own bridge lookup
+                    // (which only auto-fills on a single unambiguous match) can't clobber it.
+                    $('#c_brkey').val(d.brkey || '');
+                    $('#c_bridgeId').val(d.bridgeId != null ? d.bridgeId : '');
+                });
+
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('createTreatmentModal')).show();
+        }
+
+        // Bridge and Pavement master tables have different locations, so switching Asset Type restarts the cascade.
+        $('#c_assetType').on('change', function () {
+            var isBridge = $(this).val() === 'B';
+            toggleBridgeFields(isBridge);
+            fillCreateTreatmentOptions($(this).val());
+            applyDefaultSlacks();
+            $('#c_county').empty().append(new Option('Select County', ''));
+            $('#c_route').empty().append(new Option('Select Route', ''));
+            $('#c_section').empty().append(new Option('Select Section', ''));
+            $('#c_brkey, #c_bridgeId').val('');
+            clearBridgeMatches();
+            loadDistricts($(this).val(), $('#c_district'));
+        });
+        $('#c_district').on('change', function () {
+            loadCounties($('#c_assetType').val(), $(this).val(), $('#c_county')).then(function () {
+                $('#c_route, #c_section').empty();
+                $('#c_route').append(new Option('Select Route', ''));
+                $('#c_section').append(new Option('Select Section', ''));
+                $('#c_brkey, #c_bridgeId').val('');
+            });
+        });
+        $('#c_county').on('change', function () {
+            loadRoutes($('#c_assetType').val(), $('#c_district').val(), $(this).val(), $('#c_route')).then(function () {
+                $('#c_section').empty().append(new Option('Select Section', ''));
+                $('#c_brkey, #c_bridgeId').val('');
+            });
+        });
+        $('#c_route').on('change', function () {
+            loadSections($('#c_assetType').val(), $('#c_district').val(), $('#c_county').val(), $(this).val(), $('#c_section')).then(function () {
+                $('#c_brkey, #c_bridgeId').val('');
+            });
+        });
+        $('#c_section').on('change', function () {
+            loadBridgeInfo($('#c_district').val(), $('#c_county').val(), $('#c_route').val(), $(this).val());
+        });
+        $('#c_preferredYear').on('change', function () {
+            if ($('#c_isCommitted').is(':checked')) {
+                $('#c_minYear').val($(this).val());
+                $('#c_maxYear').val($(this).val());
+            } else {
+                applyDefaultSlacks();
+            }
+            validateMinMaxYears('c_minYear', 'c_maxYear', 'c_preferredYear');
+        });
+        $('#c_isCommitted').on('change', function () {
+            if ($(this).is(':checked')) {
+                $('#c_priorityOrder').val('0').prop('disabled', true);
+                $('#c_minYear').val($('#c_preferredYear').val()).prop('disabled', true).prop('required', false);
+                $('#c_maxYear').val($('#c_preferredYear').val()).prop('disabled', true).prop('required', false);
+                setFieldValid(document.getElementById('c_minYear'));
+                setFieldValid(document.getElementById('c_maxYear'));
+                setFieldValid(document.getElementById('c_preferredYear'));
+            } else {
+                $('#c_priorityOrder').val('4').prop('disabled', false);
+                $('#c_minYear, #c_maxYear').prop('disabled', false).prop('required', true);
+                applyDefaultSlacks();
+            }
+        });
+        $('.trt-costcalc').on('input', function () { calcTotal('.trt-costcalc', '#c_totalCost'); });
+        $('#c_minYear, #c_maxYear').on('input', function () { validateMinMaxYears('c_minYear', 'c_maxYear', 'c_preferredYear'); });
+
+        // ── Create submit ──
+        $('#createTreatmentForm').on('submit', function (e) {
+            e.preventDefault();
+            var form = this;
+            var yearsOk = validateMinMaxYears('c_minYear', 'c_maxYear', 'c_preferredYear');
+            if (!form.checkValidity() || !yearsOk) { form.classList.add('was-validated'); return; }
+
+            var data = new FormData(form);
+            data.set('IsCommitted', $('#c_isCommitted').is(':checked'));
+            if ($('#c_isCommitted').is(':checked')) {
+                var preferred = $('#c_preferredYear').val();
+                data.set('PriorityOrder', '0');
+                data.set('MinYear', preferred);
+                data.set('MaxYear', preferred);
+            }
+
+            showOverlay();
+            fetch('?handler=Create', { method: 'POST', body: data, headers: { 'RequestVerificationToken': antiToken() } })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    if (res && res.success) {
+                        bootstrap.Modal.getInstance(document.getElementById('createTreatmentModal')).hide();
+                        displaynotification('Create Treatment', res.message || 'Treatment created.', 'S', true);
+                        setTimeout(function () { location.reload(); }, 1200);
+                    } else {
+                        hideOverlay();
+                        displaynotification('Create Treatment', (res && res.message) || 'Could not create treatment.', 'E', true);
+                    }
+                })
+                .catch(function () { hideOverlay(); displaynotification('Error', 'Unexpected error while creating the treatment.', 'E', true); });
+        });
+
+        // ── Edit (populate from row data) ──
+        function openEdit(d) {
+            var form = document.getElementById('editTreatmentForm');
+            form.reset();
+            resetFormValidationState(form);
+            $('#e_id').val(d.id);
+            $('#e_assetType').val(d.assetType || '');
+            $('#e_assetTypeText').val(d.assetType === 'B' ? 'Bridge' : d.assetType === 'P' ? 'Pavement' : 'Others');
+            $('#e_treatment').val(d.treatment || '');
+            fillTreatmentTypeOptions($('#e_treatmentType'), d.userTreatmentTypeNo);
+            $('#e_priorityOrder').val(d.priorityOrder != null ? String(d.priorityOrder) : '4');
+            $('#e_district').val(d.district != null ? d.district : '');
+            $('#e_county').val(d.county || '');
+            $('#e_route').val(d.route != null ? d.route.toString().padStart(4, '0') : '');
+            $('#e_section').val(d.section || '');
+            $('#e_interstate').val(d.interstate === true ? 'true' : d.interstate === false ? 'false' : '');
+            $('#e_direction').val(d.direction != null ? String(d.direction) : '');
+            $('.trt-bridge-field-edit').toggle(d.assetType === 'B');
+            $('#e_brkey').val(d.brkey || '');
+            $('#e_bridgeId').val(d.bridgeId != null ? d.bridgeId : '');
+            $('#e_preferredYear').val(d.preferredYear != null ? String(d.preferredYear) : '');
+            $('#e_minYear').val(d.minYear != null ? d.minYear : '');
+            $('#e_maxYear').val(d.maxYear != null ? d.maxYear : '');
+            $('#e_isCommitted').prop('checked', d.isCommitted === true);
+            $('#e_cost').val(d.cost != null ? Number(d.cost).toFixed(2) : '');
+            $('#e_icRow').val(d.indirectCostRow != null ? Number(d.indirectCostRow).toFixed(2) : '');
+            $('#e_icUtil').val(d.indirectCostUtilities != null ? Number(d.indirectCostUtilities).toFixed(2) : '');
+            $('#e_icDesign').val(d.indirectCostDesign != null ? Number(d.indirectCostDesign).toFixed(2) : '');
+            $('#e_icOther').val(d.indirectCostOther != null ? Number(d.indirectCostOther).toFixed(2) : '');
+            $('#e_benefit').val(d.benefit != null ? Number(d.benefit).toFixed(2) : '');
+            $('#e_risk').val(d.risk != null ? Number(d.risk).toFixed(2) : '');
+            applyEditCommittedState();
+            calcTotal('.trt-costcalc-edit', '#e_totalCost');
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('editTreatmentModal')).show();
+        }
+
+        function applyEditCommittedState() {
+            if ($('#e_isCommitted').is(':checked')) {
+                $('#e_priorityOrder').val('0').prop('disabled', true);
+                $('#e_minYear').val($('#e_preferredYear').val()).prop('disabled', true).prop('required', false);
+                $('#e_maxYear').val($('#e_preferredYear').val()).prop('disabled', true).prop('required', false);
+                setFieldValid(document.getElementById('e_minYear'));
+                setFieldValid(document.getElementById('e_maxYear'));
+                setFieldValid(document.getElementById('e_preferredYear'));
+            } else {
+                if (!$('#e_priorityOrder').val()) $('#e_priorityOrder').val('4');
+                $('#e_priorityOrder').prop('disabled', false);
+                $('#e_minYear, #e_maxYear').prop('disabled', false).prop('required', true);
+            }
+        }
+        $('#e_isCommitted').on('change', applyEditCommittedState);
+        $('#e_preferredYear').on('change', function () {
+            if ($('#e_isCommitted').is(':checked')) {
+                $('#e_minYear').val($(this).val());
+                $('#e_maxYear').val($(this).val());
+            }
+            validateMinMaxYears('e_minYear', 'e_maxYear', 'e_preferredYear');
+        });
+        $('.trt-costcalc-edit').on('input', function () { calcTotal('.trt-costcalc-edit', '#e_totalCost'); });
+        $('#e_minYear, #e_maxYear').on('input', function () { validateMinMaxYears('e_minYear', 'e_maxYear', 'e_preferredYear'); });
+
+        // ── Edit submit ──
+        $('#editTreatmentForm').on('submit', function (e) {
+            e.preventDefault();
+            var form = this;
+            var yearsOk = validateMinMaxYears('e_minYear', 'e_maxYear', 'e_preferredYear');
+            if (!form.checkValidity() || !yearsOk) { form.classList.add('was-validated'); return; }
+
+            var data = new FormData(form);
+            var isCommitted = $('#e_isCommitted').is(':checked');
+            data.set('IsCommitted', isCommitted);
+            if (isCommitted) {
+                var preferred = $('#e_preferredYear').val();
+                data.set('PriorityOrder', '0');
+                data.set('MinYear', preferred);
+                data.set('MaxYear', preferred);
+            }
+
+            showOverlay();
+            fetch('?handler=Edit', { method: 'POST', body: data, headers: { 'RequestVerificationToken': antiToken() } })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    if (res && res.success) {
+                        bootstrap.Modal.getInstance(document.getElementById('editTreatmentModal')).hide();
+                        displaynotification('Edit Treatment', res.message || 'Treatment updated.', 'S', true);
+                        setTimeout(function () { location.reload(); }, 1200);
+                    } else {
+                        hideOverlay();
+                        displaynotification('Edit Treatment', (res && res.message) || 'Could not update treatment.', 'E', true);
+                    }
+                })
+                .catch(function () { hideOverlay(); displaynotification('Error', 'Unexpected error while updating the treatment.', 'E', true); });
+        });
+    </script>
+}

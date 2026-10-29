@@ -1,0 +1,424 @@
+@page
+@model ProjectBuilder.Web.Pages.Projects.IndexModel
+@using System.Text.Json
+@{
+    Layout = "~/Pages/Shared/PBDSSLayout.cshtml";
+    ViewData["PBVariant"] = "app";
+    ViewData["PBActivePage"] = "scenarios";
+    ViewData["Title"] = "Projects";
+}
+
+@section Styles {
+    <link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/pbdss/scenarioedit.css" />
+    <style>
+        .projects-content {
+            flex: 1;
+            min-width: 0;
+            padding: 20px 24px;
+            overflow: hidden;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .projects-title-bar { flex-shrink: 0; background: #2e7d32; color: #fff; font-weight: 700; font-size: 18px; padding: 10px 24px; margin: -20px -24px 20px; }
+        #projects-table { flex: 1; min-height: 0; }
+        .filter-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+        .filter-row select {
+            font-size: 13px;
+            padding: 4px 8px;
+            height: 30px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            min-width: 130px;
+        }
+    </style>
+}
+
+<partial name="_AnalysisNav" model="Model" />
+
+<div class="projects-content">
+
+    <div class="projects-title-bar">Projects - @Model.ScenarioName</div>
+
+    <div class="search-bar">
+        <div class="ms-auto-btns">
+            <button class="btn-guide" id="btnGuide" type="button"><span class="q">?</span> Guide</button>
+            <a href="/ProjectTreatments/List?scenid=@Model.Scenid" class="btn btn-primary btn-sm">
+                <i class="fa-solid fa-list-check me-1"></i>Project Treatments
+            </a>
+            <button class="btn btn-success btn-sm" id="btnExport">
+                <i class="fa-solid fa-file-excel me-1"></i>Export to Excel
+            </button>
+        </div>
+    </div>
+
+    <div class="filter-row">
+        <select id="fFunded">
+            <option value="false">Funded</option>
+            <option value="true">Unfunded</option>
+        </select>
+        <select id="fDistrict"><option value="">All Districts</option></select>
+        <select id="fCounty"><option value="">Select County</option></select>
+        <select id="fRoute"><option value="">Select Route</option></select>
+        <select id="fSection"><option value="">Select Section</option></select>
+        <select id="fYear"><option value="">Select Year</option></select>
+        <select id="fCommitted">
+            <option value="">Has Committed (All)</option>
+            <option value="Y">Committed (Y)</option>
+            <option value="N">Not Committed (N)</option>
+        </select>
+        <button class="btn btn-primary btn-sm" id="btnFilter">Filter</button>
+        <button class="btn-reset btn-sm" id="btnFilterClear">Reset</button>
+    </div>
+
+    <div class="filter-row">
+        <input type="text" class="form-control form-control-sm" id="searchProjectId" placeholder="Search Project ID (e.g. PB-123 or UF-45)" style="max-width:220px" />
+        <button class="btn btn-primary btn-sm" id="btnGoProject">GO</button>
+    </div>
+
+    <div class="table-wrap">
+        <div id="projects-table"></div>
+    </div>
+
+</div>
+
+<!-- Export modal -->
+<div class="modal fade" id="exportModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Export to Excel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" asp-page-handler="Export" id="exportForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="ExportInput.ScenarioId" value="@Model.Scenid" />
+                <input type="hidden" name="ExportInput.ProjectIdsCsv" id="exportProjectIds" value="" />
+                <input type="hidden" name="ExportInput.Unfunded" id="exportUnfunded" value="false" />
+                <div class="modal-body">
+                    <label class="form-label">Export What?</label>
+                    <select class="form-select" name="ExportInput.ExportType">
+                        <option value="BAMS">BAMS</option>
+                        <option value="PAMS">PAMS</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success" id="btnExportSubmit">Export</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
+    <script src="~/js/pbdss/table.js"></script>
+    <script>
+        var currentScenId = @Model.Scenid;
+        var pDistricts    = @Html.Raw(JsonSerializer.Serialize(Model.Districts));
+        var pYears        = @Html.Raw(JsonSerializer.Serialize(Model.Years));
+
+        // Cascading filter dropdowns: District -> County -> Route -> Section (Year is independent); options are server-sourced since the grid is now server-paginated.
+        // Seeded from sessionStorage before the table is built, so its first request already reflects a restored filter.
+        var pSavedState   = PBTableState.load(location.pathname + location.search);
+        var pSavedFilters = (pSavedState && pSavedState.filters) || null;
+        var pFilterState = {
+            unfunded: (pSavedFilters && pSavedFilters.unfunded) || 'false',
+            district: (pSavedFilters && pSavedFilters.district) || '',
+            countyId: (pSavedFilters && pSavedFilters.countyId) || '',
+            route:    (pSavedFilters && pSavedFilters.route)    || '',
+            section:  (pSavedFilters && pSavedFilters.section)  || '',
+            year:     (pSavedFilters && pSavedFilters.year)     || '',
+            committed:(pSavedFilters && pSavedFilters.committed)|| ''
+        };
+
+        function pPopulateSelect(sel, placeholder, options) {
+            sel.innerHTML = '';
+            var opt0 = document.createElement('option');
+            opt0.value = ''; opt0.textContent = placeholder;
+            sel.appendChild(opt0);
+            options.forEach(function (o) {
+                var opt = document.createElement('option');
+                opt.value = o.value; opt.textContent = o.text;
+                sel.appendChild(opt);
+            });
+        }
+
+        function pRefreshDistrictOptions() {
+            pPopulateSelect(document.getElementById('fDistrict'), 'All Districts',
+                pDistricts.filter(function (d) { return d !== null && d !== undefined; })
+                    .map(function (d) { return { value: d, text: d }; }));
+        }
+
+        function pRefreshYearOptions() {
+            pPopulateSelect(document.getElementById('fYear'), 'Select Year',
+                pYears.filter(function (y) { return y !== null && y !== undefined; })
+                    .map(function (y) { return { value: y, text: y }; }));
+        }
+
+        function pFetchJson(handler, params) {
+            var qs = Object.keys(params)
+                .filter(function (k) { return params[k] !== '' && params[k] !== null && params[k] !== undefined; })
+                .map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); })
+                .join('&');
+            return fetch('?handler=' + handler + (qs ? '&' + qs : '')).then(function (r) { return r.json(); });
+        }
+
+        function pRefreshCountyOptions() {
+            return pFetchJson('Counties', { scenid: currentScenId, district: pFilterState.district }).then(function (counties) {
+                pPopulateSelect(document.getElementById('fCounty'), 'Select County',
+                    counties.map(function (c) { return { value: c.countyId, text: c.countyName || c.countyId }; }));
+            });
+        }
+
+        function pRefreshRouteOptions() {
+            return pFetchJson('Routes', { scenid: currentScenId, district: pFilterState.district, county: pFilterState.countyId }).then(function (routes) {
+                pPopulateSelect(document.getElementById('fRoute'), 'Select Route',
+                    routes.filter(function (r) { return r !== null && r !== undefined; })
+                        .map(function (r) { return { value: r, text: String(r).padStart(4, '0') }; }));
+            });
+        }
+
+        function pRefreshSectionOptions() {
+            return pFetchJson('Sections', { scenid: currentScenId, district: pFilterState.district, county: pFilterState.countyId, route: pFilterState.route }).then(function (sections) {
+                pPopulateSelect(document.getElementById('fSection'), 'Select Section',
+                    sections.filter(Boolean).map(function (s) { return { value: s, text: s }; }));
+            });
+        }
+
+        document.getElementById('fDistrict').addEventListener('change', function () {
+            pFilterState.district = this.value;
+            pFilterState.countyId = pFilterState.route = pFilterState.section = '';
+            pRefreshCountyOptions();
+            pPopulateSelect(document.getElementById('fRoute'), 'Select Route', []);
+            pPopulateSelect(document.getElementById('fSection'), 'Select Section', []);
+        });
+        document.getElementById('fCounty').addEventListener('change', function () {
+            pFilterState.countyId = this.value;
+            pFilterState.route = pFilterState.section = '';
+            pRefreshRouteOptions();
+            pPopulateSelect(document.getElementById('fSection'), 'Select Section', []);
+        });
+        document.getElementById('fRoute').addEventListener('change', function () {
+            pFilterState.route = this.value;
+            pFilterState.section = '';
+            pRefreshSectionOptions();
+        });
+        document.getElementById('fFunded').addEventListener('change', function () { pFilterState.unfunded = this.value; });
+        document.getElementById('fSection').addEventListener('change', function () { pFilterState.section = this.value; });
+        document.getElementById('fYear').addEventListener('change', function () { pFilterState.year = this.value; });
+        document.getElementById('fCommitted').addEventListener('change', function () { pFilterState.committed = this.value; });
+
+        pRefreshDistrictOptions();
+        pRefreshYearOptions();
+
+        function currencyFormatter(cell) {
+            var v = cell.getValue();
+            if (v == null) return '';
+            return '$' + parseFloat(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function routeFmt(cell) {
+            var v = cell.getValue();
+            return (v === null || v === undefined || v === '') ? '' : String(v).padStart(4, '0');
+        }
+
+        // Prefix comes from the row's own Selected flag, so it stays right regardless of the dropdown.
+        function projectIdFmt(cell) {
+            var v = cell.getValue();
+            if (v === null || v === undefined || v === '') return '';
+            return (cell.getRow().getData().selected === 'N' ? 'UF-' : 'PB-') + v;
+        }
+
+        var table = createTable('#projects-table', {
+            remote: true,
+            ajaxURL: '?handler=ProjectsPage',
+            // sortMode:'remote' makes Tabulator itself overwrite a "sort" param with its own array-of-objects shape, so these use non-colliding names instead.
+            ajaxParams: function () {
+                var sorters = (this.getSorters && this.getSorters()) || [];
+                return {
+                    scenid:    currentScenId,
+                    unfunded:  pFilterState.unfunded,
+                    district:  pFilterState.district,
+                    countyId:  pFilterState.countyId,
+                    route:     pFilterState.route,
+                    section:   pFilterState.section,
+                    year:      pFilterState.year,
+                    committed: pFilterState.committed,
+                    sortField: sorters.length ? sorters[0].field : '',
+                    sortDir:   sorters.length ? sorters[0].dir   : ''
+                };
+            },
+            maxHeightEl: '.table-wrap',
+            paginationSize: 20,
+            actions: [
+                {
+                    label: 'Edit',
+                    icon:  'fa-regular fa-pen-to-square',
+                    onClick: function(data) {
+                        window.location.href = '/ProjectTreatments?scenid=' + currentScenId + '&projectid=' + data.id;
+                    }
+                }
+            ],
+            columns: [
+                { title: 'Project ID',     field: 'sequenceNo',   width: 105,  hozAlign: 'right',   headerSort: false, sorter: 'number', formatter: projectIdFmt },
+                { title: 'Asset',          field: 'assetType',    minWidth: 90,  headerSort: false },
+                { title: 'District',       field: 'district',     width: 95,   hozAlign: 'center',  headerSort: false },
+                { title: 'County',         field: 'county',       minWidth: 120, headerSort: false },
+                { title: 'Route',          field: 'route',        width: 90,   hozAlign: 'right',   headerSort: false, formatter: routeFmt },
+                { title: 'Section',        field: 'section',      minWidth: 120, headerSort: false },
+                { title: 'Direction',      field: 'direction',    width: 100,  hozAlign: 'center',  headerSort: false },
+                { title: 'First Year',     field: 'firstYear',    width: 105,  hozAlign: 'center',  headerSort: false, sorter: 'number' },
+                { title: 'Total Cost',     field: 'totalCost',    minWidth: 120, hozAlign: 'right',  headerSort: false, sorter: 'number', formatter: currencyFormatter },
+                { title: 'Benefit',        field: 'benefit',      minWidth: 120, hozAlign: 'right',  headerSort: false, sorter: 'number', formatter: currencyFormatter },
+                { title: 'No. Treatments', field: 'treatments',   width: 140,  hozAlign: 'right',   headerSort: false, sorter: 'number' },
+                { title: 'Has Committed',  field: 'hasCommitted', width: 140,  hozAlign: 'center',  headerSort: false },
+                { title: 'Selected',       field: 'selected',     width: 100,  hozAlign: 'center',  headerSort: false },
+                { title: 'Preferred Year', field: 'preferredYear',width: 140,  hozAlign: 'center',  headerSort: false, sorter: 'number' },
+                { title: 'User Created',   field: 'userCreated',  minWidth: 130, headerSort: false }
+            ]
+        });
+
+        // Combined filter (dropdowns) — jump to page 1, which re-fetches using the current pFilterState via ajaxParams above.
+        function applyAllFilters() {
+            table.pbSaveFilters(pFilterState);
+            table.setPage(1);
+        }
+        document.getElementById('btnFilter').addEventListener('click', applyAllFilters);
+
+        function clearAllFilters() {
+            pFilterState = { unfunded: 'false', district: '', countyId: '', route: '', section: '', year: '', committed: '' };
+            document.getElementById('fFunded').value = 'false';
+            document.getElementById('fDistrict').value = '';
+            pPopulateSelect(document.getElementById('fCounty'), 'Select County', []);
+            pPopulateSelect(document.getElementById('fRoute'), 'Select Route', []);
+            pPopulateSelect(document.getElementById('fSection'), 'Select Section', []);
+            document.getElementById('fYear').value = '';
+            document.getElementById('fCommitted').value = '';
+            table.pbSaveFilters(pFilterState);
+            table.setPage(1);
+        }
+        document.getElementById('btnFilterClear').addEventListener('click', clearAllFilters);
+
+        // Syncs the dropdown UI to the pre-seeded pFilterState; does not itself trigger a fetch.
+        (function restoreFilterUi() {
+            if (!pSavedFilters) return;
+
+            document.getElementById('fFunded').value = pFilterState.unfunded;
+            document.getElementById('fDistrict').value = pFilterState.district;
+            // Always chains through every level (even with an empty parent value, which the server treats as unconstrained), matching the old client-side cascade's always-populated dropdowns.
+            pRefreshCountyOptions()
+                .then(function () {
+                    document.getElementById('fCounty').value = pFilterState.countyId;
+                    return pRefreshRouteOptions();
+                })
+                .then(function () {
+                    document.getElementById('fRoute').value = pFilterState.route;
+                    return pRefreshSectionOptions();
+                })
+                .then(function () {
+                    document.getElementById('fSection').value = pFilterState.section;
+                });
+
+            document.getElementById('fYear').value = pFilterState.year;
+            document.getElementById('fCommitted').value = pFilterState.committed;
+        })();
+
+        // Search Project ID — resolves the display-only sequence number to a real project id server-side.
+        // A PB-###/UF-### value (matching what the grid itself displays) picks its funded/unfunded
+        // bucket from the prefix; a bare number falls back to the current Funded/UnFunded dropdown.
+        function goToProjectId() {
+            var input = document.getElementById('searchProjectId').value.trim();
+            var match = /^(PB|UF)-(\d+)$/i.exec(input);
+            var seq, unfunded;
+            if (match) {
+                unfunded = match[1].toUpperCase() === 'UF';
+                seq = parseInt(match[2], 10);
+            } else if (/^\d+$/.test(input)) {
+                seq = parseInt(input, 10);
+                unfunded = pFilterState.unfunded;
+            }
+            if (!seq || seq < 1) {
+                alert('Enter a valid Project ID, e.g. PB-123 or UF-45.');
+                return;
+            }
+            pFetchJson('ProjectIdBySequence', { scenid: currentScenId, sequenceNo: seq, unfunded: unfunded }).then(function (result) {
+                if (!result || result.projectId == null) {
+                    alert('No project found with Project ID ' + input.toUpperCase() + '.');
+                    return;
+                }
+                window.location.href = '/ProjectTreatments?scenid=' + currentScenId + '&projectid=' + result.projectId;
+            });
+        }
+        document.getElementById('btnGoProject').addEventListener('click', goToProjectId);
+        document.getElementById('searchProjectId').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') goToProjectId();
+        });
+
+        // Export modal — matching ids are resolved server-side; no filters active keeps the unrestricted-export shortcut.
+        function openExportModal() {
+            var hasFilter = !!(pFilterState.district || pFilterState.countyId || pFilterState.route || pFilterState.section || pFilterState.year || pFilterState.committed);
+            var idsPromise = hasFilter
+                ? pFetchJson('ExportProjectIds', {
+                    scenid: currentScenId, unfunded: pFilterState.unfunded, district: pFilterState.district, countyId: pFilterState.countyId,
+                    route: pFilterState.route, section: pFilterState.section, year: pFilterState.year, committed: pFilterState.committed
+                  }).then(function (result) { return (result.ids || []).join(','); })
+                : Promise.resolve('');
+
+            idsPromise.then(function (csv) {
+                document.getElementById('exportProjectIds').value = csv;
+                document.getElementById('exportUnfunded').value = pFilterState.unfunded;
+                new bootstrap.Modal(document.getElementById('exportModal')).show();
+            });
+        }
+        document.getElementById('btnExport').addEventListener('click', openExportModal);
+
+        // Arriving via the Scenarios page's "Export" action opens straight into this modal.
+        @if (Model.AutoExport)
+        {
+            <text>openExportModal();</text>
+        }
+
+        // Export submit — fetch instead of a plain form post so the modal only closes once the download actually completes.
+        document.getElementById('exportForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var form = this;
+            var submitBtn = document.getElementById('btnExportSubmit');
+            submitBtn.disabled = true;
+
+            fetch(form.action, { method: 'POST', body: new FormData(form) })
+                .then(function(response) {
+                    if (!response.ok) throw new Error('Export failed.');
+                    var disposition = response.headers.get('content-disposition') || '';
+                    var match = /filename="?([^";]+)"?/.exec(disposition);
+                    var filename = match ? match[1] : 'export.xlsx';
+                    return response.blob().then(function(blob) { return { blob: blob, filename: filename }; });
+                })
+                .then(function(result) {
+                    var url = URL.createObjectURL(result.blob);
+                    var a = document.createElement('a');
+                    a.href = url;
+                    a.download = result.filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    bootstrap.Modal.getInstance(document.getElementById('exportModal')).hide();
+                })
+                .catch(function(err) {
+                    alert('Export failed: ' + err.message);
+                })
+                .finally(function() {
+                    submitBtn.disabled = false;
+                });
+        });
+    </script>
+}

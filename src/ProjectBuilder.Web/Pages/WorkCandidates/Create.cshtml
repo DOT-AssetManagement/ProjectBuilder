@@ -1,0 +1,938 @@
+@page
+@model ProjectBuilder.Web.Pages.WorkCandidates.CreateModel
+@{
+    Layout = "~/Pages/Shared/PBDSSLayout.cshtml";
+    ViewData["PBVariant"] = "app";
+    ViewData["PBActivePage"] = "workcandidates";
+    var isEdit = Model.WorkCandidateId.HasValue;
+    var handlerName = isEdit ? "UpdateWorkCandidate" : "CreateWorkCandidate";
+    ViewData["Title"] = isEdit ? "Edit Work Candidate" : "New Work Candidate";
+
+    // Reusable sliding Yes/No toggle — matches reference design exactly. Defaults to NO (red) when unset.
+    void WcToggle(string field, double? val, bool disabled = false)
+    {
+        var isOn = val == 1;
+        <div class="wc-radio-group">
+            <label class="wc-toggle">
+                <input type="checkbox" data-target="@field" @(isOn ? "checked" : "") @(disabled ? "disabled" : "") />
+                <span class="wc-track">
+                    <span class="wc-label-text wc-yes-text">YES</span>
+                    <span class="wc-label-text wc-no-text">NO</span>
+                    <span class="wc-knob">
+                        <svg class="ico-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                        <svg class="ico-cross" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    </span>
+                </span>
+            </label>
+        </div>
+        <input type="hidden" name="input.@field" id="@field" value="@(isOn ? 1 : 0)" @(disabled ? "disabled" : "") />
+    }
+}
+
+@section Styles {
+<style>
+    :root {
+        --penn-blue: #002d62;
+        --line: #e6e8eb;
+        --line-strong: #cfd4da;
+        --text: #1c2330;
+        --muted: #6b7280;
+        --bg: #fafbfc;
+        --field-bg: #fff;
+        --readonly: #f3f5f7;
+        --accent: #1f3bb5;
+
+        --c-general:    #334a6b;
+        --c-safety:     #1faa4c;
+        --c-mobility:   #1f6fd6;
+        --c-access:     #7c4dd6;
+        --c-resilience: #0f9b8e;
+        --c-condition:  #e08a16;
+        --c-other:      #6b7280;
+    }
+
+    body { overflow: hidden; }
+    main { display: flex; flex-direction: row; margin-top: 0; padding: 0; width: 100%; overflow: hidden; background: var(--bg); height: calc(100vh - 70px - 44px); }
+    .wc-sidebar { width: 60px; background: #c8d8e8; flex-shrink: 0; height: 100%; }
+    .wc-content-area { flex: 1; min-width: 0; overflow-y: auto; height: 100%; }
+
+    .wc-wrap { max-width: 1200px; margin: 0 auto; padding: 40px 32px 64px; }
+    .wc-crumb { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+    .wc-page-title { font-size: 26px; font-weight: 600; letter-spacing: -.4px; margin-bottom: 28px; color: var(--text); }
+
+    /* ---------- Card ---------- */
+    .wc-card { background: #e5e5e5; border-radius: 20px; padding: 28px 32px 32px; }
+
+    /* ---------- Tabs ---------- */
+    .wc-tabs { display: flex; gap: 4px; border-bottom: 1px solid #cfcfcf; margin-bottom: 36px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
+    .wc-tabs::-webkit-scrollbar { display: none; }
+    .wc-tab {
+        padding: 12px 16px; font-size: 14px; font-weight: 500; color: var(--muted); background: none; border: none;
+        cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent; margin-bottom: -1px;
+        transition: color .15s, border-color .15s; font-family: inherit;
+    }
+    .wc-tab:hover { color: var(--text); }
+    .wc-tab.active { color: var(--tab-color); border-bottom-color: var(--tab-color); }
+
+    #t-general    { --tab-color: var(--c-general); }
+    #t-safety     { --tab-color: var(--c-safety); }
+    #t-mobility   { --tab-color: var(--c-mobility); }
+    #t-access     { --tab-color: var(--c-access); }
+    #t-resilience { --tab-color: var(--c-resilience); }
+    #t-condition  { --tab-color: var(--c-condition); }
+    #t-other      { --tab-color: var(--c-other); }
+
+    /* ---------- Panels ---------- */
+    .wc-panel { display: none; animation: wcFade .2s ease; }
+    .wc-panel.active { display: block; }
+    @@keyframes wcFade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    @@media (prefers-reduced-motion: reduce) { .wc-panel { animation: none; } }
+
+    #p-general    { --panel-color: var(--c-general); }
+    #p-safety     { --panel-color: var(--c-safety); }
+    #p-mobility   { --panel-color: var(--c-mobility); }
+    #p-access     { --panel-color: var(--c-access); }
+    #p-resilience { --panel-color: var(--c-resilience); }
+    #p-condition  { --panel-color: var(--c-condition); }
+    #p-other      { --panel-color: var(--c-other); }
+
+    .wc-panel-head {
+        display: flex; align-items: center;
+        margin-bottom: 24px; padding-left: 12px;
+        border-left: 4px solid var(--panel-color);
+    }
+    .wc-panel-head h2 { font-size: 16px; font-weight: 600; color: var(--panel-color); letter-spacing: -.2px; margin: 0; }
+
+    .wc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px 32px; }
+
+    .wc-field { display: flex; flex-direction: column; }
+    .wc-field label {
+        font-size: 12px; font-weight: 600; letter-spacing: .3px; text-transform: uppercase;
+        color: var(--muted); margin-bottom: 8px;
+        line-height: 1.3; min-height: 2.6em;
+        display: flex; align-items: flex-end;
+    }
+
+    .wc-card select, .wc-input {
+        height: 42px; border: 1px solid var(--line-strong); border-radius: 8px; padding: 0 12px;
+        font-size: 14px; background: var(--field-bg); color: var(--text); width: 100%;
+        transition: border-color .15s, box-shadow .15s; font-family: inherit;
+    }
+    .wc-card select:focus, .wc-input:focus, .wc-money:focus-within {
+        outline: none; border-color: var(--panel-color, var(--accent));
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--panel-color, var(--accent)) 18%, transparent);
+    }
+    .wc-card select {
+        appearance: none;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%236b7280'><path d='M7 10l5 5 5-5z'/></svg>");
+        background-repeat: no-repeat; background-position: right 12px center; padding-right: 30px; cursor: pointer;
+    }
+    .wc-card select::-ms-expand { display: none; }
+
+    .wc-money { display: flex; align-items: stretch; height: 42px; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; background: var(--field-bg); }
+    .wc-money .wc-sym { padding: 0 12px; display: flex; align-items: center; color: var(--muted); font-size: 14px; }
+    .wc-money input { border: none; outline: none; padding: 0 12px 0 0; width: 100%; font-size: 14px; background: transparent; color: var(--text); font-family: inherit; }
+
+    .wc-readonly { background: var(--readonly); border-color: var(--line); color: var(--muted); }
+    .wc-money.wc-readonly input { color: var(--muted); }
+    .wc-input.wc-readonly.wc-score {
+        border-left: 3px solid var(--panel-color, var(--accent));
+        background: color-mix(in srgb, var(--panel-color, var(--accent)) 7%, var(--readonly));
+        color: var(--text); font-weight: 600;
+    }
+
+    .wc-radio-group { display: flex; align-items: center; gap: 12px; height: 42px; }
+
+    /* ---------- Sliding Yes/No toggle ---------- */
+    .wc-toggle { position: relative; display: inline-block; }
+    .wc-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .wc-track {
+        display: inline-flex; align-items: center; width: 58px; height: 23px;
+        border-radius: 999px; cursor: pointer; position: relative;
+        background: #c8cdd4; box-shadow: inset 0 1px 2px rgba(0,0,0,.18); transition: background .25s;
+    }
+    .wc-label-text { position: absolute; font-size: 8px; font-weight: 700; letter-spacing: .4px; color: #fff; transition: opacity .2s; }
+    .wc-yes-text { left: 9px; opacity: 0; }
+    .wc-no-text  { right: 9px; opacity: 1; color: #6b7280; }
+    .wc-knob {
+        position: absolute; top: 2px; left: 2px; width: 19px; height: 19px; border-radius: 50%;
+        background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); display: flex; align-items: center;
+        justify-content: center; transition: left .25s; z-index: 1;
+    }
+    .wc-knob svg { width: 10px; height: 10px; }
+    .wc-knob .ico-check { display: none; color: #1faa4c; }
+    .wc-knob .ico-cross { display: block; color: #d23a3a; }
+
+    .wc-toggle input:checked + .wc-track { background: linear-gradient(90deg,#2fbf63,#1faa4c); box-shadow: inset 0 1px 2px rgba(0,0,0,.12); }
+    .wc-toggle input:checked + .wc-track .wc-yes-text { opacity: 1; }
+    .wc-toggle input:checked + .wc-track .wc-no-text { opacity: 0; }
+    .wc-toggle input:checked + .wc-track .wc-knob { left: 37px; }
+    .wc-toggle input:checked + .wc-track .wc-knob .ico-check { display: block; }
+    .wc-toggle input:checked + .wc-track .wc-knob .ico-cross { display: none; }
+    .wc-toggle input:not(:checked) + .wc-track { background: linear-gradient(90deg,#e0524f,#c5302d); }
+    .wc-toggle input:not(:checked) + .wc-track .wc-no-text { color: #fff; }
+    .wc-toggle input:disabled + .wc-track { cursor: not-allowed; opacity: .7; }
+
+    /* ---------- Actions ---------- */
+    .wc-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--line); }
+    .wc-btn { border-radius: 8px; padding: 11px 22px; font-size: 14px; font-weight: 500; cursor: pointer; transition: background .15s, border-color .15s; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; }
+    .wc-btn-cancel { background: #fff; border: 1px solid var(--line-strong); color: var(--text); }
+    .wc-btn-cancel:hover { background: var(--readonly); color: var(--text); }
+    .wc-btn-submit { background: var(--penn-blue); border: 1px solid var(--penn-blue); color: #fff; }
+    .wc-btn-submit:hover { background: #001f44; color: #fff; }
+</style>
+}
+
+<div class="wc-sidebar"></div>
+<div class="wc-content-area">
+<div class="wc-wrap">
+    <div class="wc-page-title">@(isEdit ? "Edit Work Candidate" : "Work Candidate")</div>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <form method="POST" asp-page-handler="@handlerName">
+        <input type="hidden" id="WorkCandidateId" name="id" value="@Model.WorkCandidateId" />
+        <input type="hidden" id="PoolId" name="PoolId" value="@Model.PoolId" />
+
+        <div class="wc-card">
+            <!-- ---------- Tabs ---------- -->
+            <div class="wc-tabs" role="tablist" aria-label="Work candidate categories">
+                <button type="button" class="wc-tab active" role="tab" aria-selected="true"  aria-controls="p-general"    id="t-general">General</button>
+                <button type="button" class="wc-tab"        role="tab" aria-selected="false" aria-controls="p-safety"     id="t-safety">Safety</button>
+                <button type="button" class="wc-tab"        role="tab" aria-selected="false" aria-controls="p-mobility"   id="t-mobility">Mobility and Economy</button>
+                <button type="button" class="wc-tab"        role="tab" aria-selected="false" aria-controls="p-access"     id="t-access">Accessibility</button>
+                <button type="button" class="wc-tab"        role="tab" aria-selected="false" aria-controls="p-resilience" id="t-resilience">Resilience and Environment</button>
+                <button type="button" class="wc-tab"        role="tab" aria-selected="false" aria-controls="p-condition"  id="t-condition">Condition and Performance</button>
+                <button type="button" class="wc-tab" role="tab" aria-selected="false" aria-controls="p-other" id="t-other">Other</button>
+            </div>
+
+            <!-- ---------- General ---------- -->
+            <section class="wc-panel active" id="p-general" role="tabpanel" aria-labelledby="t-general" tabindex="0">
+                <div class="wc-panel-head"><h2>General</h2></div>
+                <div class="wc-grid">
+                    <div class="wc-field">
+                        <label>District</label>
+                        <select name="input.District" id="District" required>
+                            <option value="">Select</option>
+                            @foreach (var d in Model.DistrictList)
+                            {
+                                if (Model.WorkCandidates.District == d.DistrictId) { <option value="@d.DistrictId" selected>@d.DistrictName</option> }
+                                else { <option value="@d.DistrictId">@d.DistrictName</option> }
+                            }
+                        </select>
+                    </div>
+                    <div class="wc-field">
+                        <label>County</label>
+                        <select name="input.Cnty" id="Cnty" required><option value="">Select</option></select>
+                    </div>
+                    <div class="wc-field">
+                        <label>Route</label>
+                        <select name="input.Route" id="Route" required><option value="">Select</option></select>
+                    </div>
+                    <div class="wc-field">
+                        <label>Section</label>
+                        <select name="input.ToSection" id="Section" required><option value="">Select</option></select>
+                    </div>
+                    <div class="wc-field">
+                        <label>Asset Type</label>
+                        <select name="input.AssetType" id="AssetType" required>
+                            <option value="">Select</option>
+                            @if (Model.WorkCandidates.AssetType == "B") {
+                                <option value="B" selected>Bridge</option>
+                                <option value="P">Pavement</option>
+                            } else if (Model.WorkCandidates.AssetType == "P") {
+                                <option value="B">Bridge</option>
+                                <option value="P" selected>Pavement</option>
+                            } else {
+                                <option value="B">Bridge</option>
+                                <option value="P">Pavement</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="wc-field">
+                        <label>Project Name</label>
+                        <select id="ProjectNameSelect">
+                            <option value="">Select</option>
+                            @foreach (var p in Model.ProjectNames)
+                            {
+                                if (Model.WorkCandidates.ProjectName == p) { <option value="@p" selected>@p</option> }
+                                else { <option value="@p">@p</option> }
+                            }
+                            <option value="__new__">+ Add New Project</option>
+                        </select>
+                        <input type="text" class="wc-input" id="ProjectNameNew" placeholder="Enter new project number" style="display:none;margin-top:8px">
+                        <input type="hidden" name="input.ProjectName" id="ProjectName" value="@Model.WorkCandidates.ProjectName">
+                    </div>
+                    <div class="wc-field BRKEY" style="display:none">
+                        <label>BRKEY</label>
+                        <select name="input.BRKEY" id="BRKEY"><option value="">Select</option></select>
+                    </div>
+                    <div class="wc-field BRIDGE_ID" style="display:none">
+                        <label>Bridge ID</label>
+                        <input type="text" class="wc-input" name="input.BRIDGE_ID" id="BRIDGE_ID" value="@Model.WorkCandidates.BRIDGE_ID" readonly>
+                    </div>
+                    <div class="wc-field">
+                        <label>Work Type</label>
+                        <select name="input.Treatment" id="Treatment">
+                            <option value="" selected="@(string.IsNullOrEmpty(Model.WorkCandidates.Treatment))">Select</option>
+                            @foreach (var wt in Model.WorkTypeList)
+                            {
+                                if (Model.WorkCandidates.Treatment == wt.WorkType) { <option selected value="@wt.WorkType">@wt.WorkType</option> }
+                                else { <option value="@wt.WorkType">@wt.WorkType</option> }
+                            }
+                        </select>
+                    </div>
+                    <div class="wc-field">
+                        <label>Description</label>
+                        <input type="text" class="wc-input" name="input.Description" id="Description" value="@Model.WorkCandidates.Description">
+                    </div>
+                    <div class="wc-field">
+                        <label>Cost</label>
+                        <div class="wc-money">
+                            <span class="wc-sym">$</span>
+                            <input type="text" name="input.Cost" id="Cost" value="@Model.WorkCandidates.Cost" oninput="validateDecimalInput(this)">
+                        </div>
+                    </div>
+                    <div class="wc-field">
+                        <label>Year</label>
+                        <select name="input.Year" id="Year" required>
+                            <option value="">Select</option>
+                            @for (int y = DateTime.Now.Year; y <= DateTime.Now.Year + 30; y++) { <option value="@y">@y</option> }
+                        </select>
+                    </div>
+                    <div class="wc-field">
+                        <label>Min. Year</label>
+                        <select name="input.MinYear" id="MinYear" required>
+                            <option value="">Select</option>
+                            @for (int y = DateTime.Now.Year; y <= DateTime.Now.Year + 30; y++) { <option value="@y">@y</option> }
+                        </select>
+                    </div>
+                    <div class="wc-field">
+                        <label>Max. Year</label>
+                        <select name="input.MaxYear" id="MaxYear" required>
+                            <option value="">Select</option>
+                            @for (int y = DateTime.Now.Year; y <= DateTime.Now.Year + 30; y++) { <option value="@y">@y</option> }
+                        </select>
+                    </div>
+                    <div class="wc-field">
+                        <label>BPN</label>
+                        <select name="input.BPN" id="BPN"></select>
+                    </div>
+                    @if (isEdit)
+                    {
+                        <div class="wc-field">
+                            <label>Predicted Scaled Benefit</label>
+                            <div class="wc-money wc-readonly"><span class="wc-sym">$</span><input value="@Model.WorkCandidates.Benefit" readonly></div>
+                        </div>
+                        <div class="wc-field">
+                            <label>Total Score</label>
+                            <input class="wc-input wc-readonly wc-score" value="@(Model.WorkCandidates.Total_Score?.ToString("0.00") ?? "")" readonly>
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <!-- ---------- Safety ---------- -->
+            <section class="wc-panel" id="p-safety" role="tabpanel" aria-labelledby="t-safety" tabindex="0">
+                <div class="wc-panel-head"><h2>Safety</h2></div>
+                <div class="wc-grid">
+                    <div class="wc-field">
+                        <label>Excess Safety Value (Crash rate/mil VMT)</label>
+                        <input type="text" class="wc-input" name="input.Excess_Safety_Value" id="Excess_Safety_Value" value="@(Model.WorkCandidates.Excess_Safety_Value?.ToString("0.00") ?? "")" oninput="validateDecimalInput(this)">
+                    </div>
+                    <div class="wc-field">
+                        <label>Degree of Safety Improvement</label>
+                        <select name="input.Degree_of_Safety_Improvement" id="Degree_of_Safety_Improvement">
+                            <option value="">Select</option>
+                            <option value="2">Large</option>
+                            <option value="1">Small</option>
+                            <option value="0">None</option>
+                        </select>
+                    </div>
+                    <div class="wc-field">
+                        <label>HSIP Eligible</label>
+                        @{ WcToggle("HSIP_Eligible", Model.WorkCandidates.HSIP_Eligible); }
+                    </div>
+                    <div class="wc-field">
+                        <label>Supports Hazard Mitigation</label>
+                        @{ WcToggle("Supports_Hazard_Mitigation", Model.WorkCandidates.Supports_Hazard_Mitigation); }
+                    </div>
+                    <div class="wc-field">
+                        <label>Improves Access to Emergency Services</label>
+                        @{ WcToggle("Improves_Access_to_Emergency_Services", Model.WorkCandidates.Improves_Access_to_Emergency_Services); }
+                    </div>
+                    <div class="wc-field">
+                        <label>Supported by RSA Safety Study</label>
+                        @{ WcToggle("Supported_by_RSA_Safety_Study", Model.WorkCandidates.Supported_by_RSA_Safety_Study); }
+                    </div>
+                    @if (isEdit)
+                    {
+                        <div class="wc-field">
+                            <label>Predicted Safety Benefit</label>
+                            <div class="wc-money wc-readonly"><span class="wc-sym">$</span><input value="@Model.WorkCandidates.Predicted_Safety_Benefit" readonly></div>
+                        </div>
+                        <div class="wc-field">
+                            <label>Safety Score</label>
+                            <input class="wc-input wc-readonly wc-score" value="@(Model.WorkCandidates.SafetyScore?.ToString("0.00") ?? "")" readonly>
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <!-- ---------- Mobility and Economy ---------- -->
+            <section class="wc-panel" id="p-mobility" role="tabpanel" aria-labelledby="t-mobility" tabindex="0">
+                <div class="wc-panel-head"><h2>Mobility and Economy</h2></div>
+                <div class="wc-grid">
+                    <div class="wc-field">
+                        <label>Travel Time Savings (Hours/Year)</label>
+                        <input type="text" class="wc-input" name="input.Travel_Time_Savings" id="Travel_Time_Savings" value="@Model.WorkCandidates.Travel_Time_Savings" oninput="validateWholeNumberInput(this)">
+                    </div>
+                    <div class="wc-field">
+                        <label>Operating Cost Savings ($/Year)</label>
+                        <div class="wc-money"><span class="wc-sym">$</span><input type="text" name="input.Operating_Cost_Savings" id="Operating_Cost_Savings" value="@Model.WorkCandidates.Operating_Cost_Savings" oninput="validateDecimalInput(this)"></div>
+                    </div>
+                    <div class="wc-field">
+                        <label>Degree of Mobility Improvement</label>
+                        <select name="input.Degree_of_Mobility_Improvement" id="Degree_of_Mobility_Improvement">
+                            <option value="">Select</option>
+                            <option value="2">Large</option>
+                            <option value="1">Small</option>
+                            <option value="0">None</option>
+                        </select>
+                    </div>
+                    <div class="wc-field">
+                        <label>Freight Improvement</label>
+                        @{ WcToggle("Freight_Improvement", Model.WorkCandidates.Freight_Improvement); }
+                    </div>
+                    <div class="wc-field">
+                        <label>Facilitates Transit Use</label>
+                        @{ WcToggle("Facilitates_Transit_Use", Model.WorkCandidates.Facilitates_Transit_Use); }
+                    </div>
+                    <div class="wc-field">
+                        <label>Facilitates Active Transportation</label>
+                        @{ WcToggle("Facilitates_Active_Transportation", Model.WorkCandidates.Facilitates_Active_Transportation); }
+                    </div>
+                    <div class="wc-field">
+                        <label>Bike Lanes Constructed (Feet)</label>
+                        <input type="text" class="wc-input" name="input.Bike_Lanes_Constructed" id="Bike_Lanes_Constructed" value="@Model.WorkCandidates.Bike_Lanes_Constructed" oninput="validateWholeNumberInput(this)">
+                    </div>
+                    <div class="wc-field">
+                        <label>Support for Job Growth</label>
+                        @{ WcToggle("Support_for_Job_Growth", Model.WorkCandidates.Support_for_Job_Growth); }
+                    </div>
+                    <div class="wc-field">
+                        <label>Support for Tourism</label>
+                        @{ WcToggle("Support_for_Tourism", Model.WorkCandidates.Support_for_Tourism); }
+                    </div>
+                    <div class="wc-field">
+                        <label>Support for Economic Goals</label>
+                        @{ WcToggle("Support_for_Economic_Goals", Model.WorkCandidates.Support_for_Economic_Goals); }
+                    </div>
+                    <div class="wc-field">
+                        <label>Support for Recreation</label>
+                        @{ WcToggle("Support_for_Recreation", Model.WorkCandidates.Support_for_Recreation); }
+                    </div>
+                    <div class="wc-field">
+                        <label>Consistency with Existing Plans</label>
+                        @{ WcToggle("Consistency_with_Existing_Plans", Model.WorkCandidates.Consistency_with_Existing_Plans); }
+                    </div>
+                    @if (isEdit)
+                    {
+                        <div class="wc-field">
+                            <label>Mobility and Economy Benefit</label>
+                            <div class="wc-money wc-readonly"><span class="wc-sym">$</span><input value="@Model.WorkCandidates.Predicted_Mobility_Benefit" readonly></div>
+                        </div>
+                        <div class="wc-field">
+                            <label>Mobility and Access Score</label>
+                            <input class="wc-input wc-readonly wc-score" value="@(Model.WorkCandidates.MobilityAndEconomyScore?.ToString("0.00") ?? "")" readonly>
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <!-- ---------- Accessibility ---------- -->
+            <section class="wc-panel" id="p-access" role="tabpanel" aria-labelledby="t-access" tabindex="0">
+                <div class="wc-panel-head"><h2>Accessibility</h2></div>
+                <div class="wc-grid">
+                    <div class="wc-field">
+                        <label>Sidewalks and Curb Ramps Constructed or Improved (Sq.Ft)</label>
+                        <input type="text" class="wc-input" name="input.Sidewalks_and_Curb_Ramps_Constructed_or_Improved" value="@Model.WorkCandidates.Sidewalks_and_Curb_Ramps_Constructed_or_Improved" oninput="validateWholeNumberInput(this)">
+                    </div>
+                    <div class="wc-field">
+                        <label>Change in Accessible Destinations (Number)</label>
+                        <input type="text" class="wc-input" name="input.Change_in_Accessible_Destinations" value="@Model.WorkCandidates.Change_in_Accessible_Destinations" oninput="validateWholeNumberInput(this)">
+                    </div>
+                    <div class="wc-field">
+                        <label>% Accessibility Improvement for Disadvantaged Populations</label>
+                        <input type="text" class="wc-input" name="input.Percent_of_Acessibilty_Improvement_for_Disadvantaged_Populations" value="@Model.WorkCandidates.Percent_of_Acessibilty_Improvement_for_Disadvantaged_Populations" oninput="validateWholeNumberInput(this)">
+                    </div>
+                    <div class="wc-field">
+                        <label>Support for Environmental Justice</label>
+                        @{ WcToggle("Support_for_Environmental_Justice", Model.WorkCandidates.Support_for_Environmental_Justice); }
+                    </div>
+                    @if (isEdit)
+                    {
+                        <div class="wc-field">
+                            <label>Equity and Access Benefit</label>
+                            <div class="wc-money wc-readonly"><span class="wc-sym">$</span><input value="@Model.WorkCandidates.Predicted_Equity_and_Access_Benefit" readonly></div>
+                        </div>
+                        <div class="wc-field">
+                            <label>Access Score</label>
+                            <input class="wc-input wc-readonly wc-score" value="@(Model.WorkCandidates.EquityAndAccessScore?.ToString("0.00") ?? "")" readonly>
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <!-- ---------- Resilience and Environment ---------- -->
+            <section class="wc-panel" id="p-resilience" role="tabpanel" aria-labelledby="t-resilience" tabindex="0">
+                <div class="wc-panel-head"><h2>Resilience and Environment</h2></div>
+                <div class="wc-grid">
+                    <div class="wc-field">
+                        <label>Reduced Flood Closure Risk</label>
+                        @{ WcToggle("Reduced_Flood_Closure_Risk", Model.WorkCandidates.Reduced_Flood_Closure_Risk); }
+                    </div>
+                    <div class="wc-field">
+                        <label>Wetlands Improved (Acres)</label>
+                        <input type="text" class="wc-input" name="input.Wetlands_Improved" value="@Model.WorkCandidates.Wetlands_Improved" oninput="validateWholeNumberInput(this)">
+                    </div>
+                    <div class="wc-field">
+                        <label>Wildlife Crossings (ea)</label>
+                        <input type="text" class="wc-input" name="input.Wildlife_Crossings" value="@Model.WorkCandidates.Wildlife_Crossings" oninput="validateWholeNumberInput(this)">
+                    </div>
+                    <div class="wc-field">
+                        <label>Reduced Fuel Consumption (Gallons/Year)</label>
+                        <input type="text" class="wc-input" name="input.Reduced_Fuel_Consumption" value="@Model.WorkCandidates.Reduced_Fuel_Consumption" oninput="validateWholeNumberInput(this)">
+                    </div>
+                    <div class="wc-field">
+                        <label>Degree of Environmental Improvement</label>
+                        <select name="input.Degree_of_Environmental_Improvement" id="Degree_of_Environmental_Improvement">
+                            <option value="">Select</option>
+                            <option value="2">Large</option>
+                            <option value="1">Small</option>
+                            <option value="0">None</option>
+                        </select>
+                    </div>
+                    <div class="wc-field">
+                        <label>Consistency with Land Use Plans</label>
+                        @{ WcToggle("Consistency_with_Land_Use_Plans", Model.WorkCandidates.Consistency_with_Land_Use_Plans); }
+                    </div>
+                    @if (isEdit)
+                    {
+                        <div class="wc-field">
+                            <label>Resilience and Environment Benefit</label>
+                            <div class="wc-money wc-readonly"><span class="wc-sym">$</span><input value="@Model.WorkCandidates.Predicted_Environmental_Benefit" readonly></div>
+                        </div>
+                        <div class="wc-field">
+                            <label>Resilience and Environment Score</label>
+                            <input class="wc-input wc-readonly wc-score" value="@(Model.WorkCandidates.ResilienceAndEnvironmentScore?.ToString("0.00") ?? "")" readonly>
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <!-- ---------- Condition and Performance ---------- -->
+            <section class="wc-panel" id="p-condition" role="tabpanel" aria-labelledby="t-condition" tabindex="0">
+                <div class="wc-panel-head"><h2>Condition and Performance</h2></div>
+                <div class="wc-grid">
+                    <div class="wc-field">
+                        <label>Pavement Rehabilitated or Reconstructed (Lane Miles)</label>
+                        <input type="text" class="wc-input" name="input.Pavement_Rehabilitated_or_Reconstructed" value="@Model.WorkCandidates.Pavement_Rehabilitated_or_Reconstructed" oninput="validateDecimalInput(this)">
+                    </div>
+                    <div class="wc-field">
+                        <label>Bridges Rehabilitated or Replaced (Sq.Ft)</label>
+                        <input type="text" class="wc-input" name="input.Bridges_Rehabilitated_or_Replaced" value="@Model.WorkCandidates.Bridges_Rehabilitated_or_Replaced" oninput="validateDecimalInput(this)">
+                    </div>
+                    <div class="wc-field">
+                        <label>Culverts Rehabilitated or Replaced (ea)</label>
+                        <input type="text" class="wc-input" name="input.Culverts_Rehabilitated_or_Replaced" value="@Model.WorkCandidates.Culverts_Rehabilitated_or_Replaced" oninput="validateDecimalInput(this)">
+                    </div>
+                    <div class="wc-field">
+                        <label>Guardrail Rehabilitated or Replaced (Ft)</label>
+                        <input type="text" class="wc-input" name="input.Guardrail_Rehabilitated_or_Replaced" value="@Model.WorkCandidates.Guardrail_Rehabilitated_or_Replaced" oninput="validateDecimalInput(this)">
+                    </div>
+                    <div class="wc-field">
+                        <label>Geotechnical Assets Rehabilitated or Replaced (ea)</label>
+                        <input type="text" class="wc-input" name="input.Geotechnical_Assets_Rehabilitated_or_Replaced" value="@Model.WorkCandidates.Geotechnical_Assets_Rehabilitated_or_Replaced" oninput="validateDecimalInput(this)">
+                    </div>
+                    <div class="wc-field">
+                        <label>Facilities Rehabilitated or Reconstructed (Sq.Ft)</label>
+                        <input type="text" class="wc-input" name="input.Facilities_Rehabilitated_or_Reconstructed" value="@Model.WorkCandidates.Facilities_Rehabilitated_or_Reconstructed" oninput="validateDecimalInput(this)">
+                    </div>
+                    <div class="wc-field">
+                        <label>Sidewalks Rehabilitated or Reconstructed (Sq.Ft)</label>
+                        <input type="text" class="wc-input" name="input.Sidewalks_Rehabilitated_or_Reconstructed" value="@Model.WorkCandidates.Sidewalks_Rehabilitated_or_Reconstructed" oninput="validateDecimalInput(this)">
+                    </div>
+                    @if (isEdit)
+                    {
+                        <div class="wc-field">
+                            <label>Condition and Performance Benefit</label>
+                            <div class="wc-money wc-readonly"><span class="wc-sym">$</span><input value="@Model.WorkCandidates.Predicted_Condition_and_Performance_Benefit" readonly></div>
+                        </div>
+                        <div class="wc-field">
+                            <label>Condition and Performance Score</label>
+                            <input class="wc-input wc-readonly wc-score" value="@(Model.WorkCandidates.ConditionAndPerformanceScore?.ToString("0.00") ?? "")" readonly>
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <!-- ---------- Other ---------- -->
+            <section class="wc-panel" id="p-other" role="tabpanel" aria-labelledby="t-other" tabindex="0">
+                <div class="wc-panel-head"><h2>Other</h2></div>
+                <div class="wc-grid">
+                    <div class="wc-field">
+                        <label>Length (Miles)</label>
+                        <input type="text" class="wc-input" name="input.Length" id="Length" value="@Model.WorkCandidates.Length" oninput="validateDecimalInput(this)">
+                    </div>
+                    <div class="wc-field">
+                        <label>ADT (Count)</label>
+                        <input type="text" class="wc-input" name="input.ADT" id="ADT" value="@Model.WorkCandidates.ADT" oninput="validateDecimalInput(this)">
+                    </div>
+                    <div class="wc-field">
+                        <label>Percent Trucks (%)</label>
+                        <input type="text" class="wc-input" name="input.Percent_Trucks" id="Percent_Trucks" value="@Model.WorkCandidates.Percent_Trucks" oninput="validateDecimalInput(this)">
+                    </div>
+                    <div class="wc-field">
+                        <label>Population Density (People/Square Mile)</label>
+                        <input type="text" class="wc-input" name="input.Population_Density" id="Population_Density" value="@Model.WorkCandidates.Population_Density" oninput="validateDecimalInput(this)">
+                    </div>
+                    <div class="wc-field">
+                        <label>Bike Commute Share (%)</label>
+                        <input type="text" class="wc-input" name="input.Bike_Commute_Share" id="Bike_Commute_Share" value="@Model.WorkCandidates.Bike_Commute_Share" oninput="validateDecimalInput(this)">
+                    </div>
+                    <div class="wc-field">
+                        <label>Functional Classification</label>
+                        <input type="text" class="wc-input" name="input.Functional_Classification" id="Functional_Classification" value="@Model.WorkCandidates.Functional_Classification" oninput="validateWholeNumberInput(this)">
+                    </div>
+                    <div class="wc-field">
+                        <label>National Highway System</label>
+                        @{ WcToggle("National_Highway_System", Model.WorkCandidates.National_Highway_System); }
+                    </div>
+                    <div class="wc-field">
+                        <label>Pennsylvania Byway</label>
+                        @{ WcToggle("Pennsylvania_Byway", Model.WorkCandidates.Pennsylvania_Byway); }
+                    </div>
+                    <div class="wc-field">
+                        <label>Bicycle PA Route</label>
+                        @{ WcToggle("Bicycle_PA_Route", Model.WorkCandidates.Bicycle_PA_Route); }
+                    </div>
+                    <div class="wc-field">
+                        <label>Interstate Emergency Detour</label>
+                        @{ WcToggle("Interstate_Emergency_Detour", Model.WorkCandidates.Interstate_Emergency_Detour); }
+                    </div>
+                    <div class="wc-field">
+                        <label>LFAR BOF Eligible</label>
+                        @{ WcToggle("LFAR_BOF_Eligible", Model.WorkCandidates.LFAR_BOF_Eligible); }
+                    </div>
+                    <div class="wc-field">
+                        <label>Speed Limit (MPH)</label>
+                        <input type="text" class="wc-input" name="input.Speed_Limit" id="Speed_Limit" value="@Model.WorkCandidates.Speed_Limit" oninput="validateDecimalInput(this)">
+                    </div>
+                    <div class="wc-field">
+                        <label>Detour Distance (mi)</label>
+                        <input type="text" class="wc-input" name="input.Detour_Distance" id="Detour_Distance" value="@Model.WorkCandidates.Detour_Distance" oninput="validateDecimalInput(this)">
+                    </div>
+                </div>
+            </section>
+
+            <!-- ---------- Actions ---------- -->
+            <div class="wc-actions">
+                <a href="/WorkCandidates/Index?id=@Model.PoolId" class="wc-btn wc-btn-cancel">Cancel</a>
+                <button type="submit" class="wc-btn wc-btn-submit">Submit</button>
+            </div>
+        </div>
+    </form>
+</div>
+</div>
+
+@section Scripts {
+<script>
+    // ---------- Tabs ----------
+    (function () {
+        var tabs = Array.from(document.querySelectorAll('.wc-tab'));
+        var panels = Array.from(document.querySelectorAll('.wc-panel'));
+        function activate(tab) {
+            tabs.forEach(function (t) {
+                var on = t === tab;
+                t.classList.toggle('active', on);
+                t.setAttribute('aria-selected', on);
+                t.tabIndex = on ? 0 : -1;
+            });
+            panels.forEach(function (p) { p.classList.toggle('active', p.id === tab.getAttribute('aria-controls')); });
+        }
+        tabs.forEach(function (tab, i) {
+            tab.addEventListener('click', function () { activate(tab); });
+            tab.addEventListener('keydown', function (e) {
+                var next;
+                if (e.key === 'ArrowRight') next = tabs[(i + 1) % tabs.length];
+                else if (e.key === 'ArrowLeft') next = tabs[(i - 1 + tabs.length) % tabs.length];
+                else if (e.key === 'Home') next = tabs[0];
+                else if (e.key === 'End') next = tabs[tabs.length - 1];
+                if (next) { e.preventDefault(); activate(next); next.focus(); }
+            });
+        });
+
+        // Switch to the tab holding the first invalid field so the browser's native
+        // validation bubble lands on a visible control instead of a display:none one.
+        var form = panels[0].closest('form');
+        var switchedForThisAttempt = false;
+        form.addEventListener('invalid', function (e) {
+            if (switchedForThisAttempt) return;
+            var panel = e.target.closest('.wc-panel');
+            if (!panel || panel.classList.contains('active')) return;
+            var tab = tabs.find(function (t) { return t.getAttribute('aria-controls') === panel.id; });
+            if (tab) { switchedForThisAttempt = true; activate(tab); }
+        }, true);
+        var submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.addEventListener('click', function () { switchedForThisAttempt = false; });
+    })();
+
+    // ---------- Toggle → hidden field sync ----------
+    document.querySelectorAll('.wc-toggle input[type="checkbox"][data-target]').forEach(function (cb) {
+        cb.addEventListener('change', function () {
+            var hidden = document.getElementById(cb.dataset.target);
+            if (hidden) hidden.value = cb.checked ? 1 : 0;
+        });
+    });
+
+    function validateWholeNumberInput(input) { input.value = input.value.replace(/\D/g, ''); }
+    function validateDecimalInput(input) {
+        input.value = input.value.replace(/[^0-9.]/g, '');
+        input.value = input.value.replace(/(\..*)\./g, '$1');
+        input.value = input.value.replace(/^(\d+)\.(\d{2}).*$/, '$1.$2');
+    }
+
+  
+    (function () {
+        var descInput = document.getElementById('Description');
+        if (!descInput) return;
+        function checkDescription() {
+            var invalid = !descInput.value || !descInput.value.trim();
+            descInput.setCustomValidity(invalid ? 'Description cannot be blank or only spaces.' : '');
+        }
+        descInput.addEventListener('input', checkDescription);
+        checkDescription();
+    })();
+
+    (function () {
+        var costInput = document.getElementById('Cost');
+        if (!costInput) return;
+        function checkCost() {
+            var val = parseFloat(costInput.value);
+            var invalid = costInput.value === '' || isNaN(val) || val < 1;
+            costInput.setCustomValidity(invalid ? 'Cost must be at least $1.' : '');
+        }
+        costInput.addEventListener('input', checkCost);
+        checkCost();
+    })();
+
+    // ---------- Project Name: existing pick vs. add-new ----------
+    (function () {
+        var select = document.getElementById('ProjectNameSelect');
+        var newInput = document.getElementById('ProjectNameNew');
+        var hidden = document.getElementById('ProjectName');
+
+        // Pre-select the current project if it's not in the loaded list (e.g. an edit
+        // whose project got removed elsewhere) by falling back to "Add New" with its value.
+        if (hidden.value && select.value !== hidden.value) {
+            select.value = '__new__';
+            newInput.value = hidden.value;
+            newInput.style.display = '';
+        }
+
+        select.addEventListener('change', function () {
+            select.setCustomValidity('');
+            if (select.value === '__new__') {
+                newInput.style.display = '';
+                newInput.value = '';
+                hidden.value = '';
+                newInput.focus();
+            } else {
+                newInput.style.display = 'none';
+                newInput.value = '';
+                hidden.value = select.value;
+            }
+        });
+        newInput.addEventListener('input', function () { select.setCustomValidity(''); hidden.value = newInput.value; });
+
+        // Native `required` on this field would still run (and block submit) even while
+        // hidden, since browsers validate required fields regardless of display:none and
+        // then fail to focus them — so enforce "must type something" manually instead, using
+        // setCustomValidity so the same native bubble/message every other required field shows
+        // also appears here (previously this guard silently focused the field with no text).
+        var form = select.closest('form');
+        form.addEventListener('submit', function (e) {
+            if (select.value === '__new__' && !newInput.value.trim()) {
+                e.preventDefault();
+                select.setCustomValidity('Please enter a new project name.');
+                select.reportValidity();
+                newInput.focus();
+                return;
+            }
+            // Left on the "Select" placeholder — block here too, otherwise this is the one
+            // field on the form with no client-side guard, so it reaches the server blank
+            // and the resulting save failure wipes every other field the user had typed.
+            if (!hidden.value.trim()) {
+                e.preventDefault();
+                select.setCustomValidity('Please select or add a project name.');
+                var generalTab = document.getElementById('t-general');
+                if (generalTab && !generalTab.classList.contains('active')) generalTab.click();
+                select.reportValidity();
+                select.focus();
+                return;
+            }
+            select.setCustomValidity('');
+        });
+    })();
+
+    // ---------- Bridge candidates require a BRKEY or Bridge ID ----------
+    (function () {
+        var brkeySelect = document.getElementById('BRKEY');
+        var assetType = document.getElementById('AssetType');
+        var bridgeId = document.getElementById('BRIDGE_ID');
+        if (!brkeySelect || !assetType || !bridgeId) return;
+        function checkBrkey() {
+            var isBridge = assetType.value === 'B';
+            var missing = isBridge && !brkeySelect.value && !bridgeId.value.trim();
+            brkeySelect.setCustomValidity(missing ? 'BRKEY or Bridge ID is required for Bridge asset type.' : '');
+        }
+        assetType.addEventListener('change', checkBrkey);
+        brkeySelect.addEventListener('change', checkBrkey);
+        checkBrkey();
+    })();
+
+    // ---------- Year / Min. Year / Max. Year must agree ----------
+    (function () {
+        var yearEl = document.getElementById('Year');
+        var minEl = document.getElementById('MinYear');
+        var maxEl = document.getElementById('MaxYear');
+        if (!yearEl || !minEl || !maxEl) return;
+        function checkYears() {
+            yearEl.setCustomValidity('');
+            minEl.setCustomValidity('');
+            maxEl.setCustomValidity('');
+            var y = parseInt(yearEl.value, 10);
+            var mn = parseInt(minEl.value, 10);
+            var mx = parseInt(maxEl.value, 10);
+            if (!isNaN(mn) && !isNaN(mx) && mn > mx) {
+                minEl.setCustomValidity('Min. Year cannot be greater than Max. Year.');
+                return;
+            }
+            if (!isNaN(y) && !isNaN(mn) && !isNaN(mx) && (y < mn || y > mx)) {
+                yearEl.setCustomValidity('Year must be between Min. Year and Max. Year.');
+            }
+        }
+        yearEl.addEventListener('change', checkYears);
+        minEl.addEventListener('change', checkYears);
+        maxEl.addEventListener('change', checkYears);
+        checkYears();
+    })();
+
+    // ---------- Asset type → Bridge fields ----------
+    $(document).on('change', '#AssetType', function () {
+        if ($(this).val() === 'B') { $('.BRIDGE_ID').show(); $('.BRKEY').show(); }
+        else { $('.BRIDGE_ID').hide(); $('.BRKEY').hide(); }
+    });
+    $('#AssetType').trigger('change');
+
+    // ---------- Cascading dropdowns ----------
+    $(document).on('change', '#District', function () {
+        $('#Cnty').html("<option value=''>Select</option>");
+        $('#Route').html("<option value=''>Select</option>");
+        $.ajax({ url: '/WorkCandidates/Create?handler=GetCounties&id=' + $(this).val(), type: 'GET', dataType: 'json',
+            success: function (data) {
+                $.each(data, function (k, v) {
+                    if ('@Model.WorkCandidates.Cnty' == v.cnty) { $('#Cnty').append("<option value='" + v.cnty + "' selected>" + v.countyName + "</option>"); $('#Cnty').trigger('change'); }
+                    else { $('#Cnty').append("<option value='" + v.cnty + "'>" + v.countyName + "</option>"); }
+                });
+            }
+        });
+    });
+    $('#District').trigger('change');
+
+    $(document).on('change', '#Cnty', function () {
+        $('#Route').html("<option value=''>Select</option>");
+        $.ajax({ url: '/WorkCandidates/Create?handler=GetRoutes&Countyid=' + $(this).val() + '&Districtid=' + $('#District').val(), type: 'GET', dataType: 'json',
+            success: function (data) {
+                var currentRoute = '@Model.WorkCandidates.Route';
+                var matched = false;
+                $.each(data, function (k, v) {
+                    var label = (v.rte === null || v.rte === undefined || v.rte === '') ? '' : String(v.rte).padStart(4, '0');
+                    if (currentRoute == v.rte) { matched = true; $('#Route').append("<option value='" + v.rte + "' selected>" + label + "</option>"); $('#Route').trigger('change'); }
+                    else { $('#Route').append("<option value='" + v.rte + "'>" + label + "</option>"); }
+                });
+           
+                if (!matched && currentRoute) {
+                    $('#Route').append("<option value='" + currentRoute + "' selected>" + String(currentRoute).padStart(4, '0') + "</option>");
+                    $('#Route').trigger('change');
+                }
+            }
+        });
+    });
+
+    $(document).on('change', '#Route', function () {
+        $('#Section').html("<option value=''>Select</option>");
+        $.ajax({ url: '/WorkCandidates/Create?handler=GetSectionPairs&Countyid=' + $('#Cnty').val() + '&Districtid=' + $('#District').val() + '&Route=' + $(this).val(), type: 'GET', dataType: 'json',
+            success: function (data) {
+                var currentFrom = '@Model.WorkCandidates.FromSection';
+                var currentTo = '@Model.WorkCandidates.ToSection';
+                var matched = false;
+                $.each(data, function (k, v) {
+                    if (currentFrom == v.fromSection && currentTo == v.toSection) {
+                        matched = true;
+                        $('#Section').append("<option value='" + v.fromTo + "' selected>" + v.fromTo + "</option>");
+                    }
+                    else $('#Section').append("<option value='" + v.fromTo + "'>" + v.fromTo + "</option>");
+                });
+                // The candidate's stored section isn't in the current lookup list (e.g. reference data
+                // gaps) — still show it as the selected value instead of leaving the field blank.
+                if (!matched && currentFrom && currentTo) {
+                    var currentFromTo = currentFrom + '-' + currentTo;
+                    $('#Section').append("<option value='" + currentFromTo + "' selected>" + currentFromTo + "</option>");
+                }
+            }
+        });
+        $.ajax({ url: '/WorkCandidates/Create?handler=GetBrkeyAndBMSID&Countyid=' + $('#Cnty').val() + '&Districtid=' + $('#District').val() + '&Route=' + $(this).val(), type: 'GET', dataType: 'json',
+            success: function (data) {
+                $('#BRKEY').html("<option value=''>Select</option>");
+                var currentBrkey = '@Model.WorkCandidates.BRKEY';
+                var matched = false;
+                $.each(data, function (k, v) {
+                    if (currentBrkey && currentBrkey == v.brkey) {
+                        matched = true;
+                        $('#BRKEY').append("<option bmsid='" + v.bmsid + "' value='" + v.brkey + "' selected>" + v.brkey + "</option>");
+                    }
+                    else { $('#BRKEY').append("<option bmsid='" + v.bmsid + "' value='" + v.brkey + "'>" + v.brkey + "</option>"); }
+                });
+                if (matched) { $('#BRKEY').trigger('change'); }
+            }
+        });
+    });
+
+    $(document).on('change', '#BRKEY', function () { $('#BRIDGE_ID').val($(this).find('option:selected').attr('bmsid')); });
+
+    $.ajax({ url: '/WorkCandidates/Create?handler=GetBPN', type: 'GET', dataType: 'json',
+        success: function (data) {
+            $('#BPN').html("<option value=''>Select</option>");
+            $.each(data, function (k, v) {
+                if ('@Model.WorkCandidates.BPN' == v.code) $('#BPN').append("<option value='" + v.code + "' selected>" + v.longDescription + "</option>");
+                else $('#BPN').append("<option value='" + v.code + "'>" + v.longDescription + "</option>");
+            });
+        }
+    });
+
+    $('#Degree_of_Safety_Improvement').val('@Model.WorkCandidates.Degree_of_Safety_Improvement');
+    $('#Degree_of_Mobility_Improvement').val('@Model.WorkCandidates.Degree_of_Mobility_Improvement');
+    $('#Degree_of_Environmental_Improvement').val('@Model.WorkCandidates.Degree_of_Environmental_Improvement');
+    $('#Year').val('@Model.WorkCandidates.Year');
+    $('#MinYear').val('@Model.WorkCandidates.MinYear');
+    $('#MaxYear').val('@Model.WorkCandidates.MaxYear');
+</script>
+}

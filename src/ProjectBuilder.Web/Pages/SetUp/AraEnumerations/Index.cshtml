@@ -1,0 +1,126 @@
+@page
+@using System.Linq
+@model ProjectBuilder.Web.Pages.SetUp.AraEnumerations.IndexModel
+@{
+    ViewData["Title"] = "ARA Enumerations";
+    Layout = "Shared/AdminLayout";
+    ViewData["SubMenu"] = "AraEnumerations";
+
+    var rows = Model.AraEnumerations.Select(t => new {
+        enumFamily = t.EnumFamily,
+        enumName   = t.EnumName,
+        enumInt    = t.EnumInt
+    }).ToList();
+}
+
+@section Styles {
+    <link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet" />
+}
+
+<div class="editscen-content__header"><h1>ARA Enumerations</h1></div>
+
+<div class="search-bar">
+    <label>Search in ARA Enumerations</label>
+    <div class="search-input-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="searchInput" placeholder="" />
+    </div>
+    <button class="btn btn-primary btn-sm" id="btnSearch">Search</button>
+    <button class="btn-reset btn-sm" id="btnReset">Reset</button>
+</div>
+
+<div class="table-wrap">
+    <div id="admin-table"></div>
+</div>
+
+<!-- Edit Modal -->
+<div id="editModal" class="modal fade" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-page-handler="Edit">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit ARA Enumeration</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editEnumFamily" name="enumFamily" />
+                    <input type="hidden" id="editOriginalEnumName" name="originalEnumName" />
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Enum Family</label>
+                        <input type="text" class="form-control" id="editEnumFamilyDisplay" readonly />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Enum Name</label>
+                        <input type="text" class="form-control" id="editEnumName" name="enumName" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Enum Int</label>
+                        <input type="number" class="form-control" id="editEnumInt" name="enumInt" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
+    <script src="~/js/pbdss/table.js"></script>
+    <script>
+        var tableData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(rows));
+
+        var table = createTable('#admin-table', {
+            data: tableData,
+            maxHeightEl: '.table-wrap',
+            actions: [
+                {
+                    // Matches legacy pbweb's AraEnumeration list, which only ever rendered a
+                    // permanently-disabled Edit button (no working edit flow, no Delete action).
+                    label: 'Edit', icon: 'fa-solid fa-pen',
+                    disabled: function () { return true; },
+                    onClick: function (d) {
+                        document.getElementById('editEnumFamily').value = d.enumFamily;
+                        document.getElementById('editOriginalEnumName').value = d.enumName;
+                        document.getElementById('editEnumFamilyDisplay').value = d.enumFamily;
+                        document.getElementById('editEnumName').value = d.enumName;
+                        document.getElementById('editEnumInt').value = d.enumInt;
+                        bootstrap.Modal.getOrCreateInstance(document.getElementById('editModal')).show();
+                    }
+                }
+            ],
+            columns: [
+                { title: 'Enum Family', field: 'enumFamily', minWidth: 200, headerSort: false },
+                { title: 'Enum Name',   field: 'enumName',   minWidth: 200, headerSort: false },
+                { title: 'Enum Int',    field: 'enumInt',    width: 120,  hozAlign: 'right', headerSort: false }
+            ]
+        });
+
+        function applySearchFilter() {
+            var v = document.getElementById('searchInput').value.trim().toLowerCase();
+            table.clearFilter();
+            if (v) table.setFilter(function (d) { return Object.values(d).some(function (x) { return String(x).toLowerCase().includes(v); }); });
+            table.pbSaveFilters({ search: v });
+        }
+        document.getElementById('btnSearch').addEventListener('click', applySearchFilter);
+        document.getElementById('searchInput').addEventListener('keypress', function (e) { if (e.key === 'Enter') document.getElementById('btnSearch').click(); });
+        document.getElementById('btnReset').addEventListener('click', function () {
+            document.getElementById('searchInput').value = '';
+            table.clearFilter();
+            table.pbSaveFilters({ search: '' });
+        });
+
+        // Restore a filter saved before navigating away, or before an edit/delete post-back.
+        (function restoreSearchFilter() {
+            var saved = table.pbSavedFilters;
+            if (saved && saved.search) {
+                document.getElementById('searchInput').value = saved.search;
+                applySearchFilter();
+            }
+        })();
+    </script>
+}

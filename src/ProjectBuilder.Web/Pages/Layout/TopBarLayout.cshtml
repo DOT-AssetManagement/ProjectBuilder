@@ -1,0 +1,149 @@
+﻿@section scripts {
+    <abp-script src="/Pages/Index.js" />
+}
+@section styles {
+    <abp-style src="/Pages/Index.css" />
+    <link href='https://unpkg.com/css.gg@2.0.0/icons/css/image.css' rel='stylesheet'>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+}
+
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
+    <link rel="icon" type="image/x-icon" href="~/images/favicon.ico">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css"
+          integrity="sha512-SzlrxWUlpfuzQ+pcUCosxcglQRNAq/DZjVsC0lE40xsADsfeQoEypE+enwcOiGjk/bSuGGKHEyjSoQ1zVisanQ=="
+          crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400&display=swap" rel="stylesheet">
+        @RenderSection("Styles", required: false)
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+</head>
+
+<body>
+    <header>
+        <nav id="main-navbar" class="navbar navbar-expand-lg navbar-light fixed-top">
+            <div class="navbar_maincontainer">
+                <div class="navbar_brand">
+                    <button class="navbar-toggler me-2 mt-2" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false"
+                            style="height:40px;" aria-label="Toggle navigation">
+                        <i class="fas fa-bars"></i>
+                    </button>
+
+                  
+                        <a class="navbar-brand align-content-start justify-content-start align-items-center" asp-page="/Dashboard/Index">
+                            <div class="logos-container">
+                                <img src="~/images/SVG/ProjectBuilderLogo.svg" alt="Project Builder" class="img-fluid"
+                                     loading="lazy" width="60" height="45" style="    margin-top: 10px;" />
+                                <div class="verticalline"></div>
+
+                                <img src="~/images/SVG/SecondaryLogo.svg" alt="Project Builder" loading="lazy" width="200"
+                                     height="90" />
+                                <div class="verticalline"></div>
+                            </div>
+                        </a>
+                  
+
+
+                </div>
+                   
+                  
+                        <div class="navbar_navigation-container">
+                            <div class="navbar_navigation-links">
+
+                              
+                                <a asp-controller="Scenarios" asp-action="Index" class="navbar_navigation-link">
+                                    <div id="scenarios" class="navbar_navigation-link_item notactive" suburl="editscenario">
+                                        <span>Scenarios</span>
+                                    </div>
+                                </a>
+                                <a asp-controller="CandidatePools" asp-action="Index" class="navbar_navigation-link">
+                                    <div id="candidatepools" class="navbar_navigation-link_item notactive" suburl="">
+                                        <span>Candidate Pools</span>
+                                    </div>
+                                </a>
+                                <a asp-action="Maps" asp-controller="Outputs" class="navbar_navigation-link">
+                                    <div id="outputs" class="navbar_navigation-link_item notactive" suburl="charts;projects;reports;projecttreatments">
+                                        <span>Outputs</span>
+                                    </div>
+                                </a>
+                                <a asp-controller="Home" asp-action="About" class="navbar_navigation-link">
+                                    <div id="home" class="navbar_navigation-link_item notactive" suburl="">
+                                        <span>About</span>
+                                    </div>
+                                </a>
+
+                            
+
+                            </div>
+                            <div class="navbar_userinfo-container">
+                                <i class="fa-solid fa-bell"></i>
+                                <div class="verticalline"></div>
+                                <i class="fa-solid fa-user"></i>
+                                <p>@User.Identity?.Name</p>
+                        <a class="circle" href="/Account/Logout"
+                                   data-toggle="tooltip" data-placement="bottom" title="Logout">
+                                    <i class="fa-solid fa-right-from-bracket"></i>
+                                </a>
+                            </div>
+                        </div>
+            </div>
+
+            @* </div> *@
+        </nav>
+    </header>
+
+
+
+
+
+
+
+
+    <main class="pt-4 topPadding">
+            @RenderBody()
+        </main>
+   
+
+
+
+    <div class="position-fixed top-0 end-0 p-3" style="z-index:10;margin-top:80px;" id="notecontainer">
+        <div id="mainnotificationmessage" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header text-white bg-primary">
+                <i class="bi bi-info-circle-fill fa-lg me-2"></i>
+                <strong class="me-auto"></strong>
+                <small>now</small>
+                <button type="button" class="btn-close text-white" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+            </div>
+        </div>
+    </div>
+    <footer class="fixed" style="height:60px;">
+        <div class="rights">
+            <div class="copyright">
+                <span>
+                    <h6>ProjectBuilder (C) 2023 v3.0.0</h6>
+                </span>
+            </div>
+            <div class="rrm-sm">
+                <span>
+                    <h6>ALL RIGHTS RESERVED </h6>
+                </span>
+            </div>
+        </div>
+    </footer>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+        @RenderSection("Scripts", required: false)
+</body>
+
+</html>

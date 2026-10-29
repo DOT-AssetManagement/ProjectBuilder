@@ -1,0 +1,2 @@
+Symphony.exe -F NBIAS_S2_T_99_ImprRepl_Relaxed.mps >NBIAS_S2_T_99_ImprRepl_Relaxed.txt 2>NBIAS_S2_T_99_ImprRepl_Relaxed.err
+exit

@@ -1,0 +1,972 @@
+@page
+@model ProjectBuilder.Web.Pages.Scenarios.CreateScenarioModel
+@{
+    ViewData["Title"] = "Create Scenario";
+    ViewData["PBVariant"] = "app";
+    ViewData["PBActivePage"] = "scenarios";
+    Layout = "~/Pages/Shared/PBDSSLayout.cshtml";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css" />
+    <style>
+        body { overflow: hidden; }
+        main { display: flex; flex-direction: row; margin-top: 0; padding: 0; width: 100%; height: calc(100vh - 70px - 44px); overflow: hidden; background: #f4f7fc; }
+
+        .cs-sidebar { width: 300px; flex-shrink: 0; background: #fff; border-right: 1px solid #e3e8f0; height: 100%; overflow-y: auto; }
+        #sidebarMenu { height: 100%; display: flex; flex-direction: column; padding: 18px 14px; }
+        #sidebarMenu ul { flex: 1; margin: 0; padding: 0; }
+        .cs-step { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; margin-bottom: 6px; border-radius: 8px; color: rgb(28,48,92); font-weight: 600; font-size: 14px; cursor: pointer; border-left: 4px solid transparent; transition: background .15s; }
+        .cs-step:hover { background: #f0f4fb; }
+        .cs-step.selected, .cs-step.sideMenuActive { background: #eef4ff; border-left-color: rgb(25,53,98); font-weight: 800; color: rgb(25,53,98); }
+        .cs-step .icon-right { font-size: 16px; }
+        .cs-step .fa-circle-exclamation { color: #e0a800; }
+        .cs-step .fa-circle-check { color: #198754; }
+        .cs-create-wrap { margin-top: auto; padding: 10px 6px 4px; }
+
+        #ScenarioForm.cs-content { flex: 1; min-width: 0; height: 100%; overflow-y: auto; padding: 24px 28px; }
+        .cs-panel-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 6px rgba(0,0,0,.08); padding: 26px 30px; max-width: 1000px; }
+        .createdivs h1 { font-size: 22px; font-weight: 800; color: rgb(25,53,98); margin-bottom: 18px; }
+        .cs-content .form-label { font-size: 13px; font-weight: 700; color: rgb(28,48,92); margin-top: 12px; }
+        .cs-content .form-control { font-size: 13px; font-family: Montserrat,sans-serif; }
+        .cs-content .form-check-label { font-size: 13px; color: rgb(28,48,92); }
+
+        #candidatePoolsTable thead { background: rgb(0,86,179) !important; }
+        #candidatePoolsTable thead th { color: #fff; font-size: 12px; font-weight: 700; border-color: rgba(255,255,255,.2); }
+        #candidatePoolsTable td { font-size: 13px; vertical-align: middle; }
+        #candidatePoolsTable tbody tr { cursor: pointer; }
+        .table-container { max-height: 480px; overflow: auto; }
+
+        #loader-container { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 9999; }
+        .loader { position: absolute; top: 50%; left: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border: 6px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: csspin .8s linear infinite; }
+        @@keyframes csspin { to { transform: rotate(360deg); } }
+    </style>
+}
+
+@* ── Left wizard sidebar ── *@
+<div class="cs-sidebar">
+    <nav id="sidebarMenu" aria-label="Scenario Configuration Menu">
+        <ul>
+            <li>
+                <a id="scenarioSettings" href="#" class="cs-step accordianlink createScenarioMenu selected sideMenuActive">
+                    <span class="accordianspan">Scenario Settings</span>
+                    <i class="fa-solid fa-circle-exclamation icon-right"></i>
+                </a>
+            </li>
+            <li>
+                <a id="treatmentCandidateSettings" href="#" class="cs-step accordianlink createScenarioMenu">
+                    <span class="accordianspan">Treatment Pool Library</span>
+                    <i class="fa-solid fa-circle-exclamation icon-right"></i>
+                </a>
+            </li>
+            <li>
+                <a id="scenarioParametersSettings" href="#" class="cs-step accordianlink createScenarioMenu">
+                    <span class="accordianspan">Parameters</span>
+                    <i class="fa-solid fa-circle-exclamation icon-right"></i>
+                </a>
+            </li>
+            <li>
+                <a id="budgetConstraintsSettings" href="#" class="cs-step accordianlink createScenarioMenu">
+                    <span class="accordianspan">Budget Constraints</span>
+                    <i class="fa-solid fa-circle-exclamation icon-right"></i>
+                </a>
+            </li>
+        </ul>
+        <div class="cs-create-wrap">
+            <button type="button" id="createScenarioBtn" class="btn btn-success w-100" aria-label="Create New Scenario">
+                Create Scenario
+            </button>
+        </div>
+    </nav>
+</div>
+
+@* ── Content / wizard panels ── *@
+<form id="ScenarioForm" class="needs-validation cs-content" method="post" novalidate>
+    @Html.AntiForgeryToken()
+
+    <div class="cs-panel-card">
+
+        @* ── Panel 1: Scenario Settings ── *@
+        <div class="createdivs scenarioSettings" style="display:none;">
+            <h1>Scenario Settings</h1>
+            <div style="background:#fff;">
+                <label for="scenarioname" class="form-label">Scenario Name</label>
+                <input type="text" id="scenarioname" name="scenarioname" class="form-control scenarioSettingsCheck" required
+                       oninput="validateScenarioName()" onblur="validateScenarioNameBlur()" />
+                <div id="error-message3" style="color:#dc3545;font-size:.875em;" class="error-message3"></div>
+                <div id="scenarionamefeedback" class="invalid-feedback">Field is required</div>
+                <div id="ValidSceName" style="color:#dc3545;font-size:.875em;display:none;">Enter Scenario Name</div>
+
+                <label for="minyear" class="form-label">First Year</label>
+                <input type="number" name="minyear" id="minyear" maxlength="4" value="@DateTime.Now.Year" oninput="validateYear()" min="2021" onblur="validateYearBlur()" class="form-control scenarioSettingsCheck"
+                       placeholder="@DateTime.Now.Year" />
+                <div id="error-message" style="color:#dc3545;font-size:.875em;" class="error-message"></div>
+                <div id="ValidFYeareName" style="color:#dc3545;font-size:.875em;display:none;">Enter First Year</div>
+
+                <label for="maxyear" class="form-label">Last Year</label>
+                <input type="number" name="maxyear" id="maxyear" maxlength="4" oninput="validateMaxYear()" min="@DateTime.Now.Year" onblur="validateMaxYearBlur()" class="form-control scenarioSettingsCheck" />
+                <div id="error-message2" style="color:#dc3545;font-size:.875em;" class="error-message"></div>
+                <div id="ValidLYeareName" style="color:#dc3545;font-size:.875em;display:none;">Enter Last Year</div>
+
+                <div class="mt-3 mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="IsScenarioShared" id="IsScenarioShared" value="1">
+                        <label class="form-check-label" for="IsScenarioShared">Shared</label>
+                    </div>
+                </div>
+            </div>
+            <div id="ValidcandPool" style="color:#dc3545;display:none;font-size:.875em;">Create or Select a Treatment Pool Library</div>
+        </div>
+
+        @* ── Panel 2: Treatment Pool Library ── *@
+        <div class="createdivs treatmentCandidateSettings" style="display:none;">
+            <div class="mt-1 d-flex justify-content-end">
+                <button type="button" class="btn btn-success mx-2" data-bs-toggle="modal"
+                        data-bs-target="#CreateNewLibraryForm" id="createPoolButton">
+                    Create New Treatment Pool Library
+                </button>
+            </div>
+            <h1>Treatment Pool Library</h1>
+            <div class="table-container">
+                <table class="table table-bordered table-hover table-striped" id="candidatePoolsTable">
+                    <thead>
+                        <tr>
+                            <th>Select</th>
+                            <th>Treatment Pool Library Name</th>
+                            <th>Date Created</th>
+                            <th>Shared</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        @* ── Panel 3: Parameters ── *@
+        <div class="createdivs scenarioParametersSettings" style="display:none;">
+            <div style="height:650px;overflow-y:auto;width:100%;margin-top:10px;background:#fff;padding:20px;" class="parameterDiv extraDiv">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h1>Scenario Parameters</h1>
+                </div>
+                <div id="Para" class="parameter"></div>
+            </div>
+        </div>
+
+        @* ── Panel 4: Budget Constraints ── *@
+        <div class="createdivs budgetConstraintsSettings" style="display:none;">
+            <div style="height:350px;overflow-y:auto;width:100%;margin-top:10px;background:#fff;padding:20px;" class="budgetDiv extraDiv">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h1>Budget Constraints</h1>
+                </div>
+                <div id="Bud"></div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mt-3 d-flex justify-content-center mx-auto d-none">
+            <button id="CreateScen" style="width:100%;" type="button" class="btn btn-success" onclick="saveNewScenario()">Create Scenario</button>
+        </div>
+
+    </div>
+</form>
+
+
+@* ── Modals ── *@
+<div class="modal fade" id="NewLibmodal" tabindex="-1" aria-labelledby="NewLibmodalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title" id="editBudgetModalLabel">Please enter name for a new pool that will contain a copy of the selected pool</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="createlibrary1" class="needs-validation" method="post" novalidate>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="NewLibName">New Pool name</label>
+                        <input type="text" id="NewLibName" name="NewLibName" oninput="CandidatePoolNameExists()" class="form-control">
+                        <div id="newlibnamefeedback" class="invalid-feedback">Name Already Exists</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="libraryDescription" class="form-label">Treatment Pool Library Description</label>
+                        <input name="librarydescription2" type="text" id="librarydescription2" class="form-control" required />
+                        <div id="descriptionfeedback3" class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="isshared" id="isshared">
+                        <label class="form-check-label" for="isshared">Shared</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="onSaveCandidatePoolScenario()">Save changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="CreateNewLibraryForm" tabindex="-1" role="dialog"
+     aria-labelledby="CreateNewLibraryFormlabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="CreateNewLibraryFormlabel">Create New Treatment Pool Library</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="createlibrary2" class="needs-validation" method="post" novalidate>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="libraryName" class="form-label">Treatment Pool Library Name</label>
+                        <input type="text" id="libraryname" oninput="validateScenarioLibraryName()" name="libraryname" class="form-control"
+                               required onblur="validateExistingPoolName()" />
+                        <div id="namefeedback" class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="libraryDescription" class="form-label">Treatment Pool Library Description</label>
+                        <input id="libraryDescription2" oninput="validateScenarioLibraryDescription()" name="librarydescription" type="text" class="form-control" required
+                               onblur="validateScenarioLibraryDescription()" />
+                        <div id="descriptionfeedback" class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="form-check mb-3 d-none">
+                        <input class="form-check-input" type="radio" name="isemptylibrary" id="isemptylibrary" value="true" checked>
+                        <label class="form-check-label" for="isemptylibrary">Create an empty treatment candidate</label>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="isshared" id="isshared">
+                            <label class="form-check-label" for="isshared">Shared</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success" id="btnSaveNewCandidatePool">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<div id="loader-container">
+    <div id="loader" class="loader"></div>
+</div>
+
+@* ── Notification toast (used by displaynotification) ── *@
+<div class="position-fixed top-0 end-0 p-3" style="z-index:11000;margin-top:80px;" id="notecontainer">
+    <div id="mainnotificationmessage" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header text-white bg-primary">
+            <i class="bi bi-info-circle-fill fa-lg me-2"></i>
+            <strong class="me-auto"></strong>
+            <small>now</small>
+            <button type="button" class="btn-close text-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body"></div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+    <script>
+    // ── Notification toast helper (extracted from site.js so this page is self-contained) ──
+    function displaynotification(header, message, state = "P", autohide = false) {
+        var note = bootstrap.Toast.getOrCreateInstance(document.getElementById("mainnotificationmessage"));
+        var headercontainer = note._element.querySelector(".toast-header");
+        var headerelement = note._element.querySelector(".me-auto");
+        var messageelement = note._element.querySelector(".toast-body");
+        note._config.autohide = autohide;
+        $(messageelement).html(message);
+        $(headerelement).text(header);
+        switch (state) {
+            case "S":
+                headercontainer.classList.add("bg-success");
+                headercontainer.classList.remove("bg-danger");
+                headercontainer.classList.remove("bg-primary");
+                break;
+            case "E":
+                headercontainer.classList.remove("bg-success");
+                headercontainer.classList.add("bg-danger");
+                headercontainer.classList.remove("bg-primary");
+                break;
+            default:
+                headercontainer.classList.remove("bg-success");
+                headercontainer.classList.remove("bg-danger");
+                headercontainer.classList.add("bg-primary");
+                break;
+        }
+        note.show();
+    }
+    function hidenotification() {
+        var note = bootstrap.Toast.getOrCreateInstance(document.getElementById("mainnotificationmessage"));
+        note.hide();
+    }
+
+    var check = null;
+
+    function antiForgeryToken() {
+    return $('input[name="__RequestVerificationToken"]').val();
+    }
+
+    // An error body may arrive as a JSON object, a JSON string or plain text; pull the message out of any of them.
+    function getErrorMessage(response, fallback) {
+    if (!response) return fallback;
+    var data = response.responseJSON;
+    if (data === undefined || data === null) {
+    if (!response.responseText) return fallback;
+    try { data = JSON.parse(response.responseText); } catch (e) { return response.responseText; }
+    }
+    if (typeof data === 'string') return data || fallback;
+    if (data.error) return data.error;
+    if (Array.isArray(data) && data.length) return data.join('<br>');
+    if (Array.isArray(data.value) && data.value.length) return data.value.join('<br>');
+    return fallback;
+    }
+
+    function getScenarioCreateErrorText(response) {
+    return getErrorMessage(response, 'Unexpected error occurred while processing your request.');
+    }
+
+    // ── Sidebar navigation (matches your partial: id on anchor → panel class) ──
+    $(function () {
+    $(".scenarioSettings").show();   // default panel
+
+    $(document).on("click", ".createScenarioMenu", function (e) {
+    e.preventDefault();
+    var id = this.id;            // e.g. "scenarioSettings"
+    $(".createScenarioMenu").removeClass("selected sideMenuActive");
+    $(this).addClass("selected sideMenuActive");
+    $(".createdivs").hide();
+    $("." + id).show();          // panel class matches the anchor id
+    });
+
+    $(document).on("click", "#createScenarioBtn", function () {
+    saveNewScenario();
+    });
+    });
+
+    // toggle status icon for a sidebar anchor
+    function setStatus(menuId, ok) {
+    var icon = $("#" + menuId + " .icon-right");
+    if (ok) {
+    icon.removeClass("fa-circle-exclamation").addClass("fa-circle-check");
+    } else {
+    icon.removeClass("fa-circle-check").addClass("fa-circle-exclamation");
+    }
+    }
+
+    $(document).ready(function () {
+    showLoader();
+    setTimeout(function () { hideLoader(); }, 1500);
+
+    $('#Para').html("Following scenario creation, parameters can be updated from the Settings page.");
+    setStatus("scenarioParametersSettings", true);
+
+    $('#Bud').html("Following scenario creation, budget constraints can be imported from the Settings page.");
+    setStatus("budgetConstraintsSettings", true);
+
+    refreshCreateScenarioButtonState();
+    loadCandidatePools();
+    });
+
+    // Scenario Settings completeness/validity for the sidebar icon is handled by
+    // refreshCreateScenarioButtonState() (called from each field's oninput/onblur handler),
+    // which checks the same name-pattern + year-range rules as the submit button so the two
+    // never disagree.
+
+    $(document).on("change", ".library-radio", function () {
+    setStatus("treatmentCandidateSettings", $(this).is(":checked"));
+    });
+
+    function loadCandidatePools() {
+    $.ajax({
+    url: '?handler=CandidatePools',
+    type: 'GET',
+    dataType: "json",
+    success: function (response) {
+    $("#candidatePoolsTable tbody").html("");
+    $.each(response.libraries, function (id, library) {
+    $("#candidatePoolsTable tbody").append(
+    "<tr data-scen-name='" + (library.sceName == null ? "" : library.sceName) + "'>" +
+    "<td><input type='radio' class='library-radio' name='LibraryId' value='" + library.id + "'></td>" +
+    "<td>" + library.name + "</td>" +
+    "<td>" + (library.createdAt == null ? "" : library.createdAt) + "</td>" +
+    "<td>" + library.isShared + "</td></tr>");
+    });
+    },
+    error: function (response) { sweetAlert("Oops...", getScenarioCreateErrorText(response), "error"); }
+    });
+    }
+
+
+    $(document).on('click', '#candidatePoolsTable tbody tr', function () {
+    $('input[type="radio"]', '#candidatePoolsTable').prop('checked', false);
+    $('input[type="radio"]', this).prop('checked', true);
+    $("#ValidcandPool").css('display', 'none');
+    setStatus("treatmentCandidateSettings", true);
+    });
+
+    // Reset the form (values + validation state) every time the modal is about to open,
+    // so a "Field is required" error from a previous attempt doesn't persist into the next.
+    document.getElementById('CreateNewLibraryForm').addEventListener('show.bs.modal', function () {
+    var form = document.getElementById('createlibrary2');
+    form.reset();
+    form.classList.remove('was-validated');
+    form.querySelectorAll('.is-invalid').forEach(function (el) { el.classList.remove('is-invalid'); });
+    });
+
+    function onSaveCandidatePoolScenario() {
+    var form = document.getElementById('createlibrary1');
+    var nameInput = document.getElementById("NewLibName");
+    var descInput = document.getElementById("librarydescription2");
+    var libraryname = nameInput.value.trim();
+    var librarydescription = descInput.value.trim();
+    nameInput.value = libraryname;
+    descInput.value = librarydescription;
+    if (!libraryname) { form.NewLibName.classList.add('is-invalid'); return false; }
+    if (!librarydescription) { form.librarydescription2.classList.add('is-invalid'); return false; }
+    validateCandidatePoolform(form);
+    }
+
+    function showScenarioPanel() {
+    $(".createScenarioMenu").removeClass("selected sideMenuActive");
+    $("#scenarioSettings").addClass("selected sideMenuActive");
+    $(".createdivs").hide();
+    $(".scenarioSettings").show();
+    }
+    function showPoolPanel() {
+    $(".createScenarioMenu").removeClass("selected sideMenuActive");
+    $("#treatmentCandidateSettings").addClass("selected sideMenuActive");
+    $(".createdivs").hide();
+    $(".treatmentCandidateSettings").show();
+    }
+
+    function saveNewScenario() {
+    var checkRadio = $("#candidatePoolsTable input[type='radio'].library-radio:checked");
+    var LibraryId = checkRadio.val();
+    var scenarioname = document.getElementById("scenarioname").value.trim();
+    var minyear = document.getElementById("minyear").value;
+    var maxyear = document.getElementById("maxyear").value;
+
+    var minimumFirstYear = 2021;
+    if (!scenarioname) { $('#ValidSceName').css('display', ''); showScenarioPanel(); return false; }
+    if (!minyear || parseInt(minyear, 10) < minimumFirstYear) {
+    document.getElementById('error-message').textContent = 'First year must be ' + minimumFirstYear + ' or later';
+    showScenarioPanel(); return false;
+    }
+    if (!maxyear) { $('#ValidLYeareName').css('display', ''); showScenarioPanel(); return false; }
+    if (parseInt(maxyear, 10) < parseInt(minyear, 10)) {
+    document.getElementById('error-message2').textContent = 'Last year must be greater than or equal to first year';
+    showScenarioPanel(); return false;
+    }
+    if (!LibraryId) { $('#ValidcandPool').css('display', ''); showPoolPanel(); return false; }
+
+    var token = antiForgeryToken();
+    var Scform = document.getElementById('ScenarioForm');
+    var SceName = Scform.scenarioname.value.trim();
+
+    $.ajax({
+    type: 'POST',
+    dataType: 'JSON',
+    url: '?handler=CheckScenarioName',
+    headers: { 'RequestVerificationToken': token },
+    data: { attemptedname: SceName },
+    success: function (response) {
+    $('#ValidSceName').css('display', 'none');
+    var checkRadio = $("#candidatePoolsTable input[type='radio'].library-radio:checked");
+    var SelectScen = checkRadio.closest('tr').data('scenName') || "";
+
+    if (SelectScen == "" || SelectScen == "null") {
+    OnEmptyCandidatePoolScenario();
+    } else {
+    var form = document.getElementById('createlibrary1');
+    form.NewLibName.value = '';
+    form.librarydescription2.value = '';
+    form.NewLibName.classList.remove('is-invalid');
+    form.librarydescription2.classList.remove('is-invalid');
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('NewLibmodal')).show();
+    }
+    },
+    error: function (response) {
+    $('#ValidSceName').css('display', 'none');
+    check = false;
+    Scform.scenarioname.classList.add('is-invalid');
+    document.getElementById('scenarionamefeedback').innerText = getErrorMessage(response, 'Name already exists.');
+    showScenarioPanel();
+    }
+    });
+    }
+
+    function validateCandidatePoolform(form) {
+    form.classList.remove('was-validated');
+    validateCandidatePoolName(form);
+    }
+
+    function validateCandidatePoolName(form) {
+    var libraryname = form.NewLibName.value;
+    var libraryid = (form.libraryId !== undefined) ? form.libraryId.value : '';
+    var token = antiForgeryToken();
+
+    $.ajax({
+    type: 'POST',
+    dataType: 'JSON',
+    url: '?handler=CheckLibraryName',
+    headers: { 'RequestVerificationToken': token },
+    data: { libraryname: libraryname, libraryid: libraryid },
+    success: function () {
+    showLoader();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('NewLibmodal')).hide();
+
+    var scenarioname = document.getElementById("scenarioname").value;
+    var minyear = document.getElementById("minyear").value;
+    var maxyear = document.getElementById("maxyear").value;
+    var NewLibName = document.getElementById("NewLibName").value;
+    var librarydescription = document.getElementById("librarydescription2").value;
+    var createlibrary1 = document.getElementById('createlibrary1');
+    var isSharedValue = createlibrary1.isshared ? createlibrary1.isshared.checked : false;
+
+    var newLibrarySend = [{
+    NewLibName: NewLibName,
+    librarydescription: librarydescription,
+    IsShared: isSharedValue
+    }];
+
+    var checkRadio = $("#candidatePoolsTable input[type='radio'].library-radio:checked");
+    var LibraryId = checkRadio.val();
+    var SelectScen = checkRadio.closest('tr').data('scenName') || "";
+
+    var dataToSend = {
+    scenarioname: scenarioname,
+    FirstYear: parseInt(minyear, 10),
+    LastYear: parseInt(maxyear, 10),
+    IsScenarioShared: $("#IsScenarioShared").is(":checked"),
+    LibraryId: LibraryId,
+    parameters: [],
+    budgetConstraints: [],
+    SelectScen: SelectScen,
+    newLibrarySend: newLibrarySend
+    };
+
+    $.ajax({
+    type: 'POST',
+    url: '?handler=CreateScenario',
+    data: JSON.stringify(dataToSend),
+    headers: { 'RequestVerificationToken': token },
+    contentType: 'application/json',
+    success: function (response) {
+    hideLoader();
+    displaynotification("Create Scenario", (response && response.message) || "Scenario created successfully.", "S", true);
+    if (response && response.jobId) {
+    localStorage.setItem("scenarioJobId", response.jobId);
+    }
+    setTimeout(RedirectToIndex, 3000);
+    },
+    error: function (response) { hideLoader(); sweetAlert("Oops...", getScenarioCreateErrorText(response), "error"); }
+    });
+    },
+    error: function (response) {
+    check = false;
+    form.NewLibName.classList.add('is-invalid');
+    document.getElementById('newlibnamefeedback').innerText = getErrorMessage(response, 'Name already exists.');
+    }
+    });
+    }
+
+    var _libNameCheckSeq = { n: 0 };
+    var _newLibNameCheckSeq = { n: 0 };
+
+    function checkLibraryNameDuplicate(input, feedback, libraryid, seqRef) {
+        var seq = ++seqRef.n;
+        $.ajax({
+            type: 'POST',
+            dataType: 'JSON',
+            url: '?handler=CheckLibraryName',
+            data: { libraryname: input.value.trim(), libraryid: libraryid || '' },
+            headers: { 'RequestVerificationToken': antiForgeryToken() },
+            success: function () {
+                if (seq !== seqRef.n) return;
+                input.classList.remove('is-invalid');
+                feedback.innerText = '';
+            },
+            error: function (response) {
+                if (seq !== seqRef.n) return;
+                check = false;
+                input.classList.add('is-invalid');
+                feedback.innerText = getErrorMessage(response, 'Name already exists.');
+            }
+        });
+    }
+
+    function CandidatePoolNameExists() {
+        var form = document.getElementById('createlibrary1');
+        var input = form.NewLibName;
+        var feedback = document.getElementById('newlibnamefeedback');
+        var name = input.value.trim();
+        if (!name) {
+            input.classList.add('is-invalid');
+            feedback.innerText = 'Field is required';
+            return;
+        }
+        checkLibraryNameDuplicate(input, feedback, '', _newLibNameCheckSeq);
+    }
+
+    function OnEmptyCandidatePoolScenario() {
+    showLoader();
+    var scenarioname = document.getElementById("scenarioname").value;
+    var minyear = document.getElementById("minyear").value;
+    var maxyear = document.getElementById("maxyear").value;
+
+    var checkRadio = $("#candidatePoolsTable input[type='radio'].library-radio:checked");
+    var LibraryId = checkRadio.val();
+    var SelectScen = checkRadio.closest('tr').data('scenName') || "";
+
+    var dataToSend = {
+    scenarioname: scenarioname,
+    FirstYear: parseInt(minyear, 10),
+    LastYear: parseInt(maxyear, 10),
+    LibraryId: LibraryId,
+    IsScenarioShared: $("#IsScenarioShared").is(":checked"),
+    parameters: [],
+    budgetConstraints: [],
+    SelectScen: SelectScen
+    };
+    var token = antiForgeryToken();
+
+    $.ajax({
+    type: 'POST',
+    url: '?handler=CreateScenario',
+    data: JSON.stringify(dataToSend),
+    headers: { 'RequestVerificationToken': token },
+    contentType: 'application/json',
+    success: function (response) {
+    hideLoader();
+    displaynotification("Create Scenario", (response && response.message) || "Scenario created successfully.", "S", true);
+    if (response && response.jobId) {
+    localStorage.setItem("scenarioJobId", response.jobId);
+    }
+    setTimeout(RedirectToIndex, 3000);
+    },
+    error: function (response) { hideLoader(); sweetAlert("Oops...", getScenarioCreateErrorText(response), "error"); }
+    });
+    }
+
+    function RedirectToIndex() { window.location.href = '/Scenarios/Index'; }
+
+    // The sidebar's "Create Scenario" button (#createScenarioBtn) is the one users actually
+    // click — #CreateScen (disabled/enabled by the per-field checks below) lives in a
+    // permanently d-none wrapper and is never shown. Re-evaluate all three Scenario Settings
+    // fields together here so the real button can't go clickable while any one of them (e.g.
+    // Last Year before First Year) is still invalid.
+    function refreshCreateScenarioButtonState() {
+    var namePattern = /^[a-zA-Z0-9 _-]*$/;
+    var name = document.getElementById('scenarioname').value.trim();
+    var minyear = parseInt(document.getElementById('minyear').value, 10);
+    var maxyear = parseInt(document.getElementById('maxyear').value, 10);
+    var minimumFirstYear = 2021;
+
+    var valid = !!name && namePattern.test(name)
+    && !isNaN(minyear) && minyear >= minimumFirstYear
+    && !isNaN(maxyear) && maxyear >= minyear;
+
+    var createBtn = document.getElementById('createScenarioBtn');
+    if (createBtn) { createBtn.disabled = !valid; }
+
+    // Sidebar icon must reflect the same "complete AND valid" check as the submit button —
+    // not just "non-empty" — so e.g. a Last Year of "2" (non-empty but < current year) doesn't
+    // turn this green while the field still shows a validation error.
+    setStatus("scenarioSettings", valid);
+    }
+
+    // First Year / Last Year are a range, so the comparison has to re-run whichever of the two
+    // the user just edited — otherwise raising First Year above an already-entered Last Year
+    // leaves the stale "valid" state from validateMaxYear() and shows no error at all.
+    // targetErrorId decides which field the message is parked under (the one being edited).
+    function validateYearRange(targetErrorId) {
+    var firstError = document.getElementById('error-message');
+    var lastError = document.getElementById('error-message2');
+    var minInput = document.getElementById('minyear');
+    var maxInput = document.getElementById('maxyear');
+
+    // Only clear messages this function owns; leave the per-field "must be YYYY or later" ones.
+    if (firstError.dataset.rangeError === '1') { firstError.textContent = ''; firstError.dataset.rangeError = ''; }
+    if (lastError.dataset.rangeError === '1') { lastError.textContent = ''; lastError.dataset.rangeError = ''; }
+    if (minInput.validationMessage === 'Year range') { minInput.setCustomValidity(''); }
+    if (maxInput.validationMessage === 'Year range') { maxInput.setCustomValidity(''); }
+
+    var minyear = parseInt(minInput.value, 10);
+    var maxyear = parseInt(maxInput.value, 10);
+    if (isNaN(minyear) || isNaN(maxyear) || minyear <= maxyear) { return true; }
+
+    var target = document.getElementById(targetErrorId);
+    target.textContent = (targetErrorId === 'error-message')
+    ? 'First year must be less than or equal to last year'
+    : 'Last year must be greater than or equal to first year';
+    target.dataset.rangeError = '1';
+    (targetErrorId === 'error-message' ? minInput : maxInput).setCustomValidity('Year range');
+    return false;
+    }
+
+    function validateYear() {
+    $('#ValidFYeareName').css('display', 'none');
+    var yearInput = document.getElementById('minyear');
+    var errorMessage = document.getElementById('error-message');
+    var button = document.getElementById("CreateScen");
+    var year = parseInt(yearInput.value);
+    var minimumFirstYear = 2021;
+    if (isNaN(year) || year < minimumFirstYear) {
+    button.disabled = true;
+    errorMessage.textContent = 'First year must be ' + minimumFirstYear + ' or later';
+    errorMessage.dataset.rangeError = '';
+    yearInput.setCustomValidity('Invalid year');
+    } else {
+    errorMessage.textContent = '';
+    errorMessage.dataset.rangeError = '';
+    button.disabled = false;
+    yearInput.setCustomValidity('');
+    if (!validateYearRange('error-message')) { button.disabled = true; }
+    }
+    if (yearInput.value.length > 4) { yearInput.value = yearInput.value.slice(0, 4); }
+    refreshCreateScenarioButtonState();
+    }
+    function validateYearBlur() {
+    validateYear();
+    var yearInput = document.getElementById('minyear');
+    if (!yearInput.checkValidity()) { yearInput.focus(); }
+    }
+
+    function validateMaxYear() {
+    $('#ValidLYeareName').css('display', 'none');
+    var button = document.getElementById("CreateScen");
+    var yearInput = document.getElementById('maxyear');
+    var errorMessage = document.getElementById('error-message2');
+    var date = new Date().getFullYear();
+    var year = parseInt(yearInput.value);
+
+    if (isNaN(year) || year < date) {
+    button.disabled = true;
+    errorMessage.textContent = 'Please enter a valid year, ' + date + ' or later';
+    errorMessage.dataset.rangeError = '';
+    yearInput.setCustomValidity('Invalid year');
+    } else {
+    errorMessage.textContent = '';
+    errorMessage.dataset.rangeError = '';
+    yearInput.setCustomValidity('');
+    button.disabled = !validateYearRange('error-message2');
+    }
+    if (yearInput.value.length > 4) { yearInput.value = yearInput.value.slice(0, 4); }
+    refreshCreateScenarioButtonState();
+    }
+    function validateMaxYearBlur() {
+    validateMaxYear();
+    var yearInput = document.getElementById('maxyear');
+    if (!yearInput.checkValidity()) { yearInput.focus(); }
+    }
+
+    function validateScenarioName() {
+    var scenarionameInput = document.getElementById('scenarioname');
+    var errorMessage = document.getElementById('error-message3');
+    var sceNameFeedback = document.getElementById('scenarionamefeedback');
+    var button = document.getElementById("CreateScen");
+    var value = scenarionameInput.value;
+    var trimmed = value.trim();
+    var pattern = /^[a-zA-Z0-9 _-]*$/;
+
+    if (!trimmed) {
+    errorMessage.textContent = '';
+    scenarionameInput.setCustomValidity('');
+    scenarionameInput.classList.remove('is-invalid');
+    sceNameFeedback.innerText = 'Field is required';
+    button.disabled = true;
+    } else if (!pattern.test(value)) {
+    errorMessage.textContent = 'Invalid characters in the scenario name.';
+    scenarionameInput.setCustomValidity('Invalid characters');
+    scenarionameInput.classList.add('is-invalid');
+    sceNameFeedback.innerText = 'Invalid characters in the scenario name.';
+    button.disabled = true;
+    } else {
+    errorMessage.textContent = '';
+    scenarionameInput.setCustomValidity('');
+    scenarionameInput.classList.remove('is-invalid');
+    sceNameFeedback.innerText = '';
+    button.disabled = false;
+    }
+    refreshCreateScenarioButtonState();
+    }
+    function validateScenarioNameBlur() {
+    $('#ValidSceName').css('display', 'none');
+    validateScenarioName();
+    var scenarionameInput = document.getElementById('scenarioname');
+    var trimmed = scenarionameInput.value.trim();
+    if (!trimmed) {
+    scenarionameInput.classList.add('is-invalid');
+    document.getElementById('scenarionamefeedback').innerText = 'Field is required';
+    scenarionameInput.focus();
+    return;
+    }
+    if (!scenarionameInput.checkValidity()) { scenarionameInput.focus(); return; }
+
+    var token = antiForgeryToken();
+    var Scform = document.getElementById('ScenarioForm');
+    $.ajax({
+    type: 'POST',
+    dataType: 'JSON',
+    url: '?handler=CheckScenarioName',
+    data: { attemptedname: trimmed },
+    headers: { 'RequestVerificationToken': token },
+    success: function () {
+    Scform.scenarioname.classList.remove('is-invalid');
+    document.getElementById('scenarionamefeedback').innerText = '';
+    },
+    error: function (response) {
+    check = false;
+    Scform.scenarioname.classList.add('is-invalid');
+    document.getElementById('scenarionamefeedback').innerText = getErrorMessage(response, 'Name already exists.');
+    }
+    });
+    }
+
+    function showLoader() { document.getElementById('loader-container').style.display = 'block'; }
+    function hideLoader() { document.getElementById('loader-container').style.display = 'none'; }
+
+    function onSaveNewCandidatePool() {
+    var form = document.getElementById('createlibrary2');
+    var nameInput = document.getElementById("libraryname");
+    var descInput = document.getElementById("libraryDescription2");
+    var libraryname = nameInput.value.trim();
+    var libraryDescription = descInput.value.trim();
+    nameInput.value = libraryname;
+    descInput.value = libraryDescription;
+    var valid = validateScenarioLibraryName() & validateScenarioLibraryDescription();
+    if (!valid) return false;
+    if (nameInput.classList.contains('is-invalid')) return false;
+    validateNewCandidatePoolName(form);
+    }
+
+    function validateScenarioLibraryName() {
+    var input = document.getElementById('libraryname');
+    var feedback = document.getElementById('namefeedback');
+    if (!input || !feedback) return false;
+    var name = input.value.trim();
+    if (!name) {
+    input.classList.add('is-invalid');
+    feedback.innerText = 'Field is required';
+    return false;
+    }
+    if (!/[a-zA-Z0-9]/.test(name)) {
+    input.classList.add('is-invalid');
+    feedback.innerText = 'Name must contain at least one letter or number';
+    return false;
+    }
+    checkLibraryNameDuplicate(input, feedback, '', _libNameCheckSeq);
+    return true;
+    }
+
+    function validateScenarioLibraryDescription() {
+    var input = document.getElementById('libraryDescription2');
+    var feedback = document.getElementById('descriptionfeedback');
+    if (!input || !feedback) return false;
+    if (!input.value.trim()) {
+    input.classList.add('is-invalid');
+    feedback.innerText = 'Field is required';
+    return false;
+    }
+    input.classList.remove('is-invalid');
+    feedback.innerText = '';
+    return true;
+    }
+
+    function RemoveInvalid(input) { input.classList.remove('is-invalid'); }
+
+    function validateExistingPoolName() {
+    validateScenarioLibraryName();
+    }
+
+    function validateNewCandidatePoolName(form) {
+    var libraryname = form.libraryname.value;
+    var libraryid = (form.libraryId !== undefined) ? form.libraryId.value : '';
+    var token = antiForgeryToken();
+    $.ajax({
+    type: 'POST',
+    dataType: 'JSON',
+    url: '?handler=CheckLibraryName',
+    data: { libraryname: libraryname, libraryid: libraryid },
+    headers: { 'RequestVerificationToken': token },
+    success: function (response) {
+    if (response && response.success) {
+    form.libraryname.classList.remove('is-invalid');
+    form.classList.remove('was-validated');
+    var libraryName = document.getElementById("libraryname").value.trim();
+    var libraryDescription = document.getElementById("libraryDescription2").value.trim();
+    document.getElementById("libraryname").value = libraryName;
+    document.getElementById("libraryDescription2").value = libraryDescription;
+    var isSharedValue = form.isshared ? form.isshared.checked : false;
+
+    var dataToSend = {
+    Name: libraryName,
+    Description: libraryDescription,
+    IsShared: isSharedValue,
+    IsEmptyLibrary: true
+    };
+
+    $.ajax({
+    type: 'POST',
+    url: '?handler=CreateLibrary',
+    data: JSON.stringify(dataToSend),
+    headers: { 'RequestVerificationToken': token },
+    contentType: 'application/json',
+    success: function (response) {
+    var libraryid = response;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('CreateNewLibraryForm')).hide();
+    showPoolPanel();
+    displaynotification("Creating Treatment Pool Library", "Treatment Pool Library was created successfully", "S", true);
+
+    var tbody = document.getElementById("candidatePoolsTable").getElementsByTagName("tbody")[0];
+    tbody.innerHTML = '';
+
+    $('#createlibrary2 input[type="text"]').val('');
+    $('#createlibrary2 textarea').val('');
+    $('#createlibrary2 select').prop('selectedIndex', 0);
+    $('#createlibrary2 input[type="number"]').val('');
+
+    $.ajax({
+    url: '?handler=CandidatePools',
+    type: 'GET',
+    dataType: "json",
+    success: function (response) {
+    $.each(response.libraries, function (id, library) {
+    var scenName = library.sceName == null ? "" : library.sceName;
+    var rowStart = (libraryid == library.id)
+    ? "<tr data-scen-name='" + scenName + "' style='background-color:#1c305c;color:white;'><td><input type='radio' checked class='library-radio' name='LibraryId' value='" + library.id + "'></td>"
+    : "<tr data-scen-name='" + scenName + "'><td><input type='radio' class='library-radio' name='LibraryId' value='" + library.id + "'></td>";
+    $("#candidatePoolsTable tbody").append(
+    rowStart +
+    "<td>" + library.name + "</td>" +
+    "<td>" + (library.createdAt == null ? "" : library.createdAt) + "</td>" +
+    "<td>" + library.isShared + "</td></tr>");
+    });
+    showPoolPanel();
+    setStatus("treatmentCandidateSettings", true);
+    },
+    error: function (response) { sweetAlert("Oops...", getScenarioCreateErrorText(response), "error"); }
+    });
+    },
+    error: function (response) { sweetAlert("Oops...", getScenarioCreateErrorText(response), "error"); }
+    });
+    }
+    },
+    error: function (response) {
+    check = false;
+    form.libraryname.classList.add('is-invalid');
+    document.getElementById('namefeedback').innerText = getErrorMessage(response, 'Name already exists.');
+    }
+    });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+    var btnSaveNewCandidatePool = document.getElementById('btnSaveNewCandidatePool');
+    if (btnSaveNewCandidatePool) {
+    btnSaveNewCandidatePool.addEventListener('click', onSaveNewCandidatePool);
+    }
+    });
+    </script>
+}

@@ -1,0 +1,48 @@
+@using ProjectBuilder.Permissions
+@using Volo.Abp.Authorization.Permissions
+@inject IPermissionChecker PermissionChecker
+@{
+    var activePage = ViewData["PBActivePage"]?.ToString() ?? "";
+    var canScenarios = await PermissionChecker.IsGrantedAsync(ScenarioPermissions.Default);
+    var canTpl = await PermissionChecker.IsGrantedAsync(TreatmentPoolLibraryPermissions.Default);
+    var canPools = await PermissionChecker.IsGrantedAsync(SupplementalCandidatesPermissions.PoolsPageActions.Default);
+    var canAdmin = await PermissionChecker.IsGrantedAsync(AdministrationPermissions.Default);
+}
+<ul class="navbar_navigation-links">
+    @if (canScenarios)
+    {
+        var cls = activePage == "scenarios" ? "active" : "notactive";
+        <li>
+            <a href="/Scenarios" class="navbar_navigation-link @cls">
+                <div class="navbar_navigation-link_item"><span>Scenarios</span></div>
+            </a>
+        </li>
+    }
+    @if (canTpl)
+    {
+        var cls = activePage == "treatmentpoollibraries" ? "active" : "notactive";
+        <li>
+            <a href="/TreatmentPoolLibraries" class="navbar_navigation-link @cls">
+                <div class="navbar_navigation-link_item"><span>Treatment Pool Libraries</span></div>
+            </a>
+        </li>
+    }
+    @if (canPools)
+    {
+        var cls = activePage == "supplementalcandidates" ? "active" : "notactive";
+        <li>
+            <a href="/Pools" class="navbar_navigation-link @cls">
+                <div class="navbar_navigation-link_item"><span>Candidates <span class="plus-sign">+</span></span></div>
+            </a>
+        </li>
+    }
+    @if (canAdmin)
+    {
+        var adminCls = activePage == "administration" ? "active" : "notactive";
+        <li>
+            <a href="/Administration" class="navbar_navigation-link @adminCls">
+                <div class="navbar_navigation-link_item"><span>Administration</span></div>
+            </a>
+        </li>
+    }
+</ul>

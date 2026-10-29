@@ -1,0 +1,94 @@
+/* Add Font Awesome link */
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
+
+.user-full-name::before {
+    content: "\f2bd"; 
+    font-family: "Font Awesome 5 Free"; 
+    font-weight: 900; 
+    margin-right: 5px; 
+    color: white; 
+}
+
+.lpx-brand-logo {
+    /*background-image: none !important;*/
+}
+
+.lpx-topbar-container .lpx-topbar {
+    background-color: rgba(65, 105, 225, 0.8);
+    height: 50px;
+    border-radius: 0;
+    border: none;
+}
+
+.user-full-name {
+    color: white;
+    font-weight: bold;
+    font-size: 15px;
+    margin-right: 50px;
+}
+
+.lpx-topbar-content {
+    gap: 20px;
+    color: white;
+    font-weight: bold;
+}
+/*.lpx-brand-logo {
+    
+    background-repeat: no-repeat;
+    background-size: auto 32px;
+    background-position: left 0px;
+    display: block;
+    height: 32px;
+}*/
+.lpx-brand-logo {
+    /* Your existing styles for the logo */
+    background-image: url('/images/logo/leptonx/logo.svg');
+    background-repeat: no-repeat;
+    background-position: left 0px;
+    display: block;
+    height: 40px;
+}
+
+    .lpx-brand-logo::after {
+       /* content: "DSS";*/
+        font-size: 2em;
+        font-weight: bold;
+        color:white;
+        margin-left:70px
+    }
+
+
+.lpx-sidebar .lpx-logo-container {
+    background-color: #535865
+}
+.lpx-sidebar-container .lpx-sidebar .lpx-nav {
+    background-color: #535865
+}
+
+.lpx-nav-menu .lpx-menu-item-link.selected {
+    height: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color:#fff;
+}
+
+.lpx-menu-item-text{
+    color:#fff;
+}
+.lpx-menu-item-icon {
+    color: var(--lpx-brand);
+}
+.lpx-menu-item .hidden-in-hover-trigger {
+    color: #fff;
+}
+
+.lpx-sidebar .lpx-logo-container .menu-collapse-icon {
+    color: black
+}
+.lpx-sidebar-container .lpx-sidebar .lpx-nav .lpx-nav-menu {
+    background-color: #535865
+}
+.hover-trigger .lpx-sidebar-container:not(:hover) .lpx-brand-logo {
+    background-image: url('/images/logo/leptonx/logo.svg');
+}

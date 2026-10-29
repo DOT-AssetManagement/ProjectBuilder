@@ -1,0 +1,200 @@
+@model ProjectBuilder.Web.Pages.Projects.AnalysisPageModelBase
+@{
+    string Cls(string key) => key == Model.ActiveMenu ? "active" : "";
+}
+
+<nav class="editscen-sidebar analysis-nav" aria-label="Analysis Menu">
+
+    @if (Model.FromScenario)
+    {
+        <a class="editscen-sidebar__back" href="/Scenarios">
+            <i class="fa-solid fa-arrow-left"></i> Back to Scenarios
+        </a>
+    }
+
+    <div class="editscen-sidebar__title">
+        Outputs
+        @if (!string.IsNullOrWhiteSpace(Model.ScenarioName))
+        {
+            <span class="editscen-sidebar__name" title="@Model.ScenarioName">@Model.ScenarioName</span>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.ScenarioNotes))
+        {
+            <span class="editscen-sidebar__status" title="@Model.ScenarioNotes">Status: @Model.ScenarioNotes</span>
+        }
+    </div>
+
+    <ul class="editscen-menu">
+        <li>
+            <a class="@Cls("Projects")" data-tour="analysis-projects-nav" href="/Projects?scenid=@Model.Scenid&fromscenario=true">
+                <img src="~/images/icons/projects.png" alt="" class="nav-icon" /><span>Projects</span>
+            </a>
+        </li>
+        <li>
+            @if (Model.HasProjects)
+            {
+                <a class="@Cls("Maps")" data-tour="analysis-maps-nav" href="/Map?scenid=@Model.Scenid">
+                    <img src="~/images/icons/map.png" alt="" class="nav-icon" /><span>Maps</span>
+                </a>
+            }
+            else
+            {
+                <a class="@Cls("Maps") disabled" data-tour="analysis-maps-nav" aria-disabled="true" tabindex="-1" title="Scenario has no projects">
+                    <img src="~/images/icons/map.png" alt="" class="nav-icon" /><span>Maps</span>
+                </a>
+            }
+        </li>
+        <li>
+            <a class="@Cls("SummaryReport")" data-tour="analysis-summary-report-nav" href="/Reports/SummaryReport?scenid=@Model.Scenid&fromscenario=true">
+                <img src="~/images/icons/summary report.png" alt="" class="nav-icon" /><span>Summary Report</span>
+            </a>
+        </li>
+    </ul>
+
+</nav>
+
+<!-- Tour Guide (explains the Analysis left menu — Projects / Maps / Summary Report) -->
+@Html.AntiForgeryToken()
+<div id="tour-overlay"></div>
+<div id="tour-spotlight"></div>
+<div id="tour-card">
+    <button id="tour-close" aria-label="Close guide"><i class="fa-solid fa-xmark"></i></button>
+    <div class="tour-badge" id="tour-badge">STEP 1 OF 3</div>
+    <h3 id="tour-title"></h3>
+    <p id="tour-text"></p>
+    <div class="tour-actions">
+        <button id="tour-skip">Skip</button>
+        <button id="tour-prev" style="display:none">Previous</button>
+        <button id="tour-next">Next</button>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var tourCurStep = 0;
+        var tourActiveSteps = [];
+
+        var tourAllSteps = [
+            {
+                title: 'Projects',
+                text: 'Projects shows the bundled project list for this scenario and lets you inspect project details.',
+                getTarget: function () { return document.querySelector('[data-tour="analysis-projects-nav"]'); }
+            },
+            {
+                title: 'Maps',
+                text: 'Use Maps to inspect this scenario\'s projects spatially.',
+                getTarget: function () {
+                    var el = document.querySelector('[data-tour="analysis-maps-nav"]');
+                    return (el && !el.classList.contains('disabled')) ? el : null;
+                }
+            },
+            {
+                title: 'Summary Report',
+                text: 'Use Summary Report to open the configurable summary view for this scenario.',
+                getTarget: function () { return document.querySelector('[data-tour="analysis-summary-report-nav"]'); }
+            }
+        ];
+
+        function tourSetSpotlight(target) {
+            var sp = document.getElementById('tour-spotlight');
+            if (!target) {
+                sp.style.left = '0'; sp.style.top = '0'; sp.style.width = '0'; sp.style.height = '0';
+                sp.style.border = 'none'; sp.style.borderRadius = '0'; sp.style.display = 'block';
+            } else {
+                var r = target.getBoundingClientRect(), pad = 8;
+                sp.style.left = (r.left - pad) + 'px';
+                sp.style.top = (r.top - pad) + 'px';
+                sp.style.width = (r.width + pad * 2) + 'px';
+                sp.style.height = (r.height + pad * 2) + 'px';
+                sp.style.border = '3px solid rgba(255,255,255,.85)';
+                sp.style.borderRadius = '6px';
+                sp.style.display = 'block';
+            }
+        }
+
+        function tourPositionCard(target) {
+            var card = document.getElementById('tour-card');
+            var cardW = card.offsetWidth || 380;
+            var cardH = card.offsetHeight || 220;
+            var vw = window.innerWidth;
+            var vh = window.innerHeight;
+            var gap = 14;
+            card.style.bottom = '';
+            card.style.transform = 'none';
+            if (!target) {
+                card.style.left = '50%'; card.style.top = '50%';
+                card.style.transform = 'translate(-50%,-50%)'; return;
+            }
+            var rect = target.getBoundingClientRect();
+            var idealLeft = rect.left + rect.width / 2 - cardW / 2;
+            card.style.left = Math.max(10, Math.min(idealLeft, vw - cardW - 10)) + 'px';
+            var spaceBelow = vh - rect.bottom - 44 - gap;
+            var spaceAbove = rect.top - 70 - gap;
+            if (spaceBelow >= cardH) {
+                card.style.top = (rect.bottom + gap) + 'px';
+            } else if (spaceAbove >= cardH) {
+                card.style.top = (rect.top - cardH - gap) + 'px';
+            } else {
+                card.style.left = '50%'; card.style.top = '50%';
+                card.style.transform = 'translate(-50%,-50%)';
+            }
+        }
+
+        function tourShowStep(idx) {
+            var step = tourActiveSteps[idx], total = tourActiveSteps.length;
+            document.getElementById('tour-badge').textContent = 'STEP ' + (idx + 1) + ' OF ' + total;
+            document.getElementById('tour-title').textContent = step.title;
+            document.getElementById('tour-text').textContent = step.text;
+            document.getElementById('tour-next').textContent = idx === total - 1 ? 'Finish' : 'Next';
+            document.getElementById('tour-prev').style.display = idx === 0 ? 'none' : '';
+            var target = step.getTarget ? step.getTarget() : null;
+            tourSetSpotlight(target);
+            tourPositionCard(target);
+        }
+
+        function tourStart() {
+            tourActiveSteps = tourAllSteps.filter(function (s) { return s.getTarget(); });
+            if (!tourActiveSteps.length) return;
+            tourCurStep = 0;
+            document.getElementById('tour-overlay').style.display = 'block';
+            document.getElementById('tour-card').style.display = 'block';
+            tourShowStep(0);
+        }
+
+        function tourEnd() {
+            document.getElementById('tour-overlay').style.display = 'none';
+            document.getElementById('tour-card').style.display = 'none';
+            document.getElementById('tour-spotlight').style.display = 'none';
+        }
+
+        var btnGuide = document.getElementById('btnGuide');
+        if (btnGuide) btnGuide.addEventListener('click', tourStart);
+        document.getElementById('tour-next').addEventListener('click', function () {
+            if (tourCurStep >= tourActiveSteps.length - 1) { tourEnd(); return; }
+            tourCurStep++; tourShowStep(tourCurStep);
+        });
+        document.getElementById('tour-prev').addEventListener('click', function () {
+            if (tourCurStep <= 0) return;
+            tourCurStep--; tourShowStep(tourCurStep);
+        });
+        document.getElementById('tour-skip').addEventListener('click', tourEnd);
+        document.getElementById('tour-close').addEventListener('click', tourEnd);
+        document.getElementById('tour-overlay').addEventListener('click', tourEnd);
+
+        var tourKey = 'analysis-page:v1';
+        function tourAntiToken() { return $('input[name="__RequestVerificationToken"]').first().val(); }
+        function tourMarkSeen() {
+            fetch('?handler=MarkTourSeen&tourKey=' + encodeURIComponent(tourKey), {
+                method: 'POST',
+                headers: { 'RequestVerificationToken': tourAntiToken() }
+            }).catch(function () { });
+        }
+        fetch('?handler=TourSeen&tourKey=' + encodeURIComponent(tourKey))
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data && data.seen) return;
+                setTimeout(function () { tourMarkSeen(); tourStart(); }, 500);
+            })
+            .catch(function () { });
+    });
+</script>

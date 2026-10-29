@@ -1,0 +1,90 @@
+@* Shared Run-Scenario handler for Plus Candidate Work Candidates / Configuration pages.
+   Enqueues a DSS DEA Hangfire job via /Pools/Index?handler=RunDssScenario, then polls
+   /Scenarios/Index?handler=JobStatus every 3 s (same pattern as EditScenario/_ScenarioRunScript). *@
+<form id="pool-candidates-antiforgery" method="post" style="display:none">@Html.AntiForgeryToken()</form>
+<script>
+    (function () {
+        var _pollTimer = null;
+
+        function showRunNotification(msg, type) {
+            var el = document.getElementById('poolRunNotification');
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'poolRunNotification';
+                el.style.cssText = 'position:fixed;top:80px;right:20px;z-index:9999;padding:12px 20px;border-radius:6px;max-width:420px;box-shadow:0 2px 8px rgba(0,0,0,0.2);font-size:14px;display:flex;align-items:center;gap:10px;';
+                document.body.appendChild(el);
+            }
+            var palette = {
+                info:    { bg: '#fff3cd', color: '#856404' },
+                success: { bg: '#d4edda', color: '#155724' },
+                error:   { bg: '#f8d7da', color: '#721c24' }
+            };
+            var c = palette[type] || palette.info;
+            el.style.background = c.bg;
+            el.style.color = c.color;
+            var spinner = (type === 'info') ? '<span style="width:14px;height:14px;border:2px solid rgba(0,0,0,.2);border-top-color:currentColor;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;flex-shrink:0;"></span>' : '';
+            el.innerHTML = spinner + '<span>' + msg + '</span><button onclick="this.parentElement.style.display=\'none\'" style="background:none;border:none;cursor:pointer;font-size:18px;line-height:1;padding:0 4px;margin-left:auto;color:inherit;">&times;</button>';
+            el.style.display = 'flex';
+        }
+
+        function resetBtn($btn) {
+            $btn.prop('disabled', false).html('<i class="fa-solid fa-play me-1"></i> Run');
+        }
+
+        function pollJobStatus(jobId, $btn) {
+            if (_pollTimer) clearTimeout(_pollTimer);
+
+            function scheduleNext() {
+                _pollTimer = setTimeout(function () { pollOnce(); }, 3000);
+            }
+
+            function pollOnce() {
+                $.get('/Scenarios/Index?handler=JobStatus', { jobId: jobId })
+                    .done(function (res) {
+                        if (res.status === 'Succeeded') {
+                            _pollTimer = null;
+                            resetBtn($btn);
+                            showRunNotification('Scenario run completed successfully.', 'success');
+                        } else if (res.status === 'Failed') {
+                            _pollTimer = null;
+                            resetBtn($btn);
+                            showRunNotification('Scenario run failed: ' + (res.message || 'Unknown error'), 'error');
+                        } else {
+                            scheduleNext();
+                        }
+                    })
+                    .fail(function () {
+                        scheduleNext();
+                    });
+            }
+
+            pollOnce();
+        }
+
+        $('#runPoolScenarioBtn').on('click', function () {
+            var poolId = $(this).data('poolid');
+            var poolName = $(this).data('poolname') || '';
+            if (!poolId) return;
+            if (!confirm(poolName ? 'Do you want to run "' + poolName + '"?' : 'Do you want to run?')) return;
+            var token = $('#pool-candidates-antiforgery input[name="__RequestVerificationToken"]').val();
+            var $btn = $(this);
+            $btn.prop('disabled', true).text('Queuing…');
+            $.ajax({
+                type: 'POST',
+                url: '/Pools/Index?handler=RunDssScenario',
+                data: { poolId: poolId },
+                headers: { 'RequestVerificationToken': token },
+                success: function (res) {
+                    $btn.prop('disabled', true).text('Running…');
+                    showRunNotification((poolName ? '"' + poolName + '"' : 'Scenario') + ' run queued. Running in the background…', 'info');
+                    pollJobStatus(res.jobId, $btn);
+                },
+                error: function (xhr) {
+                    resetBtn($btn);
+                    var msg = (xhr.responseJSON && xhr.responseJSON.error) || xhr.responseText || 'Unable to run scenario.';
+                    showRunNotification(msg, 'error');
+                }
+            });
+        });
+    })();
+</script>

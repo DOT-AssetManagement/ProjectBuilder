@@ -1,0 +1,227 @@
+﻿@page
+@using Microsoft.AspNetCore.Mvc.Localization
+@using Microsoft.Extensions.Localization
+@using Volo.Abp.AspNetCore.Mvc.UI.Bootstrap.TagHelpers.Modal
+@using Volo.Abp.Identity.Localization
+@using Volo.Abp.Identity.Web.Pages.Identity.Users
+@using Volo.Abp.Localization
+@using Volo.Abp.ObjectExtending
+@using Volo.Abp.Data
+@using Volo.Abp.Identity
+@model CustomEditModalModel
+@inject IHtmlLocalizer<IdentityResource> L
+@inject IStringLocalizerFactory StringLocalizerFactory
+@{
+    Layout = null;
+}
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.3/jquery.validate.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/3.2.12/jquery.validate.unobtrusive.min.js"></script>
+}
+
+<form method="POST" asp-page-handler="UpdateUser" id="editUserForm">
+    <abp-modal>
+        <abp-modal-header title="@L["EditUser"].Value"></abp-modal-header>
+        <abp-modal-body>
+            <div class="container">
+                <ul class="nav nav-tabs" id="editUserTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="edit-user-info-tab" data-bs-toggle="tab" data-bs-target="#edit-user-info" type="button" role="tab" aria-controls="edit-user-info" aria-selected="true">User Information</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="edit-roles-tab" data-bs-toggle="tab" data-bs-target="#edit-roles" type="button" role="tab" aria-controls="edit-roles" aria-selected="false">Roles</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="edit-details-tab" data-bs-toggle="tab" data-bs-target="#edit-details" type="button" role="tab" aria-controls="edit-details" aria-selected="false">Details</button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="editUserTabContent">
+                    <!-- User Information Tab -->
+                    <div class="tab-pane fade show active" id="edit-user-info" role="tabpanel" aria-labelledby="edit-user-info-tab">
+                        <input type="hidden" asp-for="UserInfo.Id" />
+                        <div class="mb-3">
+                            <label asp-for="UserInfo.UserName" class="form-label">User Name</label>
+                            <input type="text" class="form-control" asp-for="UserInfo.UserName" required />
+                            <span asp-validation-for="UserInfo.UserName" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="UserInfo.Name" class="form-label">Name</label>
+                            <input type="text" class="form-control" asp-for="UserInfo.Name" required />
+                            <span asp-validation-for="UserInfo.Name" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <input type="hidden" name="SelectedTenantId" id="hiddenSelectedTenantId" value="@Model.UserInfo.TenantId">
+                            <label for="SelectedTenantId" class="form-label">Tenant</label>
+                            <select id="SelectedTenantId" class="form-select">
+                                <option value="">Please select a tenant</option>
+                                @foreach (var tenant in Model.UserInfo.Teanats)
+                                {
+                                    <option value="@tenant.Value">@tenant.Text</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="Surname" class="form-label">Surname</label>
+                            <input type="text" class="form-control" id="Surname" name="UserInfo.Surname" value="@Model.UserInfo.Surname">
+                        </div>
+                        <div class="mb-3">
+                            <label for="UserInfo.Password" class="form-label">@L["Password"] *</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" autocomplete="new-password" maxlength="@IdentityUserConsts.MaxPasswordLength" for="UserInfo.Password" />
+                                <button class="btn btn-secondary" type="button" id="PasswordVisibilityButton"><i class="fa fa-eye-slash" aria-hidden="true"></i></button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="UserInfo.Email" class="form-label">Email</label>
+                            <input type="email" class="form-control" asp-for="UserInfo.Email" required />
+                            <span asp-validation-for="UserInfo.Email" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label for="PhoneNumber" class="form-label">Phone Number</label>
+                            <input type="text" class="form-control" id="PhoneNumber" name="UserInfo.PhoneNumber" value="@Model.UserInfo.PhoneNumber">
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" asp-for="UserInfo.IsActive" />
+                                <label class="form-check-label" asp-for="UserInfo.IsActive">Active</label>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" asp-for="UserInfo.LockoutEnabled" />
+                                <label class="form-check-label" asp-for="UserInfo.LockoutEnabled">Lockout Enabled</label>
+                            </div>
+                        </div>
+                        @foreach (var propertyInfo in ObjectExtensionManager.Instance.GetProperties<EditModalModel.UserInfoViewModel>())
+                        {
+                            if (!propertyInfo.Name.EndsWith("_Text"))
+                            {
+                                if (propertyInfo.Type.IsEnum || !propertyInfo.Lookup.Url.IsNullOrEmpty())
+                                {
+                                    if (propertyInfo.Type.IsEnum)
+                                    {
+                                        Model.UserInfo.ExtraProperties.ToEnum(propertyInfo.Name, propertyInfo.Type);
+                                    }
+                                    <abp-select asp-for="UserInfo.ExtraProperties[propertyInfo.Name]"
+                                                label="@propertyInfo.GetLocalizedDisplayName(StringLocalizerFactory)"
+                                                autocomplete-api-url="@propertyInfo.Lookup.Url"
+                                                autocomplete-selected-item-name="@Model.UserInfo.GetProperty(propertyInfo.Name+"_Text")"
+                                                autocomplete-selected-item-value="@Model.UserInfo.GetProperty(propertyInfo.Name)"
+                                                autocomplete-filter-param-name="@propertyInfo.Lookup.FilterParamName"
+                                                autocomplete-items-property-name="@propertyInfo.Lookup.ResultListPropertyName"
+                                                autocomplete-display-property-name="@propertyInfo.Lookup.DisplayPropertyName"
+                                                autocomplete-value-property-name="@propertyInfo.Lookup.ValuePropertyName"></abp-select>
+                                }
+                                else
+                                {
+                                    <abp-input type="@propertyInfo.GetInputType()"
+                                               asp-for="UserInfo.ExtraProperties[propertyInfo.Name]"
+                                               label="@propertyInfo.GetLocalizedDisplayName(StringLocalizerFactory)"
+                                               asp-format="@propertyInfo.GetInputFormatOrNull()"
+                                               value="@propertyInfo.GetInputValueOrNull(Model.UserInfo.GetProperty(propertyInfo.Name))" />
+                                }
+                            }
+                        }
+                    </div>
+                    <!-- Roles Tab -->
+                    <div class="tab-pane fade" id="edit-roles" role="tabpanel" aria-labelledby="edit-roles-tab" style="height:100px">
+                        @if (Model.Roles.Any())
+                        {
+                            <div title="@L["Roles"].Value">
+                                <div class="mt-3">
+                                    @for (var i = 0; i < Model.Roles.Length; i++)
+                                    {
+                                        var role = Model.Roles[i];
+                                        <abp-input abp-id-name="@Model.Roles[i].IsAssigned" asp-for="@role.IsAssigned" label="@role.Name" class="role-checkbox" />
+                                        <input abp-id-name="@Model.Roles[i].Name" asp-for="@role.Name" />
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Details Tab -->
+                    <div class="tab-pane fade" id="edit-details" role="tabpanel" aria-labelledby="edit-details-tab">
+                        <div class="mt-3">
+                            <div class="mb-3">
+                                <span class="fw-bold">@L["CreatedBy"] :</span> @ConvertUserFriendlyFormat(Model.Detail.CreatedBy)
+                            </div>
+                            <div class="mb-3">
+                                <span class="fw-bold">@L["CreationTime"] :</span> @ConvertUserFriendlyFormat(Model.Detail.CreationTime)
+                            </div>
+                            <div class="mb-3">
+                                <span class="fw-bold">@L["ModifiedBy"] :</span> @ConvertUserFriendlyFormat(Model.Detail.ModifiedBy)
+                            </div>
+                            <div class="mb-3">
+                                <span class="fw-bold">@L["ModificationTime"] :</span> @ConvertUserFriendlyFormat(Model.Detail.LastModificationTime)
+                            </div>
+                            <div class="mb-3">
+                                <span class="fw-bold">@L["PasswordUpdateTime"] :</span> @ConvertUserFriendlyFormat(Model.Detail.LastPasswordChangeTime)
+                            </div>
+                            <div class="mb-3">
+                                <span class="fw-bold">@L["LockoutEndTime"] :</span> @ConvertUserFriendlyFormat(Model.Detail.LockoutEnd)
+                            </div>
+                            <div class="mb-3">
+                                <span class="fw-bold">@L["FailedAccessCount"] :</span> @Model.Detail.AccessFailedCount
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+
+
+        </abp-modal-body>
+        <abp-modal-footer buttons="@(AbpModalButtons.Cancel|AbpModalButtons.Save)"></abp-modal-footer>
+    </abp-modal>
+</form>
+
+<script>
+    $(document).ready(function () {
+        $(".role-checkbox").on('click', function () {
+            var $box = $(this);
+            if ($box.is(":checked")) {
+                $(".role-checkbox").prop("checked", false);
+                $box.prop("checked", true);
+            }
+        });
+    });
+</script>
+<script>
+    $(document).ready(function () {
+        var initialSelectedTenantId = $('#hiddenSelectedTenantId').val();
+        $('#SelectedTenantId').val(initialSelectedTenantId);
+
+        $('#SelectedTenantId').change(function () {
+            var selectedTenantId = $(this).val();
+            if (selectedTenantId === "") {
+                selectedTenantId = null;
+            }
+            $('#hiddenSelectedTenantId').val(selectedTenantId);
+        });
+    });
+</script>
+@functions
+{
+    const string DateTimeFormat = "MMMM dd, yyyy — HH:mm";
+    const string DefaultEmptyValue = "-";
+
+    static string ConvertUserFriendlyFormat(DateTime? dateTime)
+    {
+        return dateTime == null ? DefaultEmptyValue : dateTime.Value.ToUniversalTime().ToString(DateTimeFormat);
+    }
+
+    static string ConvertUserFriendlyFormat(DateTimeOffset? dateTime)
+    {
+        return dateTime == null ? DefaultEmptyValue : dateTime.Value.UtcDateTime.ToString(DateTimeFormat);
+    }
+
+    static string ConvertUserFriendlyFormat(string value)
+    {
+        return value.IsNullOrWhiteSpace() ? DefaultEmptyValue : value;
+    }
+}

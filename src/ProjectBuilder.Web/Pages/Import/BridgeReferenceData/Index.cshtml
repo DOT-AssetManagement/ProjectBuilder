@@ -1,0 +1,46 @@
+@page
+@model ProjectBuilder.Web.Pages.Import.BridgeReferenceData.IndexModel
+@{
+    ViewData["Title"] = "Fetch Bridge Reference Data";
+    Layout = "Shared/AdminLayout";
+    ViewData["SubMenu"] = "ImportBridgeRef";
+}
+
+<div class="editscen-content__header"><h1>Fetch Bridge Reference Data</h1></div>
+
+<div class="mx-3 mt-3" style="max-width:560px">
+
+    <div id="bridgeRefImportStatusBanner" class="job-status-banner" role="alert">
+        <span class="run-status-spinner"></span>
+        <span class="job-status-message"></span>
+        <button type="button" class="run-status-close" title="Dismiss">&times;</button>
+    </div>
+
+    <p class="text-muted">
+        Fetches the latest Pennsylvania bridge inventory from PennDOT's public PennShare data
+        service and replaces the Bridge location reference table used by the District/County/Route/Section
+        dropdowns. This overwrites all existing rows in that table.
+    </p>
+
+    <form id="bridgeRefImportForm" method="post">
+        @Html.AntiForgeryToken()
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-cloud-arrow-down me-1"></i> Fetch Latest
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script src="~/js/import-job.js"></script>
+    <script>
+        initBackgroundImportForm({
+            formId: 'bridgeRefImportForm',
+            bannerId: 'bridgeRefImportStatusBanner',
+            storageKey: 'importBridgeRefJobId',
+            runningMessage: 'Fetching bridge reference data from PennShare in the background…',
+            successMessage: 'Latest bridge reference data fetched and updated successfully.'
+        });
+    </script>
+}

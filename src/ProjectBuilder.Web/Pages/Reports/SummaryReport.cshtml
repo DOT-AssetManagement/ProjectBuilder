@@ -1,0 +1,1217 @@
+@page
+@model ProjectBuilder.Web.Pages.Reports.SummaryReportModel
+@{
+    Layout = "~/Pages/Shared/PBDSSLayout.cshtml";
+    ViewData["PBVariant"] = "app";
+    ViewData["PBActivePage"] = "scenarios";
+    ViewData["Title"] = "Summary Report";
+
+    var hasScenarioBudgetConstraints = Model.HasScenarioBudgetConstraints;
+    var disabledBudgetMeasureTooltip = "Budget and Budget Spent are disabled until this scenario has budget constraints.";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/jquery.dataTables.css" />
+    <link rel="stylesheet" href="~/css/summary_report.css" asp-append-version="true" />
+    <style>
+        main {
+            display: flex;
+            flex-direction: row;
+            align-items: stretch;
+            overflow: hidden !important;
+            height: calc(100vh - 70px - 44px);
+            background: rgb(248, 248, 248);
+        }
+        .summary-report-page { padding: 0 12px 0 16px; }
+        .summary-report-toolbar { padding-top: 14px; }
+    </style>
+}
+
+<div class="summary-report-page">
+    <div class="summary-report-content">
+
+        <div class="summary-report-toolbar">
+            <a class="summary-report-back-button"
+               asp-page="/Projects/Index"
+               asp-route-scenid="@Model.Scenid"
+               asp-route-fromscenario="true">
+                <span class="summary-report-back-button-icon" aria-hidden="true">&lt;&lt;</span>
+                <span>Back to Projects</span>
+            </a>
+        </div>
+
+        <div class="summary-report-topline">
+            <strong>@ViewData["Title"]</strong>
+            @if (!string.IsNullOrWhiteSpace(Model.ScenarioName))
+            {
+                <span class="summary-report-divider">|</span><span>@Model.ScenarioName</span>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.ScenarioNotes))
+            {
+                <span class="summary-report-divider">|</span><span>Status: @Model.ScenarioNotes</span>
+            }
+        </div>
+
+        <div class="summary-report-layout">
+            <aside class="summary-report-sidebar">
+                <section class="summary-report-panel">
+
+                    <div class="reports-needs-section">
+                        <h2>Selected Measure</h2>
+                        <label class="reports-needs-check @(hasScenarioBudgetConstraints ? "reports-needs-check-active" : string.Empty)"
+                               title="@(hasScenarioBudgetConstraints ? string.Empty : disabledBudgetMeasureTooltip)">
+                            <input type="radio" name="selectedMeasure" value="budget" data-measure="budget"
+                                   checked="@hasScenarioBudgetConstraints" disabled="@(!hasScenarioBudgetConstraints)">
+                            <span>Budget</span>
+                        </label>
+                        <label class="reports-needs-check"
+                               title="@(hasScenarioBudgetConstraints ? string.Empty : disabledBudgetMeasureTooltip)">
+                            <input type="radio" name="selectedMeasure" value="budgetspent" data-measure="budgetspent"
+                                   disabled="@(!hasScenarioBudgetConstraints)">
+                            <span>Budget Spent</span>
+                        </label>
+                        <label class="reports-needs-check @(!hasScenarioBudgetConstraints ? "reports-needs-check-active" : string.Empty)">
+                            <input type="radio" name="selectedMeasure" value="needs" data-measure="needs"
+                                   checked="@(!hasScenarioBudgetConstraints)">
+                            <span>Needs</span>
+                        </label>
+                        <label class="reports-needs-check">
+                            <input type="radio" name="selectedMeasure" value="benefits" data-measure="benefits">
+                            <span>Benefits</span>
+                        </label>
+                        <label class="reports-needs-check">
+                            <input type="radio" name="selectedMeasure" value="projecttreatmentcount" data-measure="projecttreatmentcount">
+                            <span>Project Count / Treatment Count</span>
+                        </label>
+                    </div>
+
+                    <div class="reports-needs-section">
+                        <h2>Group By</h2>
+                        <label class="reports-needs-check reports-needs-check-active">
+                            <input type="radio" name="groupByFilter" class="group-by-filter" value="category" checked>
+                            <span>Treatment Category</span>
+                        </label>
+                        <label class="reports-needs-check">
+                            <input type="radio" name="groupByFilter" class="group-by-filter" value="treatment">
+                            <span>Treatment</span>
+                        </label>
+                        <label class="reports-needs-check">
+                            <input type="radio" name="groupByFilter" class="group-by-filter" value="projecttype">
+                            <span>Project Type</span>
+                        </label>
+                    </div>
+
+                    <div class="reports-needs-section">
+                        <h2>Filter By Treatment</h2>
+
+                        <div class="reports-needs-field">
+                            <label for="categoryFilter">Treatment Category</label>
+                            <select id="categoryFilter" class="form-select">
+                                <option value="" selected>Select a Category</option>
+                                @foreach (var option in Model.CategoryOptions)
+                                {
+                                    <option value="@option.Value">@option.Label</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="reports-needs-field">
+                            <label for="treatmentFilter">Treatment</label>
+                            <select id="treatmentFilter" class="form-select">
+                                <option value="" selected>Select a Treatment</option>
+                                @foreach (var option in Model.TreatmentOptions)
+                                {
+                                    <option value="@option.Value">@option.Label</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="reports-needs-field reports-needs-field-tight" id="summaryReportProjectTypeField">
+                            <span class="reports-needs-label">Project Type</span>
+                            <div class="reports-needs-inline-options reports-needs-inline-options-compact">
+                                <label class="reports-needs-check reports-needs-inline-check reports-needs-check-active">
+                                    <input type="radio" name="projectTypeFilter" class="project-type-filter" value="" checked>
+                                    <span>All Project Types</span>
+                                </label>
+                                @if (Model.ProjectTypeOptions.Any())
+                                {
+                                    @foreach (var option in Model.ProjectTypeOptions)
+                                    {
+                                        <label class="reports-needs-check reports-needs-inline-check">
+                                            <input type="radio" name="projectTypeFilter" class="project-type-filter" value="@option.Value">
+                                            <span>@option.Label</span>
+                                        </label>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">No project types available</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="reports-needs-section" id="summaryReportGeographySection">
+                        <h2>Filter By Geography</h2>
+
+                        <div class="reports-needs-field">
+                            <label for="districtFilter">District</label>
+                            <select id="districtFilter" class="form-select">
+                                <option value="" selected>All Districts</option>
+                                @foreach (var d in Model.Districts)
+                                {
+                                    if (d.HasValue)
+                                    {
+                                        <option value="@d.Value">District @d.Value</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <div class="reports-needs-field">
+                            <label for="countyFilter">County</label>
+                            <select id="countyFilter" class="form-select">
+                                <option value="" selected>All Counties</option>
+                                @foreach (var option in Model.CountyOptions)
+                                {
+                                    <option value="@option.Value">@option.Label</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="reports-needs-field">
+                            <label for="planningPartnerFilter">Planning Partner</label>
+                            <select id="planningPartnerFilter" class="form-select">
+                                <option value="" selected>All Planning Partners</option>
+                                @foreach (var option in Model.PlanningPartnerOptions)
+                                {
+                                    <option value="@option.Value">@option.Label</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="reports-needs-section" id="summaryReportClassificationSection">
+                        <h2>Filter by Classification</h2>
+
+                        <div class="reports-needs-field reports-needs-field-tight">
+                            <span class="reports-needs-label">BPN</span>
+                            @if (Model.BpnOptions.Any())
+                            {
+                                <div class="reports-needs-dropdown" data-checkbox-dropdown>
+                                    <button type="button"
+                                            class="reports-needs-dropdown-button"
+                                            data-checkbox-dropdown-trigger
+                                            aria-expanded="false"
+                                            aria-controls="summaryReportBpnDropdown">
+                                        <span class="reports-needs-dropdown-button-text"
+                                              data-checkbox-dropdown-label
+                                              data-default-label="Select BPN">
+                                            Select BPN
+                                        </span>
+                                    </button>
+                                    <div class="reports-needs-dropdown-menu"
+                                         id="summaryReportBpnDropdown"
+                                         data-checkbox-dropdown-panel
+                                         hidden>
+                                        <div class="reports-needs-dropdown-options">
+                                            @foreach (var option in Model.BpnOptions)
+                                            {
+                                                <label class="reports-needs-check reports-needs-dropdown-option">
+                                                    <input type="checkbox" class="bpn-filter" value="@option.Value">
+                                                    <span>@option.Label</span>
+                                                </label>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">No BPN values available</span>
+                            }
+                        </div>
+
+                        <div class="reports-needs-field reports-needs-field-tight">
+                            <span class="reports-needs-label">Functional Class</span>
+                            @if (Model.FuncClassOptions.Any())
+                            {
+                                <div class="reports-needs-dropdown" data-checkbox-dropdown>
+                                    <button type="button"
+                                            class="reports-needs-dropdown-button"
+                                            data-checkbox-dropdown-trigger
+                                            aria-expanded="false"
+                                            aria-controls="summaryReportFuncClassDropdown">
+                                        <span class="reports-needs-dropdown-button-text"
+                                              data-checkbox-dropdown-label
+                                              data-default-label="Select Functional Class">
+                                            Select Functional Class
+                                        </span>
+                                    </button>
+                                    <div class="reports-needs-dropdown-menu"
+                                         id="summaryReportFuncClassDropdown"
+                                         data-checkbox-dropdown-panel
+                                         hidden>
+                                        <div class="reports-needs-dropdown-options">
+                                            @foreach (var option in Model.FuncClassOptions)
+                                            {
+                                                <label class="reports-needs-check reports-needs-dropdown-option">
+                                                    <input type="checkbox" class="func-class-filter" value="@option.Value">
+                                                    <span>@option.Label</span>
+                                                </label>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">No functional classes available</span>
+                            }
+                        </div>
+
+                        <div class="reports-needs-field reports-needs-field-tight">
+                            <span class="reports-needs-label">NHS</span>
+                            <div class="reports-needs-inline-options reports-needs-inline-options-compact">
+                                <label class="reports-needs-check reports-needs-inline-check">
+                                    <input type="checkbox" class="nhs-filter" value="On">
+                                    <span>NHS On</span>
+                                </label>
+                                <label class="reports-needs-check reports-needs-inline-check">
+                                    <input type="checkbox" class="nhs-filter" value="Off">
+                                    <span>NHS Off</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="reports-needs-section reports-needs-section-compact">
+                        <h2>Display Data</h2>
+                        <div class="reports-needs-view-modes">
+                            <button type="button" class="reports-needs-chip reports-needs-chip-active" data-display-mode="table" aria-pressed="true">
+                                <i class="fa-solid fa-table"></i>
+                                <span>Table</span>
+                            </button>
+                            <button type="button" class="reports-needs-chip" data-display-mode="bar" aria-pressed="false">
+                                <i class="fa-solid fa-chart-column"></i>
+                                <span>Bar Chart</span>
+                            </button>
+                            <button type="button" class="reports-needs-chip" data-display-mode="heatmap" aria-pressed="false">
+                                <i class="fa-solid fa-table-cells"></i>
+                                <span>Heatmap</span>
+                            </button>
+                        </div>
+                    </div>
+
+                </section>
+                <div class="summary-report-sidebar-actions">
+                    <button type="button" class="summary-report-submit-button" id="summaryReportApplyFilters">
+                        Submit
+                    </button>
+                </div>
+            </aside>
+
+            <section class="summary-report-main" data-scenario-id="@Model.Scenid">
+                <h4>Summary Report</h4>
+                <article class="reports-needs-card reports-needs-chart-card">
+                    <div class="reports-needs-card-header">
+                        <h2 id="summaryReportChartTitle">Budget By Year</h2>
+                        <div class="reports-needs-pills">
+                            <span class="reports-needs-pill" id="chartDistrictPill"><i class="fa-solid fa-table-cells-large"></i> All Districts</span>
+                            <span class="reports-needs-pill" id="chartCountyPill"><i class="fa-solid fa-table-cells-large"></i> All Counties</span>
+                            <span class="reports-needs-pill" id="chartYearPill">Years: All Years</span>
+                            <span class="reports-needs-pill" id="chartPlanningPartnerPill">Planning Partner: All Planning Partners</span>
+                            <span class="reports-needs-pill" id="chartProjectTypePill">All Project Types</span>
+                            <span class="reports-needs-pill" id="chartGroupingPill">Table Grouping: Year Only</span>
+                            <span class="reports-needs-pill" id="chartTotalPill">Total: $0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="reports-needs-chart-area reports-needs-chart-area-dynamic" aria-label="Budget overview chart area">
+                        <div class="reports-needs-chart-empty" id="summaryReportChartEmptyState">Select filters to load report totals.</div>
+                        <div class="summary-report-bar-layout" id="summaryReportBarLayout" hidden>
+                            <div class="summary-report-bar-chart-wrap">
+                                <canvas id="summaryReportBudgetChart" class="reports-needs-chart-canvas" hidden></canvas>
+                            </div>
+                            <aside class="summary-report-bar-legend" id="summaryReportBarLegend" hidden aria-label="Chart legend"></aside>
+                        </div>
+                        <div class="summary-report-grid" id="summaryReportGridContainer" hidden>
+                            <div class="summary-report-grid-shell">
+                                <table class="summary-report-grid-table" id="summaryReportGridTable"></table>
+                            </div>
+                        </div>
+                        <div class="summary-report-heatmap" id="summaryReportHeatmapContainer" hidden></div>
+                    </div>
+                </article>
+
+                <article class="reports-needs-card reports-needs-export-card">
+                    <h2>Export</h2>
+                    <div class="reports-needs-export-actions">
+                        <button type="button" class="reports-needs-export reports-needs-export-blue" id="summaryReportExportCsv" disabled>
+                            <i class="fa-solid fa-file-arrow-down"></i>
+                            <span>Export CSV</span>
+                        </button>
+                        <button type="button" class="reports-needs-export reports-needs-export-green" id="summaryReportExportXlsx" disabled>
+                            <i class="fa-solid fa-file-arrow-down"></i>
+                            <span>Export XLSX</span>
+                        </button>
+                        <button type="button" class="reports-needs-export reports-needs-export-red" id="summaryReportExportPdf" disabled>
+                            <i class="fa-solid fa-file-arrow-down"></i>
+                            <span>Export PDF</span>
+                        </button>
+                    </div>
+                </article>
+            </section>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/chart.js"></script>
+    <script src="~/js/jquery.dataTables.js"></script>
+    <script src="~/js/jspdf.umd.min.js"></script>
+    <script>
+        (() => {
+            const scenarioId = Number($('.summary-report-main').data('scenario-id')) || 0;
+            const chartCanvas = document.getElementById('summaryReportBudgetChart');
+            const barLayout = document.getElementById('summaryReportBarLayout');
+            const barLegend = document.getElementById('summaryReportBarLegend');
+            const emptyState = document.getElementById('summaryReportChartEmptyState');
+            const gridContainer = document.getElementById('summaryReportGridContainer');
+            const gridTableElement = document.getElementById('summaryReportGridTable');
+            const heatmapContainer = document.getElementById('summaryReportHeatmapContainer');
+            const chartTitle = document.getElementById('summaryReportChartTitle');
+            const applyFiltersButton = document.getElementById('summaryReportApplyFilters');
+            const exportCsvButton = document.getElementById('summaryReportExportCsv');
+            const exportXlsxButton = document.getElementById('summaryReportExportXlsx');
+            const exportPdfButton = document.getElementById('summaryReportExportPdf');
+            const districtFilter = document.getElementById('districtFilter');
+            const countyFilter = document.getElementById('countyFilter');
+            const treatmentFilter = document.getElementById('treatmentFilter');
+            const planningPartnerFilter = document.getElementById('planningPartnerFilter');
+            const geographySection = document.getElementById('summaryReportGeographySection');
+            const classificationSection = document.getElementById('summaryReportClassificationSection');
+            const districtPill = document.getElementById('chartDistrictPill');
+            const countyPill = document.getElementById('chartCountyPill');
+            const yearPill = document.getElementById('chartYearPill');
+            const planningPartnerPill = document.getElementById('chartPlanningPartnerPill');
+            const projectTypePill = document.getElementById('chartProjectTypePill');
+            const groupingPill = document.getElementById('chartGroupingPill');
+            const totalPill = document.getElementById('chartTotalPill');
+            const palette = ['#245bbd', '#3b82d6', '#22b8b0', '#f26b5f', '#7b8cf0', '#6b7280', '#f3a73b', '#2f9e44'];
+            const measureRadios = Array.from(document.querySelectorAll('input[name="selectedMeasure"]'));
+            const activeMeasureRadios = measureRadios.filter(input => !input.disabled);
+            const groupByRadios = Array.from(document.querySelectorAll('.group-by-filter'));
+            const projectTypeRadios = Array.from(document.querySelectorAll('.project-type-filter'));
+            const bpnCheckboxes = Array.from(document.querySelectorAll('.bpn-filter'));
+            const funcClassCheckboxes = Array.from(document.querySelectorAll('.func-class-filter'));
+            const nhsCheckboxes = Array.from(document.querySelectorAll('.nhs-filter'));
+            const checkboxDropdowns = Array.from(document.querySelectorAll('[data-checkbox-dropdown]'));
+            const displayModeButtons = Array.from(document.querySelectorAll('[data-display-mode]'));
+            const dirtyStateSelectors = '#districtFilter, #countyFilter, #categoryFilter, #treatmentFilter, #planningPartnerFilter';
+            let budgetChart;
+            let gridTable;
+            let gridColumnSignature = '';
+            let currentResponse = null;
+            let lastSubmittedFilters = null;
+            let currentEmptyStateMessage = 'Adjust filters and click Submit to load the report.';
+            let displayMode = 'table';
+
+            function isBudgetMeasureSelected() {
+                const selectedMeasure = getSelectedMeasureValue();
+                return selectedMeasure === 'budget' || selectedMeasure === 'budgetspent';
+            }
+
+            const htmlLegendPlugin = {
+                id: 'htmlLegend',
+                afterUpdate(chart, args, options) {
+                    const container = document.getElementById(options.containerID);
+                    if (!container) return;
+                    const items = chart.options.plugins.legend.labels.generateLabels(chart);
+                    container.innerHTML = '';
+                    if (!items.length) return;
+                    const list = document.createElement('ul');
+                    list.className = 'summary-report-bar-legend-list';
+                    items.forEach(item => {
+                        const entry = document.createElement('li');
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'summary-report-bar-legend-item';
+                        button.setAttribute('aria-pressed', chart.isDatasetVisible(item.datasetIndex) ? 'true' : 'false');
+                        const swatch = document.createElement('span');
+                        swatch.className = 'summary-report-bar-legend-swatch';
+                        swatch.style.background = item.fillStyle;
+                        swatch.style.borderColor = item.strokeStyle;
+                        const label = document.createElement('span');
+                        label.className = 'summary-report-bar-legend-label';
+                        label.textContent = item.text;
+                        if (item.hidden) button.classList.add('summary-report-bar-legend-item-hidden');
+                        button.onclick = () => {
+                            chart.setDatasetVisibility(item.datasetIndex, !chart.isDatasetVisible(item.datasetIndex));
+                            chart.update();
+                        };
+                        button.appendChild(swatch);
+                        button.appendChild(label);
+                        entry.appendChild(button);
+                        list.appendChild(entry);
+                    });
+                    container.appendChild(list);
+                }
+            };
+
+            const baseGridColumns = [
+                { key: 'year', title: 'Year' },
+                { key: 'district', title: 'District' },
+                { key: 'county', title: 'County' },
+                { key: 'planningPartner', title: 'Planning Partner' },
+                { key: 'category', title: 'Treatment Category' },
+                { key: 'treatment', title: 'Treatment' },
+                { key: 'projectType', title: 'Project Type' }
+            ];
+
+            function normalizeSelectedMeasure(preferredInput) {
+                const selectedInput = preferredInput || activeMeasureRadios.find(input => input.checked) || activeMeasureRadios[0];
+                activeMeasureRadios.forEach(input => {
+                    input.checked = input === selectedInput;
+                    syncCheckboxState(input);
+                });
+                return selectedInput ? [selectedInput.value] : ['budget'];
+            }
+
+            function getSelectedMeasures() { return normalizeSelectedMeasure(); }
+            function getSelectedMeasureValue() { return getSelectedMeasures()[0] || 'budget'; }
+
+            function getSelectedProjectTypes() {
+                const selectedInput = projectTypeRadios.find(input => input.checked);
+                return selectedInput && selectedInput.value ? [selectedInput.value] : [];
+            }
+
+            function getSelectedProjectTypeLabel() {
+                const selectedInput = projectTypeRadios.find(input => input.checked);
+                return selectedInput?.closest('label')?.querySelector('span')?.textContent?.trim() || 'All Project Types';
+            }
+
+            function getSelectedFuncClasses() {
+                return funcClassCheckboxes.filter(input => input.checked).map(input => input.value).filter(v => !!v);
+            }
+
+            function getSelectedBpns() {
+                return bpnCheckboxes.filter(input => input.checked).map(input => input.value).filter(v => !!v);
+            }
+
+            function getSelectedNhsValues() {
+                return nhsCheckboxes.filter(input => input.checked).map(input => input.value).filter(v => !!v);
+            }
+
+            function normalizeSelectedGroupBy(preferredInput) {
+                const selectedInput = preferredInput || groupByRadios.find(input => input.checked) || groupByRadios[0];
+                groupByRadios.forEach(input => {
+                    input.checked = input === selectedInput;
+                    syncCheckboxState(input);
+                });
+                return selectedInput ? [selectedInput.value] : ['category'];
+            }
+
+            function getSelectedGroupBy() { return normalizeSelectedGroupBy(); }
+
+            function getSelectedGroupByLabels() {
+                const selectedInput = groupByRadios.find(input => input.checked) || groupByRadios[0];
+                const label = selectedInput?.closest('label')?.querySelector('span')?.textContent?.trim();
+                return label ? [label] : ['Treatment Category'];
+            }
+
+            function updateGroupByAvailability() {
+                const selectedMeasure = getSelectedMeasureValue();
+                const disableGroupBy = selectedMeasure === 'budget' || selectedMeasure === 'budgetspent';
+                const treatmentGroupByInput = groupByRadios.find(input => input.value === 'treatment');
+                const projectTypeGroupByInput = groupByRadios.find(input => input.value === 'projecttype');
+                if (treatmentGroupByInput) treatmentGroupByInput.disabled = disableGroupBy;
+                if (!projectTypeGroupByInput) return;
+                projectTypeGroupByInput.disabled = disableGroupBy;
+                if ((disableGroupBy && treatmentGroupByInput?.checked) || (disableGroupBy && projectTypeGroupByInput.checked)) {
+                    const fallback = groupByRadios.find(input => input.value === 'category' && !input.disabled)
+                        || groupByRadios.find(input => !input.disabled)
+                        || treatmentGroupByInput
+                        || projectTypeGroupByInput;
+                    normalizeSelectedGroupBy(fallback);
+                }
+                groupByRadios.forEach(syncCheckboxState);
+            }
+
+            function getFilters() {
+                const ignoreBudgetScopedFilters = isBudgetMeasureSelected();
+                const countyValue = $('#countyFilter').val() || '';
+                return {
+                    scenid: scenarioId,
+                    district: $('#districtFilter').val() || '',
+                    county: ignoreBudgetScopedFilters ? '' : countyValue,
+                    countyLabel: ignoreBudgetScopedFilters ? '' : (countyValue ? getSelectedOptionText('#countyFilter', '') : ''),
+                    category: $('#categoryFilter').val() || '',
+                    treatment: ignoreBudgetScopedFilters ? '' : ($('#treatmentFilter').val() || ''),
+                    planningPartner: ignoreBudgetScopedFilters ? '' : ($('#planningPartnerFilter').val() || ''),
+                    bpn: ignoreBudgetScopedFilters ? '' : getSelectedBpns().join(','),
+                    funcClasses: ignoreBudgetScopedFilters ? '' : getSelectedFuncClasses().join(','),
+                    nhs: ignoreBudgetScopedFilters ? '' : getSelectedNhsValues().join(','),
+                    measures: getSelectedMeasures().join(','),
+                    projectTypes: getSelectedProjectTypes().join(','),
+                    groupBy: getSelectedGroupBy()[0]
+                };
+            }
+
+            function getSelectedOptionText(selector, fallbackText) {
+                const select = document.querySelector(selector);
+                const selectedOption = select?.selectedOptions?.[0];
+                if (!selectedOption || selectedOption.value === '') return fallbackText;
+                return selectedOption.textContent?.trim() || fallbackText;
+            }
+
+            function setPlanningPartnerOptions(options, selectedValue) {
+                if (!planningPartnerFilter) return;
+                const safeOptions = Array.isArray(options) ? options : [];
+                const retainedValue = safeOptions.some(o => o?.value === selectedValue) ? selectedValue : '';
+                planningPartnerFilter.innerHTML = '';
+                planningPartnerFilter.appendChild(new Option('All Planning Partners', ''));
+                safeOptions.forEach(option => {
+                    planningPartnerFilter.appendChild(new Option(option?.label || option?.value || '', option?.value || ''));
+                });
+                planningPartnerFilter.value = retainedValue;
+            }
+
+            function loadPlanningPartnerOptions() {
+                if (!planningPartnerFilter) return;
+                const selectedPlanningPartner = planningPartnerFilter.value || '';
+                const districtValue = districtFilter?.value || '';
+                const countyValue = countyFilter?.value || '';
+                const countyText = countyValue ? getSelectedOptionText('#countyFilter', '') : '';
+                planningPartnerFilter.disabled = true;
+                $.ajax({
+                    type: 'GET',
+                    url: '?handler=PlanningPartners',
+                    data: { district: districtValue, county: countyValue, countyLabel: countyText },
+                    success: function (options) { setPlanningPartnerOptions(options, selectedPlanningPartner); },
+                    error: function () { setPlanningPartnerOptions([], ''); },
+                    complete: function () { planningPartnerFilter.disabled = false; }
+                });
+            }
+
+            function formatValue(value, valueFormat) {
+                if (valueFormat === 'count') {
+                    return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(value || 0);
+                }
+                return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(value || 0);
+            }
+
+            function formatCompactHeatmapValue(value, valueFormat) {
+                const numericValue = Number(value) || 0;
+                if (valueFormat === 'count') {
+                    return new Intl.NumberFormat('en-US', {
+                        notation: numericValue >= 1000 ? 'compact' : 'standard',
+                        maximumFractionDigits: numericValue >= 1000 ? 1 : 0
+                    }).format(numericValue);
+                }
+                if (Math.abs(numericValue) >= 1000000) return '$' + (numericValue / 1000000).toFixed(1) + 'M';
+                if (Math.abs(numericValue) >= 1000) return '$' + (numericValue / 1000).toFixed(1) + 'K';
+                return '$' + Math.round(numericValue).toString();
+            }
+
+            function interpolateChannel(start, end, ratio) { return Math.round(start + ((end - start) * ratio)); }
+
+            function interpolateColor(startColor, endColor, ratio) {
+                return 'rgb(' + [0, 1, 2].map(i => interpolateChannel(startColor[i], endColor[i], ratio)).join(', ') + ')';
+            }
+
+            function getHeatmapCellColor(value, minValue, maxValue) {
+                const lowColor = [255, 255, 255];
+                const highColor = [23, 45, 170];
+                if (!Number.isFinite(value)) return 'rgb(255, 255, 255)';
+                if (maxValue <= minValue) return value > 0 ? interpolateColor(lowColor, highColor, 1) : interpolateColor(lowColor, highColor, 0);
+                const ratio = Math.max(0, Math.min(1, (value - minValue) / (maxValue - minValue)));
+                return interpolateColor(lowColor, highColor, ratio);
+            }
+
+            function getHeatmapTextColor(value, minValue, maxValue) {
+                if (maxValue <= minValue) return value > 0 ? '#ffffff' : '#1f2d3d';
+                const ratio = Math.max(0, Math.min(1, (value - minValue) / (maxValue - minValue)));
+                return ratio >= 0.72 ? '#ffffff' : '#1f2d3d';
+            }
+
+            function escapeHtml(value) {
+                return String(value ?? '')
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            }
+
+            function hasReportData() {
+                return !!currentResponse && Array.isArray(currentResponse.tableRows) && currentResponse.tableRows.length > 0;
+            }
+
+            function setExportButtonState(button, isEnabled, title) {
+                if (!button) return;
+                button.disabled = !isEnabled;
+                button.setAttribute('aria-disabled', isEnabled ? 'false' : 'true');
+                if (title) button.title = title;
+                else button.removeAttribute('title');
+            }
+
+            function updateExportButtonState() {
+                const canExportTable = hasReportData();
+                const canExportPdf = canExportTable && displayMode === 'bar' && !!budgetChart;
+                setExportButtonState(exportCsvButton, canExportTable, canExportTable ? '' : 'Load report data to export CSV.');
+                setExportButtonState(exportXlsxButton, canExportTable, canExportTable ? '' : 'Load report data to export Excel.');
+                setExportButtonState(exportPdfButton, canExportPdf, canExportPdf ? '' : 'Switch to Bar Chart and load report data to export PDF.');
+            }
+
+            function buildExportQueryString() {
+                const filters = lastSubmittedFilters || getFilters();
+                const query = new URLSearchParams();
+                Object.entries(filters).forEach(([key, value]) => {
+                    if (value !== null && value !== undefined && value !== '') query.set(key, String(value));
+                });
+                return query.toString();
+            }
+
+            function downloadTableExport(handlerName) {
+                if (!hasReportData()) return;
+                const queryString = buildExportQueryString();
+                const url = '?handler=' + handlerName + (queryString ? '&' + queryString : '');
+                window.location.assign(url);
+            }
+
+            function exportChartToPdf() {
+                if (!hasReportData() || displayMode !== 'bar' || !budgetChart || !window.jspdf) return;
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                const imageData = budgetChart.toBase64Image('image/png', 1);
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                const margin = 10;
+                const availableWidth = pageWidth - (margin * 2);
+                const availableHeight = pageHeight - 24;
+                const imageProperties = pdf.getImageProperties(imageData);
+                const scaledHeight = (imageProperties.height * availableWidth) / imageProperties.width;
+                const imageHeight = Math.min(scaledHeight, availableHeight);
+                const imageWidth = imageHeight < scaledHeight
+                    ? (imageProperties.width * imageHeight) / imageProperties.height
+                    : availableWidth;
+                const imageX = (pageWidth - imageWidth) / 2;
+                const titleText = chartTitle?.textContent?.trim() || 'Summary Report Chart';
+                const scenName = String(currentResponse?.scenarioName || 'Scenario').trim().replace(/[^a-z0-9]+/gi, '_');
+                const titleSlug = titleText.trim().replace(/[^a-z0-9]+/gi, '_');
+                pdf.text(titleText, margin, 10);
+                pdf.addImage(imageData, 'PNG', imageX, 14, imageWidth, imageHeight);
+                pdf.save(scenName + '_' + titleSlug + '.pdf');
+            }
+
+            function buildGridMarkup(response) {
+                const headerCells = baseGridColumns
+                    .map(col => '<th scope="col">' + escapeHtml(col.title) + '</th>')
+                    .concat((response.tableMeasures || []).map(col => '<th scope="col" class="summary-report-grid-value-column">' + escapeHtml(col.label) + '</th>'))
+                    .join('');
+                const footerCells = ['<th scope="row">Total</th>']
+                    .concat(baseGridColumns.slice(1).map(() => '<th></th>'))
+                    .concat((response.tableMeasures || []).map(() => '<th class="summary-report-grid-value-column"></th>'))
+                    .join('');
+                return '<thead><tr>' + headerCells + '</tr></thead><tbody></tbody><tfoot><tr>' + footerCells + '</tr></tfoot>';
+            }
+
+            function buildGridRows(response) {
+                return (response.tableRows || []).map(row => ({
+                    year: row.year || 'Unscheduled',
+                    district: row.district || 'All Districts',
+                    county: row.county || 'All Counties',
+                    planningPartner: row.planningPartner || 'All Planning Partners',
+                    category: row.category || 'All Categories',
+                    treatment: row.treatment || 'All Treatments',
+                    projectType: row.projectType || 'All Project Types',
+                    measureValues: row.measureValues || {}
+                }));
+            }
+
+            function buildGridColumns(response) {
+                const dimensionColumns = baseGridColumns.map(col => ({
+                    data: col.key,
+                    title: col.title,
+                    render: function (data, type) {
+                        const text = data || '';
+                        return type === 'display' || type === 'filter' ? escapeHtml(text) : text;
+                    }
+                }));
+                const measureColumns = (response.tableMeasures || []).map(col => ({
+                    data: 'measureValues.' + col.key,
+                    title: col.label,
+                    className: 'dt-right',
+                    render: function (data, type) {
+                        const numericValue = Number(data) || 0;
+                        if (type === 'display' || type === 'filter') return formatValue(numericValue, col.valueFormat);
+                        return numericValue;
+                    }
+                }));
+                return dimensionColumns.concat(measureColumns);
+            }
+
+            function updateGridFooter(table, response) {
+                if (!gridTableElement) return;
+                const scrollFooterCells = Array.from(table.table().container().querySelectorAll('.dataTables_scrollFoot tfoot th'));
+                const originalFooter = gridTableElement.querySelector('tfoot');
+                const originalFooterCells = Array.from(gridTableElement.querySelectorAll('tfoot th'));
+                const footerCells = scrollFooterCells.length ? scrollFooterCells : originalFooterCells;
+                if (!footerCells.length) return;
+                const filteredRows = table.rows({ search: 'applied' }).data().toArray();
+                footerCells[0].textContent = 'Total';
+                baseGridColumns.slice(1).forEach((_, index) => {
+                    if (footerCells[index + 1]) footerCells[index + 1].textContent = '';
+                });
+                (response?.tableMeasures || []).forEach((col, index) => {
+                    const totalValue = filteredRows.reduce((sum, row) => sum + (Number(row?.measureValues?.[col.key]) || 0), 0);
+                    const footerCell = footerCells[baseGridColumns.length + index];
+                    if (footerCell) footerCell.textContent = formatValue(totalValue, col.valueFormat);
+                });
+                if (originalFooter) originalFooter.style.display = scrollFooterCells.length ? 'none' : '';
+            }
+
+            function ensureGridTable(response) {
+                const nextSignature = (response.tableMeasures || [])
+                    .map(col => col.key + ':' + col.label + ':' + col.valueFormat).join('|');
+                if (gridTable && gridColumnSignature === nextSignature) return gridTable;
+                if (gridTable) { gridTable.destroy(); gridTable = null; }
+                gridTableElement.innerHTML = buildGridMarkup(response);
+                gridTable = $('#summaryReportGridTable').DataTable({
+                    autoWidth: false,
+                    deferRender: true,
+                    searching: true,
+                    ordering: true,
+                    paging: true,
+                    lengthChange: false,
+                    pageLength: 10,
+                    info: true,
+                    scrollX: true,
+                    scrollY: '420px',
+                    scrollCollapse: true,
+                    order: [[0, 'asc']],
+                    language: {
+                        search: 'Search grid:',
+                        searchPlaceholder: 'Filter report rows',
+                        emptyTable: 'No report rows match the selected filters.',
+                        zeroRecords: 'No matching rows found.'
+                    },
+                    columns: buildGridColumns(response),
+                    drawCallback: function () {
+                        updateGridFooter(this.api(), currentResponse || response);
+                        $(this).closest('.dataTables_wrapper').find('.paginate_button').removeAttr('aria-role');
+                    }
+                });
+                gridColumnSignature = nextSignature;
+                return gridTable;
+            }
+
+            function syncCheckboxState(input) {
+                const wrapper = input.closest('label');
+                if (!wrapper) return;
+                wrapper.classList.toggle('reports-needs-check-active', input.checked);
+                wrapper.classList.toggle('reports-needs-check-disabled', !!input.disabled);
+            }
+
+            function getCheckboxDropdownSummary(dropdown) {
+                const label = dropdown?.querySelector('[data-checkbox-dropdown-label]');
+                const defaultLabel = label?.dataset.defaultLabel || 'Select Options';
+                const selectedLabels = Array.from(dropdown?.querySelectorAll('input[type="checkbox"]') || [])
+                    .filter(input => input.checked)
+                    .map(input => input.closest('label')?.querySelector('span')?.textContent?.trim())
+                    .filter(text => !!text);
+                if (selectedLabels.length === 0) return { text: defaultLabel, title: defaultLabel };
+                const fullText = selectedLabels.join(', ');
+                if (selectedLabels.length <= 2) return { text: fullText, title: fullText };
+                return { text: selectedLabels.slice(0, 2).join(', ') + ' +' + (selectedLabels.length - 2), title: fullText };
+            }
+
+            function updateCheckboxDropdownLabel(dropdown) {
+                const label = dropdown?.querySelector('[data-checkbox-dropdown-label]');
+                if (!label) return;
+                const summary = getCheckboxDropdownSummary(dropdown);
+                label.textContent = summary.text;
+                label.title = summary.title;
+            }
+
+            function setCheckboxDropdownOpen(dropdown, isOpen) {
+                if (!dropdown) return;
+                const trigger = dropdown.querySelector('[data-checkbox-dropdown-trigger]');
+                const panel = dropdown.querySelector('[data-checkbox-dropdown-panel]');
+                dropdown.classList.toggle('is-open', isOpen);
+                if (trigger) trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                if (panel) panel.hidden = !isOpen;
+            }
+
+            function closeCheckboxDropdowns(exceptDropdown) {
+                checkboxDropdowns.forEach(dropdown => {
+                    if (dropdown !== exceptDropdown) setCheckboxDropdownOpen(dropdown, false);
+                });
+            }
+
+            function initializeCheckboxDropdowns() {
+                checkboxDropdowns.forEach(dropdown => {
+                    const trigger = dropdown.querySelector('[data-checkbox-dropdown-trigger]');
+                    updateCheckboxDropdownLabel(dropdown);
+                    setCheckboxDropdownOpen(dropdown, false);
+                    if (trigger) {
+                        trigger.addEventListener('click', function () {
+                            const shouldOpen = !dropdown.classList.contains('is-open');
+                            closeCheckboxDropdowns(shouldOpen ? dropdown : null);
+                            setCheckboxDropdownOpen(dropdown, shouldOpen);
+                        });
+                    }
+                });
+                document.addEventListener('click', function (event) {
+                    if (!event.target.closest('[data-checkbox-dropdown]')) closeCheckboxDropdowns(null);
+                });
+                document.addEventListener('keydown', function (event) {
+                    if (event.key === 'Escape') closeCheckboxDropdowns(null);
+                });
+            }
+
+            function updatePills(filters, response) {
+                const districtText = filters?.district ? getSelectedOptionText('#districtFilter', 'All Districts') : 'All Districts';
+                const countyText = filters?.county ? getSelectedOptionText('#countyFilter', 'All Counties') : 'All Counties';
+                const planningPartnerText = filters?.planningPartner || 'All Planning Partners';
+                const selectedGroupByLabels = getSelectedGroupByLabels();
+                const projectTypeText = filters?.projectTypes ? getSelectedProjectTypeLabel() : 'All Project Types';
+                districtPill.innerHTML = '<i class="fa-solid fa-table-cells-large"></i> ' + districtText;
+                countyPill.innerHTML = '<i class="fa-solid fa-table-cells-large"></i> ' + countyText;
+                yearPill.textContent = 'Years: All Years';
+                planningPartnerPill.textContent = 'Planning Partner: ' + planningPartnerText;
+                projectTypePill.textContent = projectTypeText;
+                groupingPill.textContent = 'Table Grouping: ' + (selectedGroupByLabels.length === 0 ? 'Year Only' : 'Year / ' + selectedGroupByLabels.join(' / '));
+                totalPill.textContent = (response.summaryMeasureLabel || 'Budget Total') + ': ' + formatValue(response.summaryTotalValue || 0, response.summaryValueFormat);
+                chartTitle.textContent = (response.summaryMeasureLabel || 'Budget Total') + ' By Year';
+            }
+
+            function setFilterSectionDisabled(section, isDisabled) {
+                if (!section) return;
+                section.classList.toggle('summary-report-filter-section-disabled', isDisabled);
+            }
+
+            function updateBudgetMeasureLockedFilters() {
+                const selectedMeasure = getSelectedMeasureValue();
+                const disableBudgetScopedFilters = isBudgetMeasureSelected();
+                const enableCombinedProjectType = selectedMeasure === 'projecttreatmentcount';
+                const dropdownTriggers = Array.from(new Set(
+                    [...bpnCheckboxes, ...funcClassCheckboxes]
+                        .map(input => input.closest('[data-checkbox-dropdown]')?.querySelector('[data-checkbox-dropdown-trigger]'))
+                        .filter(trigger => !!trigger)
+                ));
+                if (districtFilter) districtFilter.disabled = false;
+                [countyFilter, planningPartnerFilter, treatmentFilter].forEach(input => {
+                    if (input) input.disabled = disableBudgetScopedFilters;
+                });
+                projectTypeRadios.forEach(input => {
+                    const isCombined = (input.value || '').trim().toUpperCase() === 'C';
+                    input.disabled = isCombined && !enableCombinedProjectType;
+                    syncCheckboxState(input);
+                });
+                if (!enableCombinedProjectType) {
+                    const selectedInput = projectTypeRadios.find(input => input.checked);
+                    if (selectedInput?.disabled) {
+                        const fallback = projectTypeRadios.find(input => !input.disabled && !input.value)
+                            || projectTypeRadios.find(input => !input.disabled)
+                            || selectedInput;
+                        projectTypeRadios.forEach(input => {
+                            input.checked = input === fallback;
+                            syncCheckboxState(input);
+                        });
+                    }
+                }
+                bpnCheckboxes.forEach(input => { input.disabled = disableBudgetScopedFilters; syncCheckboxState(input); });
+                funcClassCheckboxes.forEach(input => { input.disabled = disableBudgetScopedFilters; syncCheckboxState(input); });
+                nhsCheckboxes.forEach(input => { input.disabled = disableBudgetScopedFilters; syncCheckboxState(input); });
+                dropdownTriggers.forEach(trigger => { trigger.disabled = disableBudgetScopedFilters; });
+                if (disableBudgetScopedFilters) closeCheckboxDropdowns(null);
+                setFilterSectionDisabled(geographySection, false);
+                setFilterSectionDisabled(classificationSection, disableBudgetScopedFilters);
+            }
+
+            function showEmptyState(message) {
+                currentEmptyStateMessage = message;
+                if (budgetChart) { budgetChart.destroy(); budgetChart = null; }
+                if (barLegend) { barLegend.innerHTML = ''; barLegend.hidden = true; }
+                if (barLayout) { barLayout.hidden = true; barLayout.classList.remove('summary-report-bar-layout-with-legend'); }
+                emptyState.textContent = message;
+                emptyState.hidden = false;
+                chartCanvas.hidden = true;
+                gridContainer.hidden = true;
+                heatmapContainer.hidden = true;
+                updateExportButtonState();
+            }
+
+            function clearRenderedReport(message) {
+                currentResponse = null;
+                if (gridTable) gridTable.clear().draw();
+                totalPill.textContent = 'Total: $0.00';
+                showEmptyState(message);
+            }
+
+            function setApplyButtonState(isLoading) {
+                if (!applyFiltersButton) return;
+                applyFiltersButton.disabled = isLoading;
+                applyFiltersButton.textContent = isLoading ? 'Loading...' : 'Submit';
+            }
+
+            function setChartTitle(response) {
+                const measureLabel = response?.summaryMeasureLabel || 'Budget Total';
+                const heatmapRowHeader = response?.heatmapRowHeader || 'Treatment';
+                chartTitle.textContent = displayMode === 'heatmap'
+                    ? measureLabel + ' Heatmap By ' + heatmapRowHeader + ' And Year'
+                    : measureLabel + ' By Year';
+            }
+
+            function markReportDirty() { updateExportButtonState(); }
+
+            function setDisplayMode(nextDisplayMode) {
+                displayMode = nextDisplayMode;
+                displayModeButtons.forEach(button => {
+                    const isActive = button.dataset.displayMode === nextDisplayMode;
+                    button.classList.toggle('reports-needs-chip-active', isActive);
+                    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+                });
+                if (currentResponse) renderChart(currentResponse);
+                else showEmptyState(currentEmptyStateMessage);
+                updateExportButtonState();
+            }
+
+            function applyDisplayMode(response) {
+                if (!response || !response.tableRows || response.tableRows.length === 0) {
+                    showEmptyState('No report rows match the selected filters.');
+                    return;
+                }
+                emptyState.hidden = true;
+                if (barLayout) barLayout.hidden = displayMode !== 'bar';
+                chartCanvas.hidden = displayMode !== 'bar';
+                gridContainer.hidden = displayMode !== 'table';
+                heatmapContainer.hidden = displayMode !== 'heatmap';
+                if (barLegend) {
+                    barLegend.hidden = displayMode !== 'bar' || !(response.chartDatasets || []).length || (response.chartDatasets || []).length <= 1;
+                }
+                if (displayMode === 'table' && gridTable) gridTable.columns.adjust();
+                setChartTitle(response);
+                updateExportButtonState();
+            }
+
+            function renderGrid(response) {
+                const table = ensureGridTable(response);
+                table.search('');
+                table.clear();
+                table.rows.add(buildGridRows(response));
+                table.draw();
+            }
+
+            function renderHeatmap(response) {
+                if (!heatmapContainer) return;
+                const heatmapColumns = Array.isArray(response.heatmapColumns) ? response.heatmapColumns : [];
+                const heatmapRows = Array.isArray(response.heatmapRows) ? response.heatmapRows : [];
+                if (heatmapColumns.length === 0 || heatmapRows.length === 0) { heatmapContainer.innerHTML = ''; return; }
+                const allValues = heatmapRows.flatMap(row => heatmapColumns.map(col => Number(row.values?.[col]) || 0));
+                const minValue = allValues.length ? Math.min(...allValues) : 0;
+                const maxValue = allValues.length ? Math.max(...allValues) : 0;
+                const valueFormat = response.summaryValueFormat || 'currency';
+                const legendLabel = response.summaryMeasureLabel || 'Budget Total';
+                const rowHeader = response.heatmapRowHeader || 'Treatment';
+                const headerMarkup = ['<th scope="col" class="summary-report-heatmap-corner">' + escapeHtml(rowHeader) + '</th>']
+                    .concat(heatmapColumns.map(col => '<th scope="col">' + escapeHtml(col) + '</th>')).join('');
+                const bodyMarkup = heatmapRows.map(row => {
+                    const cellsMarkup = heatmapColumns.map(col => {
+                        const numericValue = Number(row.values?.[col]) || 0;
+                        const bgColor = getHeatmapCellColor(numericValue, minValue, maxValue);
+                        const textColor = getHeatmapTextColor(numericValue, minValue, maxValue);
+                        const rowLabel = row.label || 'Unspecified ' + rowHeader;
+                        const title = rowLabel + ' | ' + col + ': ' + formatValue(numericValue, valueFormat);
+                        return '<td><div class="summary-report-heatmap-cell" style="background:' + bgColor + ';color:' + textColor + ';" title="' + escapeHtml(title) + '"><span>' + escapeHtml(formatCompactHeatmapValue(numericValue, valueFormat)) + '</span></div></td>';
+                    }).join('');
+                    return '<tr><th scope="row">' + escapeHtml(row.label || ('Unspecified ' + rowHeader)) + '</th>' + cellsMarkup + '</tr>';
+                }).join('');
+                heatmapContainer.innerHTML = '<div class="summary-report-heatmap-shell"><div class="summary-report-heatmap-header"><div class="summary-report-heatmap-meta">Rows: ' + escapeHtml(rowHeader) + ' | Columns: Years | Color: ' + escapeHtml(legendLabel) + '</div><div class="summary-report-heatmap-legend"><span>' + escapeHtml(formatValue(minValue, valueFormat)) + '</span><div class="summary-report-heatmap-legend-bar"></div><span>' + escapeHtml(formatValue(maxValue, valueFormat)) + '</span></div></div><div class="summary-report-heatmap-table-wrap"><table class="summary-report-heatmap-table"><thead><tr>' + headerMarkup + '</tr></thead><tbody>' + bodyMarkup + '</tbody></table></div></div>';
+            }
+
+            function createChartConfig(response) {
+                const datasets = (response.chartDatasets || []).map((dataset, index) => ({
+                    label: dataset.label,
+                    data: dataset.values || [],
+                    backgroundColor: palette[index % palette.length],
+                    borderColor: palette[index % palette.length],
+                    borderWidth: 1,
+                    borderRadius: dataset.stack ? 0 : 8,
+                    maxBarThickness: 42,
+                    stack: dataset.stack || undefined
+                }));
+                const hasStackedSeries = datasets.some(d => !!d.stack);
+                const primaryValueFormat = response.chartDatasets?.[0]?.valueFormat || 'currency';
+                return {
+                    type: 'bar',
+                    plugins: [htmlLegendPlugin],
+                    data: { labels: response.chartLabels || [], datasets: datasets },
+                    options: {
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            htmlLegend: { containerID: 'summaryReportBarLegend' },
+                            tooltip: {
+                                callbacks: {
+                                    label(context) {
+                                        const dataset = response.chartDatasets?.[context.datasetIndex];
+                                        return (context.dataset.label || '') + ': ' + formatValue(context.parsed.y || 0, dataset?.valueFormat || primaryValueFormat);
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                stacked: hasStackedSeries,
+                                title: { display: true, text: 'Year', color: '#4f5766' },
+                                grid: { display: false },
+                                ticks: { color: '#4f5766', font: { size: 11 } }
+                            },
+                            y: {
+                                stacked: hasStackedSeries,
+                                beginAtZero: true,
+                                title: { display: true, text: response.summaryMeasureLabel || 'Value', color: '#7c8595' },
+                                ticks: {
+                                    color: '#7c8595',
+                                    callback(value) { return formatValue(value, primaryValueFormat); }
+                                }
+                            }
+                        }
+                    }
+                };
+            }
+
+            function renderChart(response, appliedFilters) {
+                currentResponse = response;
+                lastSubmittedFilters = appliedFilters ? { ...appliedFilters } : (lastSubmittedFilters || getFilters());
+                updatePills(lastSubmittedFilters, response);
+                renderGrid(response);
+                renderHeatmap(response);
+                if (!response.tableRows || response.tableRows.length === 0) {
+                    showEmptyState('No report rows match the selected filters.');
+                    if (gridTable) gridTable.clear().draw();
+                    return;
+                }
+                emptyState.hidden = true;
+                chartCanvas.hidden = displayMode !== 'bar';
+                if (budgetChart) { budgetChart.destroy(); budgetChart = null; }
+                if (barLegend) { barLegend.innerHTML = ''; barLegend.hidden = (response.chartDatasets || []).length <= 1; }
+                if (barLayout) {
+                    barLayout.classList.toggle('summary-report-bar-layout-with-legend', (response.chartDatasets || []).length > 1);
+                    barLayout.hidden = displayMode !== 'bar';
+                }
+                if (displayMode === 'bar') {
+                    budgetChart = new Chart(chartCanvas.getContext('2d'), createChartConfig(response));
+                }
+                applyDisplayMode(response);
+                updateExportButtonState();
+            }
+
+            function loadChart() {
+                if (!scenarioId) { showEmptyState('To view the report you need to select a scenario first.'); return; }
+                const requestedFilters = getFilters();
+                setApplyButtonState(true);
+                showEmptyState('Loading report...');
+                $.ajax({
+                    type: 'GET',
+                    url: '?handler=LoadChart',
+                    data: requestedFilters,
+                    success: function (response) { renderChart(response, requestedFilters); },
+                    error: function () { currentResponse = null; showEmptyState('The report could not be loaded.'); },
+                    complete: function () { setApplyButtonState(false); }
+                });
+            }
+
+            activeMeasureRadios.forEach(input => {
+                syncCheckboxState(input);
+                input.addEventListener('change', function () {
+                    normalizeSelectedMeasure(this.checked ? this : null);
+                    updateGroupByAvailability();
+                    updateBudgetMeasureLockedFilters();
+                    markReportDirty();
+                });
+            });
+
+            normalizeSelectedMeasure();
+
+            groupByRadios.forEach(input => {
+                syncCheckboxState(input);
+                input.addEventListener('change', function () {
+                    normalizeSelectedGroupBy(this.checked ? this : null);
+                    updateGroupByAvailability();
+                    markReportDirty();
+                });
+            });
+
+            normalizeSelectedGroupBy();
+            updateGroupByAvailability();
+            updateBudgetMeasureLockedFilters();
+
+            projectTypeRadios.forEach(input => {
+                syncCheckboxState(input);
+                input.addEventListener('change', function () { projectTypeRadios.forEach(syncCheckboxState); markReportDirty(); });
+            });
+
+            bpnCheckboxes.forEach(input => {
+                syncCheckboxState(input);
+                input.addEventListener('change', function () {
+                    syncCheckboxState(this);
+                    updateCheckboxDropdownLabel(this.closest('[data-checkbox-dropdown]'));
+                    markReportDirty();
+                });
+            });
+
+            funcClassCheckboxes.forEach(input => {
+                syncCheckboxState(input);
+                input.addEventListener('change', function () {
+                    syncCheckboxState(this);
+                    updateCheckboxDropdownLabel(this.closest('[data-checkbox-dropdown]'));
+                    markReportDirty();
+                });
+            });
+
+            nhsCheckboxes.forEach(input => {
+                syncCheckboxState(input);
+                input.addEventListener('change', function () { syncCheckboxState(this); markReportDirty(); });
+            });
+
+            displayModeButtons.forEach(button => {
+                button.addEventListener('click', function () { setDisplayMode(this.dataset.displayMode || 'bar'); });
+            });
+
+            initializeCheckboxDropdowns();
+
+            if (districtFilter) districtFilter.addEventListener('change', loadPlanningPartnerOptions);
+            if (countyFilter) countyFilter.addEventListener('change', loadPlanningPartnerOptions);
+
+            $(dirtyStateSelectors).on('change', markReportDirty);
+
+            if (applyFiltersButton) applyFiltersButton.addEventListener('click', loadChart);
+
+            if (exportCsvButton) {
+                exportCsvButton.addEventListener('click', function () { downloadTableExport('DownloadCsv'); });
+            }
+
+            if (exportXlsxButton) {
+                exportXlsxButton.addEventListener('click', function () { downloadTableExport('DownloadXlsx'); });
+            }
+
+            if (exportPdfButton) exportPdfButton.addEventListener('click', exportChartToPdf);
+
+            showEmptyState(currentEmptyStateMessage);
+
+            (function () {
+                function fitMain() {
+                    var m = document.querySelector('main');
+                    if (!m) return;
+                    var footer = document.querySelector('.app-footer');
+                    var footerH = footer ? footer.offsetHeight : 0;
+                    var top = m.getBoundingClientRect().top;
+                    m.style.height = Math.max(100, window.innerHeight - top - footerH) + 'px';
+                }
+                fitMain();
+                window.addEventListener('resize', fitMain);
+            })();
+        })();
+    </script>
+}

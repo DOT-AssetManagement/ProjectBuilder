@@ -1,0 +1,89 @@
+@* Shared Run-Scenario handler for the EditScenario pages.
+   Enqueues a Hangfire background job, hands the job id off to the Scenarios list
+   page via sessionStorage, and redirects there — the list page already knows how
+   to show the running/success/failure banner and resume polling on load. *@
+<form id="editscen-antiforgery" method="post" style="display:none">@Html.AntiForgeryToken()</form>
+<div class="modal fade" id="runNoTreatments" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Run Scenario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span>No treatments are in this scenario.</span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    (function () {
+        function showRunError(msg) {
+            var el = document.getElementById('scenRunNotification');
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'scenRunNotification';
+                el.style.cssText = 'position:fixed;top:80px;right:20px;z-index:9999;padding:12px 20px;border-radius:6px;max-width:420px;box-shadow:0 2px 8px rgba(0,0,0,0.2);font-size:14px;display:flex;align-items:center;gap:10px;';
+                document.body.appendChild(el);
+            }
+            el.style.background = '#f8d7da';
+            el.style.color = '#721c24';
+            el.innerHTML = '<span>' + msg + '</span><button onclick="this.parentElement.style.display=\'none\'" style="background:none;border:none;cursor:pointer;font-size:18px;line-height:1;padding:0 4px;margin-left:auto;color:inherit;">&times;</button>';
+            el.style.display = 'flex';
+        }
+
+        function showNoTreatmentsModal() {
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('runNoTreatments')).show();
+        }
+
+        function queueRun(id, name, $btn) {
+            var token = $('#editscen-antiforgery input[name="__RequestVerificationToken"]').val();
+            $btn.prop('disabled', true).text('Queuing…');
+            $.ajax({
+                type: 'POST',
+                url: '/Scenarios?handler=RunScenario',
+                data: { scenarioId: id },
+                headers: { 'RequestVerificationToken': token },
+                success: function (res) {
+                    // The Scenarios list page reads these on load to show the
+                    // "running in background" banner and resume polling the job.
+                    sessionStorage.setItem('pendingJobId', res.jobId);
+                    sessionStorage.setItem('pendingJobName', name);
+                    window.location.href = '/Scenarios';
+                },
+                error: function (xhr) {
+                    $btn.prop('disabled', false).html('<i class="fa-solid fa-play me-1"></i> Run Scenario');
+                    if (xhr.responseJSON && xhr.responseJSON.noTreatments) {
+                        showNoTreatmentsModal();
+                        return;
+                    }
+                    var msg = (xhr.responseJSON && xhr.responseJSON.error) || xhr.responseText || 'Unable to run scenario.';
+                    showRunError(msg);
+                }
+            });
+        }
+
+        $('#runScenarioBtn').on('click', function () {
+            var id = $(this).data('scenid');
+            var name = $(this).data('scenname') || '';
+            if (!id) return;
+            var $btn = $(this);
+            $.get('/Scenarios?handler=HasTreatments', { scenarioId: id })
+                .done(function (res) {
+                    if (!res || !res.hasTreatments) {
+                        showNoTreatmentsModal();
+                        return;
+                    }
+                    if (!confirm('Run this scenario?')) return;
+                    queueRun(id, name, $btn);
+                })
+                .fail(function () {
+                    showRunError('Unable to check treatments for this scenario.');
+                });
+        });
+    })();
+</script>

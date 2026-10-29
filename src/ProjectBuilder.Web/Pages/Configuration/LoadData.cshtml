@@ -1,0 +1,140 @@
+@page
+@model ProjectBuilder.Web.Pages.Configuration.LoadDataModel
+@{
+}
+@{
+    Layout = "Shared/DSSLayout";
+    ViewData["Menu"] = "DSSMenus.Configuration";
+}
+
+
+
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Load Data</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+        <li class="breadcrumb-item active">Load Data</li>
+    </ol>
+    <div class="card mb-4">
+        <div class="card-body">
+
+            <form class="form-horizontal" enctype="multipart/form-data" method="POST" action="">
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="intial_uplod1">
+                            <div class="icon_box upload_icon1 fade_file"></div>
+                            <h4>Projects and Measures CSV Data File</h4>
+                            <p>Note: loading a data file will overwrite all existing performance measure and project data.</p>
+                            <div class="img_btn">
+                                <span class="filename">Select File..</span>
+                                <input type="file" name="projects" id="file" class="fileinput">
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="col-md-8 intial_uplod1">
+                        <b>Upload CSV data file with columns in the following format for N number of measure:</b><br>
+                        Project Description | Cost of Project | Measure 1 | ……. | Measure N <br>
+                        <b>Note: Use the name of the measure as the column header for each measure.</b><br><br>
+                        <b>To see an example csv file, click <a href="">here</a>.</b>
+                    </div>
+                </div>
+
+
+                <div class="row mb-6">
+
+
+                    <div class="col-lg-8 fv-row fv-plugins-icon-container fv-plugins-bootstrap5-row-valid">
+
+                        <div class="d-flex align-items-center mt-3">
+
+                            <label class="">
+                                <input class="deleteall" name="deleteall" type="checkbox" value="1" checked="">
+                                <span class="fw-semibold ps-2 fs-6">
+                                    Don't delete all previous configurations
+                                </span>
+                            </label>
+
+                        </div>
+
+                    </div>
+
+                    <div class="row" style="padding-left:30px;display:none;">
+                        <div class="col-lg-8 fv-row fv-plugins-icon-container fv-plugins-bootstrap5-row-valid">
+
+                            <div class="d-flex align-items-center mt-3">
+
+                                <label class="">
+                                    <input class="" name="[]" type="checkbox" value="2">
+                                    <span class="fw-semibold ps-2 fs-6">
+                                        Measures
+                                    </span>
+                                </label>
+
+                            </div>
+
+                        </div>
+
+                        <div class="col-lg-8 fv-row fv-plugins-icon-container fv-plugins-bootstrap5-row-valid">
+
+                            <div class="d-flex align-items-center mt-3">
+
+                                <label class="">
+                                    <input class="" name="[]" type="checkbox" value="3">
+                                    <span class="fw-semibold ps-2 fs-6">
+                                        Measure Scaling
+                                    </span>
+                                </label>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="col-lg-8 fv-row fv-plugins-icon-container fv-plugins-bootstrap5-row-valid">
+
+                            <div class="d-flex align-items-center mt-3">
+
+                                <label class="">
+                                    <input class="" name="[]" type="checkbox" value="4">
+                                    <span class="fw-semibold ps-2 fs-6">
+                                        Measure Parameters
+                                    </span>
+                                </label>
+
+                            </div>
+
+                        </div>
+
+                        <div class="col-lg-8 fv-row fv-plugins-icon-container fv-plugins-bootstrap5-row-valid">
+
+                            <div class="d-flex align-items-center mt-3">
+
+                                <label class="">
+                                    <input class="" name="[]" type="checkbox" value="5">
+                                    <span class="fw-semibold ps-2 fs-6">
+                                        Measure Weights
+                                    </span>
+                                </label>
+
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="box-footer">
+                    <button type="submit" class="btn btn-info pull-right">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+</div>
+
+
+
+

@@ -1,0 +1,742 @@
+@page
+@using System.Linq
+@model ProjectBuilder.Web.Pages.Scenarios.IndexModel
+@using Volo.Abp.Authorization.Permissions
+@using ProjectBuilder.Permissions
+@inject IPermissionChecker PermissionChecker
+@{
+    ViewData["Title"] = "Scenarios";
+    ViewData["PBVariant"] = "app";
+    ViewData["PBActivePage"] = "scenarios";
+    Layout = "~/Pages/Shared/PBDSSLayout.cshtml";
+
+    var canCreate = await PermissionChecker.IsGrantedAsync(ScenarioPermissions.Create);
+    var canEdit = await PermissionChecker.IsGrantedAsync(ScenarioPermissions.Edit);
+    var canDelete = await PermissionChecker.IsGrantedAsync(ScenarioPermissions.Delete);
+    var canRun = await PermissionChecker.IsGrantedAsync(ScenarioPermissions.Run);
+    var canTpl = await PermissionChecker.IsGrantedAsync(TreatmentPoolLibraryPermissions.Default);
+    var canProjects = await PermissionChecker.IsGrantedAsync(ScenarioPermissions.Analysis.Projects);
+    // Admins see all scenarios (same permission the app service uses to skip the
+    // own+shared visibility filter), so they get the extra "Other Scenarios" toggle.
+    var isAdmin = await PermissionChecker.IsGrantedAsync(AdministrationPermissions.Default);
+    // Scenarios are stamped with the creator's email (CreatedBy == user.Email),
+    // so the "My Scenarios" filter must compare against the email claim, not the
+    // display name, otherwise it matches nothing and hides the user's own rows.
+    var currentUserName = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+        ?? User.Identity?.Name ?? "";
+    var librariesCount = Model.ScenarioVm?.LibrariesCount ?? 0;
+
+    string FmtEst(DateTime dt)
+    {
+        if (dt == default) return "";
+        try
+        {
+            var z = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+            return TimeZoneInfo.ConvertTimeFromUtc(dt.ToUniversalTime(), z).ToString("MM/dd/yyyy h:mm:ss tt");
+        }
+        catch { return dt.ToString("MM/dd/yyyy h:mm:ss tt"); }
+    }
+    string FmtEstN(DateTime? dt) => dt.HasValue ? FmtEst(dt.Value) : "";
+
+    var rows = (Model.ScenarioVm?.Scenarios ?? Enumerable.Empty<ProjectBuilder.Models.Scenario.Dtos.ScenarioDto>())
+        .Select(item => new
+        {
+            id = item.Id,
+            name = item.ScenarioName,
+            status = item.Notes,
+            rerun = item.ReRun,
+            creatorName = item.CreatorName,
+            creatorEmail = item.CreatorEmail ?? item.CreatedBy,
+            dateCreated = FmtEst(item.CreatedAt),
+            lastRunBy = item.LastRunBy,
+            dateLastRun = FmtEstN(item.LastRunAt),
+            lastRunStarted = FmtEstN(item.LastStarted),
+            lastRunFinished = FmtEstN(item.LastFinished),
+            shared = item.IsShared,
+            library = item.CandidatePool,
+            libraryId = item.LibraryId,
+            pavement = item.PavementsCount,
+            bridge = item.BridgesCount,
+            locked = item.Locked.GetValueOrDefault()
+        })
+        .ToList();
+}
+
+@section Styles {
+    <link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet" />
+    <style>
+        body { overflow: hidden; }
+        main { display: flex; flex-direction: row; margin-top: 0; padding: 0; width: 100%; overflow: hidden; background-color: rgb(248,248,248); height: calc(100vh - 70px - 44px); }
+        .scenarios-sidebar { width: 60px; background: #c8d8e8; flex-shrink: 0; height: 100%; }
+        .scenarios-content { flex: 1; min-width: 0; padding: 20px 24px; overflow: hidden; height: 100%; display: flex; flex-direction: column; }
+        #table-scenarios { flex: 1; min-height: 0; }
+
+        /* Status column holds long messages — wrap instead of truncating. */
+        .tabulator .tabulator-cell.cell-wrap { white-space: normal; word-break: break-word; line-height: 1.4; }
+
+        #overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 9999; justify-content: center; align-items: center; }
+        .overlay-content { text-align: center; color: #fff; }
+        .spinner { border: 6px solid rgba(255,255,255,.3); border-top: 6px solid #fff; border-radius: 50%; width: 50px; height: 50px; animation: spin .8s linear infinite; margin: 0 auto 10px; }
+        @@keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Run status notification banner */
+        #runStatusBanner { display: none; align-items: center; gap: 10px; padding: 10px 16px; margin-bottom: 10px; border-radius: 4px; font-size: 14px; }
+        #runStatusBanner.run-status-running { background: #fff3cd; border: 1px solid #ffc107; color: #856404; }
+        #runStatusBanner.run-status-success { background: #d4edda; border: 1px solid #28a745; color: #155724; }
+        #runStatusBanner.run-status-error   { background: #f8d7da; border: 1px solid #dc3545; color: #721c24; }
+        .run-status-spinner { width: 16px; height: 16px; border: 3px solid rgba(0,0,0,.2); border-top-color: currentColor; border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
+        .run-status-close { background: none; border: none; cursor: pointer; font-size: 18px; line-height: 1; padding: 0 4px; margin-left: auto; color: inherit; }
+    </style>
+}
+
+<div class="scenarios-sidebar"></div>
+
+<div class="scenarios-content">
+
+    <div class="search-bar">
+        <label>Search in Scenarios</label>
+        <div class="search-input-wrap">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="searchInput" placeholder="" />
+        </div>
+        <button class="btn btn-primary btn-sm" id="btnSearch">Search</button>
+        <button class="btn-reset btn-sm" id="btnReset">Reset</button>
+        <label class="my-scenarios-check">
+            <input type="checkbox" id="myScenarios" checked /> My Scenarios
+        </label>
+        @if (isAdmin)
+        {
+        <label class="my-scenarios-check">
+            <input type="checkbox" id="otherScenarios" checked /> Other Scenarios
+        </label>
+        }
+        <div class="ms-auto-btns">
+            <button class="btn-guide" id="btnGuide"><span class="q">?</span> Guide</button>
+            @if (canCreate)
+            {
+            <button class="btn-new" id="createnewscenario">Create New Scenario</button>
+            }
+        </div>
+    </div>
+
+    <div id="runStatusBanner" role="alert">
+        <span class="run-status-spinner" id="runStatusSpinner"></span>
+        <span id="runStatusMessage"></span>
+        <button class="run-status-close" onclick="hideRunStatus()" title="Dismiss">&times;</button>
+    </div>
+
+    <div class="table-wrap">
+        <div id="table-scenarios"></div>
+    </div>
+
+</div>
+
+<!-- Run blocked: no treatments -->
+<div class="modal fade" id="runNoTreatments" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Run Scenario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span>No treatments are in this scenario.</span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Run Alert Modal -->
+<div class="modal fade" id="runAlert" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Already Run</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span>This scenario is associated with existing projects. Confirm if you wish to proceed with running it again.</span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="runbuttonAgain" class="btn btn-primary">Run</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deletealertScenario" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Scenario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span>Are you sure you want to delete the selected Scenario?</span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" id="confirmDeleteBtn" class="btn btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Candidate Pool Alert -->
+<div class="modal fade" id="createcandidatepoolalert" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Candidate Pool</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-info-circle-fill text-primary fa-2x me-3"></i>
+                <span>You don't have any candidate pool for now, do you want to create a new one?</span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <a asp-page="/CandidatePools/Index" class="btn btn-primary">Create</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scenario With Candidate Pool Modal -->
+<div class="modal fade" id="ScenrioWithCandidatePoolModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Scenario Alert</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Scenario deletion is not allowed as there is an associated candidate pool.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="overlay">
+    <div class="overlay-content">
+        <div class="spinner"></div>
+        <div class="overlay-text">Please wait...</div>
+    </div>
+</div>
+
+<!-- Tour Guide -->
+<div id="tour-overlay"></div>
+<div id="tour-spotlight"></div>
+<div id="tour-card">
+    <button id="tour-close" aria-label="Close guide"><i class="fa-solid fa-xmark"></i></button>
+    <div class="tour-badge" id="tour-badge">STEP 1 OF 5</div>
+    <h3 id="tour-title"></h3>
+    <p id="tour-text"></p>
+    <div class="tour-actions">
+        <button id="tour-skip">Skip</button>
+        <button id="tour-prev" style="display:none">Previous</button>
+        <button id="tour-next">Next</button>
+    </div>
+</div>
+
+<form id="antiforgery-form" method="post" style="display:none;">
+    @Html.AntiForgeryToken()
+</form>
+
+@section Scripts {
+    <script src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
+    <script src="~/js/pbdss/table.js"></script>
+    <script>
+        var tableData      = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(rows));
+        var librariesCount = @librariesCount;
+        var currentUser    = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(currentUserName));
+        var isAdmin        = @(isAdmin ? "true" : "false");
+
+        function showOverlay() { document.getElementById('overlay').style.display = 'flex'; }
+        function hideOverlay() { document.getElementById('overlay').style.display = 'none'; }
+        function go(url) { showOverlay(); setTimeout(function () { window.location.href = url; }, 600); }
+        function antiToken() { return $('input[name="__RequestVerificationToken"]').first().val(); }
+
+        // Legacy semantics: shared scenarios created by another user can be viewed in the
+        // list but not opened/managed — only the owner (or an admin) may Run, open Settings,
+        // Delete, Import, or Export them. Analysis and Treatment Pool Library stay enabled for
+        // everyone (matches pbweb's Scenarios.cshtml, which never put those two in the
+        // "scenario-owner-action" restricted set).
+        function isMine(row) {
+            return (row.creatorEmail || '').toLowerCase() === (currentUser || '').toLowerCase();
+        }
+        function canManage(row) { return isAdmin || isMine(row); }
+
+        function runFormatter(cell) {
+            var d = cell.getRow().getData();
+            if (!canManage(d)) {
+                return '<button class="btn-run" disabled title="Shared scenarios from other users cannot be opened here."><i class="fa-solid fa-gear"></i></button>';
+            }
+            return '<button class="btn-run" title="Open"><i class="fa-solid fa-gear"></i></button>';
+        }
+        function statusFormatter(cell) {
+            var d = cell.getRow().getData();
+            var txt = d.status || '';
+            return d.rerun ? '<b>' + txt + '</b>' : txt;
+        }
+        function sharedFormatter(cell) { return cell.getValue() ? 'Yes' : 'No'; }
+
+        var currentRunScenId = null;
+        var currentDeleteScenId = null;
+
+        function showNoTreatmentsModal() {
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('runNoTreatments')).show();
+        }
+
+        function openRun(d) {
+            if (d.locked) { alert('This scenario is locked and cannot be run.'); return; }
+            $.get('?handler=HasTreatments', { scenarioId: d.id })
+                .done(function (res) {
+                    if (!res || !res.hasTreatments) {
+                        showNoTreatmentsModal();
+                        return;
+                    }
+                    currentRunScenId = d.id;
+                    // Only warn about re-running over existing projects once the scenario has
+                    // actually been run before — a brand-new scenario has no projects yet.
+                    if (d.dateLastRun) {
+                        bootstrap.Modal.getOrCreateInstance(document.getElementById('runAlert')).show();
+                    } else {
+                        runScenario(currentRunScenId);
+                    }
+                })
+                .fail(function () {
+                    showRunStatus('error', 'Unable to check treatments for this scenario.');
+                });
+        }
+
+        function runScenario(scenId) {
+            $.ajax({
+                type: 'POST', url: '?handler=RunScenario',
+                data: { scenarioId: scenId },
+                headers: { 'RequestVerificationToken': antiToken() },
+                success: function (res) {
+                    var scenName = (tableData.find(function (r) { return r.id === scenId; }) || {}).name || '';
+                    sessionStorage.setItem('pendingJobId', res.jobId);
+                    sessionStorage.setItem('pendingJobName', scenName);
+                    showRunStatus('running', (scenName ? '“' + scenName + '”' : 'Scenario') + ' run queued and running in the background…');
+                    pollJobStatus(res.jobId, scenName);
+                },
+                error: function (xhr) {
+                    if (xhr.responseJSON && xhr.responseJSON.noTreatments) {
+                        showNoTreatmentsModal();
+                        return;
+                    }
+                    var msg = (xhr.responseJSON && xhr.responseJSON.error) || xhr.responseText || 'Unable to run scenario.';
+                    showRunStatus('error', msg);
+                }
+            });
+        }
+
+        function openDelete(d) {
+            currentDeleteScenId = d.id;
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('deletealertScenario')).show();
+        }
+
+        var actions = [
+            @if (canRun) { <text>{ label: 'Run', icon: 'fa-solid fa-play', disabled: function (d) { return !canManage(d); }, onClick: function (d) { openRun(d); } },</text> }
+            @if (canEdit) { <text>{ label: 'Settings', icon: 'fa-solid fa-gear', disabled: function (d) { return !canManage(d); }, onClick: function (d) { go('/EditScenario/ScenarioSettings?scenid=' + d.id); } },</text> }
+            @if (canTpl) { <text>{ label: 'Import', icon: 'fa-solid fa-file-import', disabled: function (d) { return !canManage(d); }, onClick: function (d) { go('/TreatmentPoolLibraries?libId=' + encodeURIComponent(d.libraryId || '') + '&search=' + encodeURIComponent(d.library || '') + '&importId=' + (d.libraryId || '')); } },</text> }
+            @if (canProjects) { <text>{ label: 'Export', icon: 'fa-solid fa-file-export', disabled: function (d) { return !canManage(d); }, onClick: function (d) { go('/Projects?scenid=' + d.id + '&fromscenario=true&export=true'); } },</text> }
+            @if (canProjects) { <text>{ label: 'Outputs', icon: 'fa-solid fa-chart-bar', onClick: function (d) { go('/Projects?scenid=' + d.id + '&fromscenario=true'); } },</text> }
+            @if (canTpl) { <text>{ label: 'Treatment Pool Library', icon: 'fa-solid fa-layer-group', onClick: function (d) {
+                var url = '/TreatmentPoolLibraries';
+                if (d.libraryId)      { url += '?libId=' + encodeURIComponent(d.libraryId) + (d.library ? '&search=' + encodeURIComponent(d.library) : ''); }
+                else if (d.library)   { url += '?search=' + encodeURIComponent(d.library); }
+                go(url);
+            } },</text> }
+            @if (canDelete) { <text>{ label: 'Delete', icon: 'fa-solid fa-trash', type: 'delete', disabled: function (d) { return !canManage(d); }, onClick: function (d) { openDelete(d); } }</text> }
+        ];
+
+        // ── Search / visibility filters (client-side) ──
+        // Legacy semantics: regular users get one "My Scenarios" toggle (checked by
+        // default → own only; unchecked → own + shared, which is all the server sends
+        // them). Admins get "My Scenarios" + "Other Scenarios" (both checked by
+        // default → everything; each toggle controls its half of the data).
+        function visibilityFilter(v, mine, others) {
+            return function (row) {
+                if (v) {
+                    var haystack = [row.name, row.status, row.creatorName, row.creatorEmail]
+                        .map(function (s) { return (s || '').toLowerCase(); })
+                        .join(' ');
+                    if (haystack.indexOf(v) === -1) return false;
+                }
+                if (isAdmin) return (mine && isMine(row)) || (others && !isMine(row));
+                return mine ? isMine(row) : true;
+            };
+        }
+        function currentFilterArgs() {
+            var otherEl = document.getElementById('otherScenarios');
+            return {
+                v: document.getElementById('searchInput').value.trim().toLowerCase(),
+                mine: document.getElementById('myScenarios').checked,
+                others: otherEl ? otherEl.checked : false
+            };
+        }
+
+        // Restore filters saved before navigating away (or before an edit/delete/run-triggered
+        // reload) so the initial visibility filter — baked in below to avoid a construction-time
+        // race, see the comment on table.js's initialFilter — reflects them from the very first
+        // paint instead of a post-build setFilter flicker.
+        (function restoreFilterState() {
+            var saved = PBTableState.load(location.pathname + location.search);
+            var filters = saved && saved.filters;
+            if (!filters) return;
+            document.getElementById('searchInput').value = filters.v || '';
+            document.getElementById('myScenarios').checked = !!filters.mine;
+            var otherEl = document.getElementById('otherScenarios');
+            if (otherEl) otherEl.checked = !!filters.others;
+        })();
+
+        var table = createTable('#table-scenarios', {
+            data: tableData,
+            maxHeightEl: '.table-wrap',
+            actions: actions,
+            initialFilter: (function () {
+                var a = currentFilterArgs();
+                return visibilityFilter(a.v, a.mine, a.others);
+            })(),
+            columns: [
+                { title: '',                       field: 'id',             width: 46,    hozAlign: 'center', headerSort: false, formatter: runFormatter, tooltip: false, cssClass: 'cell-no-overflow' },
+                { title: 'Scenario Name',          field: 'name',           minWidth: 155, headerSort: false },
+                { title: 'Status',                 field: 'status',         minWidth: 195, maxWidth: 340, headerSort: false, formatter: statusFormatter, variableHeight: true, cssClass: 'cell-wrap' },
+                { title: 'Name',                   field: 'creatorName',    minWidth: 140, headerSort: false },
+                { title: 'Email',                  field: 'creatorEmail',   minWidth: 180, headerSort: false },
+                { title: 'Shared',                 field: 'shared',         minWidth: 100, headerSort: false, formatter: sharedFormatter },
+                { title: 'Date Created',           field: 'dateCreated',    minWidth: 165, headerSort: false },
+                { title: 'Last Run By',            field: 'lastRunBy',      minWidth: 140, headerSort: false },
+                { title: 'Date Last Run',          field: 'dateLastRun',    minWidth: 165, headerSort: false },
+                { title: 'Last Run Started',       field: 'lastRunStarted', minWidth: 175, headerSort: false },
+                { title: 'Last Run Finished',      field: 'lastRunFinished',minWidth: 180, headerSort: false },
+                { title: 'Treatment Pool Library', field: 'library',        minWidth: 215, headerSort: false },
+                { title: 'Pavement Count',         field: 'pavement',       width: 145,    hozAlign: 'right', headerSort: false },
+                { title: 'Bridge Count',           field: 'bridge',         width: 145,    hozAlign: 'right', headerSort: false }
+            ]
+        });
+
+        // Run-column "open scenario" click → open the Edit Scenario page
+        table.on('cellClick', function (e, cell) {
+            if (cell.getColumn().getField() === 'id' && e.target.closest('.btn-run')) {
+                go('/EditScenario/ScenarioSettings?scenid=' + cell.getRow().getData().id);
+            }
+        });
+
+        function applySearch() {
+            var a = currentFilterArgs();
+            table.setFilter(visibilityFilter(a.v, a.mine, a.others));
+            table.pbSaveFilters(a);
+        }
+        document.getElementById('btnSearch').addEventListener('click', applySearch);
+        document.getElementById('searchInput').addEventListener('keypress', function (e) { if (e.key === 'Enter') applySearch(); });
+        document.getElementById('myScenarios').addEventListener('change', applySearch);
+        var otherScenariosEl = document.getElementById('otherScenarios');
+        if (otherScenariosEl) otherScenariosEl.addEventListener('change', applySearch);
+        document.getElementById('btnReset').addEventListener('click', function () {
+            document.getElementById('searchInput').value = '';
+            applySearch();
+        });
+        // The default "My Scenarios" filter is baked in via initialFilter above, so no
+        // post-build applySearch() call is needed here (see the note in table.js about
+        // why a post-construction setFilter can lose this exact race).
+
+        // ── Create New Scenario (guard on pool count) ──
+        // The button only renders for users with the Create permission — without the
+        // null guard this line throws and kills every handler below it (incl. the tour).
+        var createScenarioBtn = document.getElementById('createnewscenario');
+        if (createScenarioBtn) createScenarioBtn.addEventListener('click', function () {
+            if (librariesCount <= 0) {
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('createcandidatepoolalert')).show();
+            } else {
+                go('/Scenarios/CreateScenario');
+            }
+        });
+
+        // ── Run status banner helpers ──
+        var _pollTimer = null;
+
+        function showRunStatus(state, message) {
+            var banner = document.getElementById('runStatusBanner');
+            var spinner = document.getElementById('runStatusSpinner');
+            banner.className = 'run-status-banner run-status-' + state;
+            document.getElementById('runStatusMessage').textContent = message;
+            spinner.style.display = (state === 'running') ? 'block' : 'none';
+            banner.style.display = 'flex';
+        }
+
+        function hideRunStatus() {
+            if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+            document.getElementById('runStatusBanner').style.display = 'none';
+        }
+
+        function pollJobStatus(jobId, scenName) {
+            if (_pollTimer) clearInterval(_pollTimer);
+            var label = scenName ? '"' + scenName + '"' : 'Scenario';
+            function checkStatus() {
+                $.get('?handler=JobStatus', { jobId: jobId }, function (res) {
+                    if (res.status === 'Succeeded') {
+                        clearInterval(_pollTimer); _pollTimer = null;
+                        sessionStorage.removeItem('pendingJobId');
+                        sessionStorage.removeItem('pendingJobName');
+                        sessionStorage.setItem('scenRunSuccess', label + ' run completed successfully.');
+                        location.reload();
+                    } else if (res.status === 'Failed') {
+                        clearInterval(_pollTimer); _pollTimer = null;
+                        sessionStorage.removeItem('pendingJobId');
+                        sessionStorage.removeItem('pendingJobName');
+                        showRunStatus('error', label + ' run failed: ' + (res.message || 'Unknown error'));
+                    }
+                    // Enqueued / Processing — keep polling
+                });
+            }
+            // Check immediately so a job that already finished offscreen doesn't wait a full interval to clear.
+            checkStatus();
+            _pollTimer = setInterval(checkStatus, 3000);
+        }
+
+        // On every page load: resume polling for a job that was running before a manual refresh,
+        // or show a success banner that was stored just before the last auto-reload.
+        (function () {
+            var successMsg = sessionStorage.getItem('scenRunSuccess');
+            if (successMsg) {
+                sessionStorage.removeItem('scenRunSuccess');
+                showRunStatus('success', successMsg);
+                return;
+            }
+            var pendingJobId = sessionStorage.getItem('pendingJobId');
+            if (pendingJobId) {
+                var pendingName = sessionStorage.getItem('pendingJobName') || '';
+                var label = pendingName ? '"' + pendingName + '"' : 'Scenario';
+                showRunStatus('running', label + ' run is still in progress…');
+                pollJobStatus(pendingJobId, pendingName);
+            }
+        })();
+
+        // ── Run / Delete confirm handlers ──
+        $('#runbuttonAgain').on('click', function () {
+            bootstrap.Modal.getInstance(document.getElementById('runAlert')).hide();
+            if (!currentRunScenId) return;
+            runScenario(currentRunScenId);
+        });
+
+        $('#confirmDeleteBtn').on('click', function () {
+            if (!currentDeleteScenId) return;
+            $.ajax({
+                type: 'POST', url: '?handler=DeleteScenario',
+                data: { scenarioId: currentDeleteScenId },
+                headers: { 'RequestVerificationToken': antiToken() },
+                success: function () { location.reload(); },
+                error: function (xhr) { alert(xhr.responseText || 'Unable to delete scenario.'); }
+            });
+        });
+
+        // ── Tour Guide ──
+        var tourCurStep = 0;
+        var tourActiveSteps = [];
+        var tourHighlightedAction = null;
+
+        var tourAllSteps = [
+            {
+                requiresData: false,
+                title: 'Treatment Pool Libraries',
+                text: 'Create Treatment Pool Libraries first to import the BAMS/PAMS data and have the necessary data to run scenarios. Click here to manage your Treatment Pool Libraries.',
+                getTarget: function () { return document.querySelector('.navbar_navigation-link.notactive'); }
+            },
+            {
+                requiresData: false,
+                title: 'Create New Scenario',
+                text: 'Click here to create a new scenario.',
+                getTarget: function () { return document.getElementById('createnewscenario'); }
+            },
+            {
+                requiresData: true,
+                title: 'Open A Scenario',
+                text: 'Use this icon to open a scenario when it is available. Shared scenarios can also show this icon in a disabled state.',
+                getTarget: function () {
+                    // getRows() returns rows in raw data order regardless of the active
+                    // My/Other Scenarios filter — rows[0] there can be a filtered-out row
+                    // that isn't rendered, whose rect is all zeros. 'active' respects the filter.
+                    var rows = table.getRows('active');
+                    return rows.length ? rows[0].getElement().querySelector('.btn-run') : null;
+                }
+            },
+            {
+                requiresData: true,
+                openActions: true,
+                title: 'Run Scenario',
+                text: 'Use Run to start processing the selected scenario.',
+                getTarget: function () {
+                    var rows = table.getRows('active');
+                    if (!rows.length) return null;
+                    var panel = rows[0].getElement().querySelector('.row-expand-panel');
+                    return panel ? panel.querySelectorAll('.action-item')[0] : null;
+                }
+            },
+            {
+                requiresData: true,
+                openActions: true,
+                title: 'Output',
+                text: 'Use Output to review the scenario results and related outputs.',
+                getTarget: function () {
+                    var rows = table.getRows('active');
+                    if (!rows.length) return null;
+                    var panel = rows[0].getElement().querySelector('.row-expand-panel');
+                    return panel ? panel.querySelectorAll('.action-item')[4] : null;
+                }
+            }
+        ];
+
+        function tourClosePanel() {
+            table.getRows().forEach(function (r) {
+                var p = r.getElement().querySelector('.row-expand-panel');
+                if (p) p.style.display = 'none';
+                var b = r.getElement().querySelector('.btn-actions-toggle');
+                if (b) { b.classList.remove('open'); var ic = b.querySelector('i'); if (ic) { ic.className = 'fa-solid fa-chevron-down'; ic.style.fontSize = '10px'; } }
+                r.normalizeHeight();
+            });
+        }
+
+        function tourOpenPanel() {
+            var rows = table.getRows('active'); if (!rows.length) return;
+            var row = rows[0];
+            var panel = row.getElement().querySelector('.row-expand-panel');
+            if (panel) panel.style.display = 'block';
+            var btn = row.getElement().querySelector('.btn-actions-toggle');
+            if (btn) { btn.classList.add('open'); var ic = btn.querySelector('i'); if (ic) { ic.className = 'fa-solid fa-chevron-up'; ic.style.fontSize = '10px'; } }
+            row.normalizeHeight();
+        }
+
+        function tourSetSpotlight(target) {
+            var sp = document.getElementById('tour-spotlight');
+            if (!target) {
+                sp.style.left = '0'; sp.style.top = '0'; sp.style.width = '0'; sp.style.height = '0';
+                sp.style.border = 'none'; sp.style.borderRadius = '0'; sp.style.display = 'block';
+            } else {
+                var r = target.getBoundingClientRect(), pad = 8;
+                sp.style.left = (r.left - pad) + 'px';
+                sp.style.top = (r.top - pad) + 'px';
+                sp.style.width = (r.width + pad * 2) + 'px';
+                sp.style.height = (r.height + pad * 2) + 'px';
+                sp.style.border = '3px solid rgba(255,255,255,.85)';
+                sp.style.borderRadius = '6px';
+                sp.style.display = 'block';
+            }
+        }
+
+        function tourPositionCard(target) {
+            var card = document.getElementById('tour-card');
+            var cardW = card.offsetWidth || 380;
+            var cardH = card.offsetHeight || 220;
+            var vw = window.innerWidth;
+            var vh = window.innerHeight;
+            var gap = 14;
+            card.style.bottom = '';
+            card.style.transform = 'none';
+            if (!target) {
+                card.style.left = '50%'; card.style.top = '50%';
+                card.style.transform = 'translate(-50%,-50%)'; return;
+            }
+            var rect = target.getBoundingClientRect();
+            var idealLeft = rect.left + rect.width / 2 - cardW / 2;
+            card.style.left = Math.max(10, Math.min(idealLeft, vw - cardW - 10)) + 'px';
+            var spaceBelow = vh - rect.bottom - 44 - gap;
+            var spaceAbove = rect.top - 70 - gap;
+            if (spaceBelow >= cardH) {
+                card.style.top = (rect.bottom + gap) + 'px';
+            } else if (spaceAbove >= cardH) {
+                card.style.top = (rect.top - cardH - gap) + 'px';
+            } else {
+                card.style.left = '50%'; card.style.top = '50%';
+                card.style.transform = 'translate(-50%,-50%)';
+            }
+        }
+
+        function tourShowStep(idx) {
+            if (tourHighlightedAction) { tourHighlightedAction.classList.remove('tour-action-highlight'); tourHighlightedAction = null; }
+            tourClosePanel();
+            var step = tourActiveSteps[idx], total = tourActiveSteps.length;
+            document.getElementById('tour-badge').textContent = 'STEP ' + (idx + 1) + ' OF ' + total;
+            document.getElementById('tour-title').textContent = step.title;
+            document.getElementById('tour-text').textContent = step.text;
+            document.getElementById('tour-next').textContent = idx === total - 1 ? 'Finish' : 'Next';
+            document.getElementById('tour-prev').style.display = idx === 0 ? 'none' : '';
+            if (step.openActions) tourOpenPanel();
+            var target = step.getTarget ? step.getTarget() : null;
+            if (step.openActions && target) { target.classList.add('tour-action-highlight'); tourHighlightedAction = target; }
+            tourSetSpotlight(target);
+            tourPositionCard(target);
+        }
+
+        function tourStart() {
+            var hasData = table.getDataCount('active') > 0;
+            tourActiveSteps = tourAllSteps.filter(function (s) { return !s.requiresData || hasData; });
+            if (!tourActiveSteps.length) return;
+            tourCurStep = 0;
+            document.getElementById('tour-overlay').style.display = 'block';
+            document.getElementById('tour-card').style.display = 'block';
+            tourShowStep(0);
+        }
+
+        function tourEnd() {
+            if (tourHighlightedAction) { tourHighlightedAction.classList.remove('tour-action-highlight'); tourHighlightedAction = null; }
+            tourClosePanel();
+            document.getElementById('tour-overlay').style.display = 'none';
+            document.getElementById('tour-card').style.display = 'none';
+            document.getElementById('tour-spotlight').style.display = 'none';
+        }
+
+        document.getElementById('btnGuide').addEventListener('click', tourStart);
+
+        var tourKey = 'scenarios-page:v1';
+        function tourMarkSeen() {
+            fetch('?handler=MarkTourSeen&tourKey=' + encodeURIComponent(tourKey), {
+                method: 'POST',
+                headers: { 'RequestVerificationToken': antiToken() }
+            }).catch(function () { });
+        }
+        var tourAutoStarted = false;
+        var tourShouldAutoStart = false;
+        function tourAutoStart() {
+            if (tourAutoStarted || !tourShouldAutoStart) return;
+            tourAutoStarted = true;
+            tourMarkSeen();
+            tourStart();
+        }
+
+        table.on('tableBuilt', function () { setTimeout(tourAutoStart, 300); });
+        setTimeout(tourAutoStart, 1500);
+        fetch('?handler=TourSeen&tourKey=' + encodeURIComponent(tourKey))
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                tourShouldAutoStart = !(data && data.seen);
+                tourAutoStart();
+            })
+            .catch(function () { });
+        document.getElementById('tour-next').addEventListener('click', function () {
+            if (tourCurStep >= tourActiveSteps.length - 1) { tourEnd(); return; }
+            tourCurStep++; tourShowStep(tourCurStep);
+        });
+        document.getElementById('tour-prev').addEventListener('click', function () {
+            if (tourCurStep <= 0) return;
+            tourCurStep--; tourShowStep(tourCurStep);
+        });
+        document.getElementById('tour-skip').addEventListener('click', tourEnd);
+        document.getElementById('tour-close').addEventListener('click', tourEnd);
+        document.getElementById('tour-overlay').addEventListener('click', tourEnd);
+    </script>
+}

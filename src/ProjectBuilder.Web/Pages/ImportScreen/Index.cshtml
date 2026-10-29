@@ -1,0 +1,121 @@
+@page
+@model ProjectBuilder.Web.Pages.ImportScreen.IndexModel
+@{
+    Layout = "Shared/AdminLayout";
+    ViewData["SubMenu"] = "ImportScreen";
+    ViewData["Title"] = "Import Screen";
+}
+
+<div class="container-fluid mt-4" style="margin-left:5%">
+    <h1 class="mt-4 mb-5">Import Screen</h1>
+
+    <h4>Click Button to Import Your Desired Data</h4>
+
+    <div id="bridgePavmentsStatusBanner" class="job-status-banner" role="alert">
+        <span class="run-status-spinner"></span>
+        <span class="job-status-message"></span>
+        <button type="button" class="run-status-close" title="Dismiss">&times;</button>
+    </div>
+    <div id="assetSegStatusBanner" class="job-status-banner" role="alert">
+        <span class="run-status-spinner"></span>
+        <span class="job-status-message"></span>
+        <button type="button" class="run-status-close" title="Dismiss">&times;</button>
+    </div>
+
+    <button type="button" class="btn btn-primary mt-4" data-bs-toggle="modal" data-bs-target="#importcandiates">
+        Import B2P CrossWalks
+    </button>
+
+    <div class="modal fade" id="importcandiates" tabindex="-1" role="dialog" aria-labelledby="importtreatmentlabel"
+         aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editlibraryheader">Import Bridge Pavments</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="bridgePavmentsImportForm" class="needs-validation" method="post" enctype="multipart/form-data" novalidate asp-page-handler="ImportBridgePavments">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="formFile" class="form-label">Excel File</label>
+                            <input class="form-control" type="file" id="bridgePavmentsExcelFile" name="excelfile" required
+                                   accept=".xlsx,.xls">
+                            <div class="invalid-feedback">Field is required</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tab Name</label>
+                            <input class="form-control" type="text" name="tabname" placeholder="Bridge">
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Import</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <button type="button" class="btn btn-primary mt-4" data-bs-toggle="modal" data-bs-target="#openAssetSegmentationModal">
+        Import MAS
+    </button>
+
+    <div class="modal fade" id="openAssetSegmentationModal" tabindex="-1" role="dialog" aria-labelledby="openAssetSegmentationLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="openAssetSegmentationLabel">Import Asset Segmentation</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="assetSegImportForm" class="needs-validation" method="post" enctype="multipart/form-data" novalidate asp-page-handler="ImportAssetSegmentation">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="formFile" class="form-label">Excel File</label>
+                            <input class="form-control" type="file" id="assetSegExcelFile" name="excelfile" required
+                                   accept=".xlsx,.xls">
+                            <div class="invalid-feedback">Field is required</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="formFile" class="form-label">Tab Name</label>
+                            <input class="form-control" type="text" name="tabname" required>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Import</button>
+                        </div>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script src="~/js/import-job.js"></script>
+    <script>
+        initBackgroundImportForm({
+            formId: 'bridgePavmentsImportForm',
+            bannerId: 'bridgePavmentsStatusBanner',
+            storageKey: 'importScreenB2PJobId',
+            runningMessage: 'Bridge Pavments import running in the background…',
+            successMessage: 'Bridge Pavments data imported successfully.',
+            beforeSubmit: function () {
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('importcandiates')).hide();
+            }
+        });
+        initBackgroundImportForm({
+            formId: 'assetSegImportForm',
+            bannerId: 'assetSegStatusBanner',
+            storageKey: 'importScreenMasJobId',
+            runningMessage: 'Asset Segmentation import running in the background…',
+            successMessage: 'Asset Segmentation data imported successfully.',
+            beforeSubmit: function () {
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('openAssetSegmentationModal')).hide();
+            }
+        });
+    </script>
+}

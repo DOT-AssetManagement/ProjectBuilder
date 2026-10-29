@@ -1,0 +1,107 @@
+﻿@inject Volo.Abp.UI.Navigation.MenuManager NavigationManager
+@{
+    var mainMenu = await NavigationManager.GetMainMenuAsync();
+    var mainMenuItems = mainMenu.Items;
+}
+
+@section scripts {
+    <abp-script src="/Pages/Index.js" />
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        .sidebar {
+            height: 100vh; 
+            position: sticky;
+            top: 0;
+            background-color: #f8f9fa; 
+            border-right: 1px solid #e9ecef; 
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <img src="images/logo/leptonx/pennsylvania-logo.png" alt="Logo" class="img-fluid" style="width:10%;">
+                <img src="images/logo/DSSLogo.png" alt="Logo" class="img-fluid" style="width:60%">
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Link 1</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Link 2</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Link 3</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <nav id="sidebar" class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
+                <div class="position-sticky">
+                    <ul class="nav flex-column">
+                        @foreach (var menuItem in mainMenuItems)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" href="@menuItem.Url">@menuItem.DisplayName</a>
+                                @if (menuItem.Items != null && menuItem.Items.Any())
+                                {
+                                    <ul class="nav flex-column sub-menu">
+                                        @foreach (var subMenuItem in menuItem.Items)
+                                        {
+                                            <li class="nav-item">
+                                                <a class="nav-link" href="@subMenuItem.Url">@subMenuItem.DisplayName</a>
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </nav>
+
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                @RenderBody()
+            </main>
+        </div>
+
+        
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        var sidebar = document.getElementById('sidebar');
+        var navbarToggler = document.querySelector('.navbar-toggler');
+
+        navbarToggler.addEventListener('click', function () {
+            sidebar.classList.toggle('show');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+
+
+
+
+.group:after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* Document styling */
+
+
+
+
+button {
+    background: none repeat scroll 0 0 #3C3F45;
+    color: #fff;
+    cursor: pointer;
+    display: inline-block;
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 30px;
+    padding: 5px 40px;
+    text-align: center;
+    transition: background 0.1s linear 0s, color 0.1s linear 0s;
+    vertical-align: middle;
+    width: auto;
+    border: 0;
+}
+
+button:hover {
+    background: none repeat scroll 0 0 #DE5E60;
+    color: #FFFFFF;
+}
+
+
+

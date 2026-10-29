@@ -1,0 +1,346 @@
+﻿@inject Volo.Abp.UI.Navigation.MenuManager NavigationManager
+@using Microsoft.AspNetCore.Authorization
+@using ProjectBuilder.Permissions
+@using Volo.Abp.Authorization.Permissions
+@inject IPermissionChecker PermissionChecker
+@using Volo.Abp.Identity.Web.Pages.Identity.Users
+@using Volo.Abp.Users
+@inject IAuthorizationService AuthorizationService
+@inject ICurrentUser CurrentUser
+
+
+@{    
+    var mainMenu = await NavigationManager.GetMainMenuAsync();
+    var mainMenuItems = mainMenu.Items;
+
+    var mainMenuItemName = ViewData["Menu"];
+    var mainMenuItemSubMenu = ViewData["SubMenu"];
+    var mainMenuItemSubSubMenu = ViewData["SubSubMenu"];
+
+    object poolIdObj = ViewData["poolId"];
+    string poolId = string.Empty;
+    string currentUrl = Context.Request.Path;
+
+    if (poolIdObj != null && !string.IsNullOrEmpty(poolIdObj.ToString()))
+    {
+        poolId = poolIdObj.ToString();
+    }
+
+    var mainMenuItem = mainMenu.Items.FirstOrDefault(item => item.Name == mainMenuItemName);
+}
+
+@{
+    var Dashboard = await PermissionChecker.IsGrantedAsync(DSSPermissions.TopBarPermissions.Dashboard);
+    var CandidatePools = await PermissionChecker.IsGrantedAsync(SupplementalCandidatesPermissions.PoolsPageActions.Default);
+    var OutPuts = await PermissionChecker.IsGrantedAsync(DSSPermissions.TopBarPermissions.Outputs);
+    var ProjectsAndGoalsFlowDiagram = await PermissionChecker.IsGrantedAsync(ChartsPermissions.Charts.ProjectsAndGoalsFlowDiagram);
+    var ProjectEfficiencyAndCost = await PermissionChecker.IsGrantedAsync(ChartsPermissions.Charts.ProjectEfficiencyAndCost);
+    var ProjectsAndGoalsPercentageContribution = await PermissionChecker.IsGrantedAsync(ChartsPermissions.Charts.ProjectsAndGoalsPercentageContribution);
+    var ProjectsAndGoalsActualContribution = await PermissionChecker.IsGrantedAsync(ChartsPermissions.Charts.ProjectsAndGoalsActualContribution);
+    var ProjectToScoreArcMapping = await PermissionChecker.IsGrantedAsync(ChartsPermissions.Charts.ProjectToScoreArcMapping);
+    var BarCharts = await PermissionChecker.IsGrantedAsync(ChartsPermissions.Charts.BarCharts);
+    var Projects = await PermissionChecker.IsGrantedAsync(ReportsPermissions.Reports.Projects);
+    var WorkCandidateSummary = await PermissionChecker.IsGrantedAsync(ReportsPermissions.Reports.WorkCandidateSummary);
+    var WorkCandidateDetail = await PermissionChecker.IsGrantedAsync(ReportsPermissions.Reports.WorkCandidateDetail);
+}
+
+
+
+@section scripts {
+    <abp-script src="/Pages/Index.js" />
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSS</title>
+    <link href="~/css/styles.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet">
+    <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
+
+    <script src="~/js/jquery-3.7.1.min.js"></script>
+    @RenderSection("styles", required: false)
+
+</head>
+<body>
+
+    <nav class="sb-topnav navbar navbar-expand navbar-dark bg-white">
+
+        <a class="navbar-brand" href="https://test.pbweb.info/Scenarios" target="_blank">
+            <img src="~/images/logo/leptonx/pennsylvania-logo.png" alt="Logo" class="img-fluid" />
+        </a>
+        <a class="navbar-brand" href="/Pools/Index">
+            <img src="~/images/logo/DSS-LOGO.jpg" alt="Logo" class="img-fluid" />
+        </a>
+
+
+        <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0 d-block d-sm-none" id="sidebarToggle" href="#!"><i class="fas fa-bars"></i></button>
+
+        
+            <ul class="navbar-nav mx-auto d-none d-sm-block" style="margin-left: 75px !important;">
+            <li class="nav-item @(Dashboard ? "" : "d-none")">
+                <a class="nav-link" href="https://test.pbweb.info/Scenarios" target="_blank">Dashboard</a>
+            </li> 
+
+            <!--
+            <li class="nav-item @(mainMenuItemName == "DSSMenus.Scenarios" ? "active" : "")">
+                <a class="nav-link" href="/Scenarios">Scenarios</a>
+            </li>
+            -->
+      
+            <li class="nav-item @(mainMenuItemName == "DSSMenus.Pools" ? "active" : "") @(CandidatePools ? "" : "d-none")">
+                <a class="nav-link" href="/Pools">Candidate Pools</a>
+            </li>
+
+
+            <li class="nav-item @(mainMenuItemName == "DSSMenus.Outputs" ? "active": "")@(OutPuts ? "" : "d-none")">
+                <a class="nav-link" href="/Outputs/Maps">Outputs</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/About">About</a>
+            </li>
+           
+        </ul>
+       
+
+
+        <ul class="navbar-nav justify-content-end">
+            <li class="nav-item dropdown">
+                @await Component.InvokeAsync("TenantInfo")
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                    <li><a class="dropdown-item" href="/Account/Logout">Logout</a></li>
+                </ul>
+            </li>
+        </ul>
+    </nav>
+    <div id="layoutSidenav">
+        <div id="layoutSidenav_nav">
+            <nav class="sb-sidenav accordion sb-sidenav-dark" id="sidenavAccordion">
+                <div class="sb-sidenav-menu">
+                    <div class="nav">
+
+
+                        @if (await PermissionChecker.IsGrantedAsync(AdministrationPermissions.Default)){
+
+                            @foreach (var menuItem in mainMenuItems)
+                            {
+                                if (menuItem != null && menuItem.Items != null && menuItem.Items.Any())
+                                {
+                                    <li class="nav-item">
+                                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#submenu-@menuItem.ElementId" aria-expanded="false" aria-controls="submenu-@menuItem.ElementId">
+                                            <div class="sb-nav-link-icon"></div>
+                                            @menuItem.DisplayName
+                                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                                        </a>
+                                        <div class="collapse" id="submenu-@menuItem.ElementId">
+                                            <nav class="sb-sidenav-menu-nested nav">
+                                                @foreach (var subMenuItem in menuItem.Items)
+                                                {
+                                        <li>
+                                                        @if (subMenuItem.Items != null && subMenuItem.Items.Any())
+                                                        {
+                                                <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#submenu-@subMenuItem.ElementId" aria-expanded="false" aria-controls="submenu-@subMenuItem.ElementId">
+                                                    <div class="sb-nav-link-icon"></div>
+                                                                @subMenuItem.DisplayName
+                                                    <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                                                </a>
+                                                <div class="collapse" id="submenu-@subMenuItem.ElementId">
+                                                    <nav class="sb-sidenav-menu-nested nav">
+                                                                    @foreach (var subsbuMenues in subMenuItem.Items)
+                                                                    {
+                                                            <a class="nav-link" href="@Url.Content(subsbuMenues.Url)">@subsbuMenues.DisplayName</a>
+                                                                    }
+
+                                                    </nav>
+                                                </div>
+                                                        }
+                                                        else
+                                                        {
+                                                <a class="nav-link" href="@Url.Content(subMenuItem.Url)">@subMenuItem.DisplayName</a>
+                                                        }
+                                        </li>
+                                                }
+                        </nav>
+                    </div>
+                    </li>
+                                }
+                                else
+                                {
+                    <li class="nav-item">
+                        <a class="nav-link" href="@menuItem.Url">
+                            <div class="sb-nav-link-icon"></div>
+                                            @menuItem.DisplayName
+                        </a>
+                    </li>
+                                }
+                            }
+
+
+
+
+                        }
+
+                        @if (mainMenuItemSubMenu == "Maps" || mainMenuItemSubMenu == "Charts" || mainMenuItemSubMenu == "Reports")
+                        {
+                            String poolIdUrl = "";
+                            if (poolId != "")
+                            {
+                                poolIdUrl = "?poolId=" + poolId;
+                            }
+            <li class="nav-item mt-3">
+                <a class="nav-link collapsed @(mainMenuItemSubMenu == "Maps" ? "active": "")" href="/Outputs/Maps@(poolIdUrl)">
+                    <div class="sb-nav-link-icon"></div>
+                    Maps
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @(mainMenuItemSubMenu == "Charts" ? "active" : "collapsed")" href="#" data-bs-toggle="collapse" data-bs-target="#submenu-charts" aria-expanded="@(mainMenuItemSubMenu == "Charts" ? "true" : "false")" aria-controls="submenu-charts">
+                    <div class="sb-nav-link-icon"></div>
+                    Charts
+                    <span class="fas fa-caret-down ms-auto"></span>
+                </a>
+                <div class="collapse @(mainMenuItemSubMenu == "Charts" ? "show" : "")" id="submenu-charts">
+                    <nav class="sb-sidenav-menu-nested nav">
+                        <a class="nav-link @(mainMenuItemSubSubMenu == "ProjectsAndGoalsFlowDiagram" ? "active": "") @(ProjectsAndGoalsFlowDiagram ? "" : "d-none")" href="/Outputs/Charts/ProjectsAndGoalsFlowDiagram@(poolIdUrl)">Projects And Goals Flow Diagram</a>
+                        <a class="nav-link @(mainMenuItemSubSubMenu == "ProjectEfficiencyAndCost" ? "active": "")@(ProjectEfficiencyAndCost ? "" : "d-none")" href="/Outputs/Charts/ProjectEfficiencyAndCost@(poolIdUrl)">Project Efficiency and Cost</a>
+                        <a class="nav-link @(mainMenuItemSubSubMenu == "ProjectsAndGoalsPercentageContribution" ? "active": "")@(ProjectsAndGoalsPercentageContribution ? "" : "d-none")" href="/Outputs/Charts/ProjectsAndGoalsPercentageContribution@(poolIdUrl)">Projects and Goals Percentage Contribution</a>
+                        <a class="nav-link @(mainMenuItemSubSubMenu == "ProjectsAndGoalsActualContribution" ? "active": "")@(ProjectsAndGoalsActualContribution ? "" : "d-none")" href="/Outputs/Charts/ProjectsAndGoalsActualContribution@(poolIdUrl)">Projects &amp; Goals Actual Contribution to Total Score</a>
+                        <a class="nav-link @(mainMenuItemSubSubMenu == "ProjectToScoreArcMapping" ? "active": "")@(ProjectToScoreArcMapping ? "" : "d-none")" href="/Outputs/Charts/ProjectToScoreArcMapping@(poolIdUrl)">Project to Score Arc Mapping</a>
+                        <a class="nav-link @(mainMenuItemSubSubMenu == "BarCharts" ? "active": "")@(BarCharts ? "" : "d-none")" href="/Outputs/Charts/BarCharts@(poolIdUrl)">Bar Charts</a>
+                    </nav>
+                </div>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @(mainMenuItemSubMenu == "Reports" ? "active" : "collapsed")" href="#" data-bs-toggle="collapse" data-bs-target="#submenu-reports" aria-expanded="@(mainMenuItemSubMenu == "Reports" ? "true" : "false")" aria-controls="submenu-reports">
+                    <div class="sb-nav-link-icon"></div>
+                    Reports
+                    <span class="fas fa-caret-down ms-auto"></span>
+                </a>
+                <div class="collapse @(mainMenuItemSubMenu == "Reports" ? "show" : "")" id="submenu-reports">
+                    <nav class="sb-sidenav-menu-nested nav">
+                        <a class="nav-link @(mainMenuItemSubSubMenu == "Projects" ? "active": "")@(Projects?"":"d-none")" href="/Outputs/Reports/Projects@(poolIdUrl)">Projects</a>
+
+                        <a class="nav-link @(mainMenuItemSubSubMenu == "WorkCandidateSummary" ? "active": "")@(WorkCandidateSummary?"":"d-none")" href="/Outputs/Reports/WorkCandidateSummary@(poolIdUrl)">Work Candidate Summary</a>
+                        <a class="nav-link @(mainMenuItemSubSubMenu == "WorkCandidateDetail" ? "active": "")@(WorkCandidateDetail?"":"d-none")" href="/Outputs/Reports/WorkCandidateDetail@(poolIdUrl)">Work Candidate Detail</a>
+                    </nav>
+                </div>
+            </li>
+                        }
+                        else
+
+                        {
+            <style>
+                #layoutSidenav #layoutSidenav_nav {
+                    flex-basis: 50px !important;
+                }
+            </style>
+                        }
+
+
+    </div>
+    </div>
+    <div class="sb-sidenav-footer d-none">
+        <div class="small">Logged in as:</div>
+        Start Bootstrap
+    </div>
+    </nav>
+    </div>
+    <div id="layoutSidenav_content">
+        <main>
+                @RenderBody()
+
+        </main>
+        <footer class="py-4 bg-light mt-auto" style="background: #669999  !important;">
+            <div class="container-fluid px-4">
+                <div class="">
+                    <div class="text-muted align-items-center justify-content-between" style="color:#fff !important;    text-align: center;">
+                        PennDOT Decision Space (C) 2024 v1.0 ALL RIGHTS RESERVED
+                    </div>
+
+                </div>
+            </div>
+        </footer>
+    </div>
+    </div>
+
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/scripts.js"></script>
+
+    <style>
+        .sb-sidenav-menu .nav-item .nav-link.active {
+            font-weight: 800 !important;
+            color: white !important;
+        }
+
+        
+        .navbar-nav .nav-link {
+            color: black !important;
+        }
+
+            .navbar-nav .nav-link.active {
+                color: black !important;
+            }
+    </style>
+
+
+
+    <script>
+        setInterval(function () {
+            $(".tempDiv").remove();
+        }, 10000);
+
+        
+        $(document).on("click", ".nav-link:not(.collapsed)", function () {
+        $(".nav-link").removeClass("active");
+        $(this).addClass("active");
+        });
+        $(document).ready(function () {
+            var currentPath = window.location.pathname.replace(/\/$/, "");
+
+            $('.nav-link').each(function () {
+                var menuItemUrl = $(this).attr('href');
+
+                var isCollapsed = $(this).hasClass('collapsed');
+                if (isCollapsed) {
+                    var submenuId = $(this).data('bs-target');
+                    var $submenu = $(submenuId);
+
+                    $submenu.find('.nav-link').each(function () {
+                        var subMenuItemUrl = $(this).attr('href');
+                        if (currentPath === subMenuItemUrl) {
+                            $(this).addClass('active');
+                            $(submenuId).addClass('show');
+                            $(this).closest('.nav-item').find('.nav-link').first().addClass('active');
+                        }
+                    });
+                } else {
+                    if (currentPath === menuItemUrl) {
+                        $(this).addClass('active');
+                        $(this).closest('.collapse').addClass('show');
+                    }
+                }
+            });
+        });
+    </script>
+
+    <script>
+        // Guaranteed sidebar collapse — works even if Bootstrap JS doesn't initialize
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(function (trigger) {
+                trigger.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    var targetId = trigger.getAttribute('data-bs-target');
+                    var target = document.querySelector(targetId);
+                    if (!target) return;
+                    var isOpen = target.classList.contains('show');
+                    target.classList.toggle('show', !isOpen);
+                    trigger.classList.toggle('collapsed', isOpen);
+                    trigger.setAttribute('aria-expanded', String(!isOpen));
+                });
+            });
+        });
+    </script>
+</body>
+</html>

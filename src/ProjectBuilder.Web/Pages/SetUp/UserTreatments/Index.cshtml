@@ -1,0 +1,74 @@
+@page
+@using System.Linq
+@model ProjectBuilder.Web.Pages.SetUp.UserTreatments.IndexModel
+@{
+    ViewData["Title"] = "User Treatments";
+    Layout = "Shared/AdminLayout";
+    ViewData["SubMenu"] = "UserTreatments";
+
+    var rows = Model.UserTreatments.Select(t => new {
+        id                  = t.Id,
+        userTreatmentName   = t.UserTreatmentName
+    }).ToList();
+}
+
+@section Styles {
+    <link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet" />
+}
+
+<div class="editscen-content__header"><h1>User Treatments</h1></div>
+
+<div class="search-bar">
+    <label>Search in User Treatments</label>
+    <div class="search-input-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="searchInput" placeholder="" />
+    </div>
+    <button class="btn btn-primary btn-sm" id="btnSearch">Search</button>
+    <button class="btn-reset btn-sm" id="btnReset">Reset</button>
+</div>
+
+<div class="table-wrap">
+    <div id="admin-table"></div>
+</div>
+
+
+@section Scripts {
+    <script src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
+    <script src="~/js/pbdss/table.js"></script>
+    <script>
+        var tableData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(rows));
+
+        var table = createTable('#admin-table', {
+            data: tableData,
+            maxHeightEl: '.table-wrap',
+            columns: [
+                { title: 'ID',             field: 'id',                width: 100, hozAlign: 'right', headerSort: false },
+                { title: 'Treatment Name', field: 'userTreatmentName', minWidth: 280, headerSort: false }
+            ]
+        });
+
+        function applySearchFilter() {
+            var v = document.getElementById('searchInput').value.trim().toLowerCase();
+            table.clearFilter();
+            if (v) table.setFilter(function (d) { return Object.values(d).some(function (x) { return String(x).toLowerCase().includes(v); }); });
+            table.pbSaveFilters({ search: v });
+        }
+        document.getElementById('btnSearch').addEventListener('click', applySearchFilter);
+        document.getElementById('searchInput').addEventListener('keypress', function (e) { if (e.key === 'Enter') document.getElementById('btnSearch').click(); });
+        document.getElementById('btnReset').addEventListener('click', function () {
+            document.getElementById('searchInput').value = '';
+            table.clearFilter();
+            table.pbSaveFilters({ search: '' });
+        });
+
+        // Restore a filter saved before navigating away.
+        (function restoreSearchFilter() {
+            var saved = table.pbSavedFilters;
+            if (saved && saved.search) {
+                document.getElementById('searchInput').value = saved.search;
+                applySearchFilter();
+            }
+        })();
+    </script>
+}

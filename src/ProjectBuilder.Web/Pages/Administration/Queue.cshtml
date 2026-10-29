@@ -1,0 +1,316 @@
+@page
+@model ProjectBuilder.Web.Pages.Administration.QueueModel
+@{
+    ViewData["Title"] = "Queue";
+    Layout = "Shared/AdminLayout";
+    ViewData["SubMenu"] = "Queue";
+}
+
+@section Styles {
+    <style>
+        .queue-table thead th {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: rgb(28, 48, 92);
+            border-bottom: 2px solid #d8dee8;
+            white-space: nowrap;
+        }
+        .queue-table tbody td {
+            vertical-align: middle;
+            font-size: 13px;
+        }
+        .queue-empty {
+            padding: 48px 16px;
+            text-align: center;
+            color: #6c757d;
+        }
+        .queue-table td.queue-action {
+            white-space: nowrap;
+        }
+        .queue-error {
+            max-width: 360px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: inline-block;
+            vertical-align: middle;
+        }
+    </style>
+}
+
+@{
+    var statusSubtitles = new Dictionary<string, string>
+    {
+        ["Processing"] = "Background jobs currently processing (scenario runs, imports, library copies).",
+        ["Succeeded"] = "Jobs that completed successfully, most recent first.",
+        ["Failed"] = "Jobs that failed, most recent first.",
+        ["Deleted"] = "Jobs that were cancelled or deleted, most recent first."
+    };
+}
+
+<div class="mt-2 px-2">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <div>
+            <h2 class="mb-1">Queue</h2>
+            <p class="text-muted mb-0">@statusSubtitles[Model.Status]</p>
+        </div>
+        <a href="/Administration/Queue?status=@Model.Status" class="btn btn-outline-primary btn-sm">
+            <i class="fa-solid fa-rotate me-1"></i> Refresh
+        </a>
+    </div>
+
+    <ul class="nav nav-tabs mb-2">
+        @foreach (var tab in new[] { "Processing", "Succeeded", "Failed", "Deleted" })
+        {
+            <li class="nav-item">
+                <a class="nav-link @(Model.Status == tab ? "active" : "")" href="/Administration/Queue?status=@tab">@tab</a>
+            </li>
+        }
+    </ul>
+
+    @if (!string.IsNullOrWhiteSpace(Model.CancelError))
+    {
+        <div class="alert alert-warning d-flex align-items-center" role="alert">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i>
+            <div>@Model.CancelError</div>
+        </div>
+    }
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            @if (!Model.Rows.Any())
+            {
+                <div class="queue-empty">
+                    <i class="fa-solid fa-circle-check fa-lg mb-2"></i>
+                    <div>
+                        @(Model.Status switch
+                        {
+                            "Succeeded" => "No succeeded jobs found.",
+                            "Failed" => "No failed jobs found.",
+                            "Deleted" => "No deleted jobs found.",
+                            _ => "Nothing is currently processing."
+                        })
+                    </div>
+                </div>
+            }
+            else if (Model.Status == "Processing")
+            {
+                <div class="table-responsive">
+                    <table class="table queue-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Queue Position</th>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Queued By</th>
+                                <th>Queued Time</th>
+                                <th>Start Time</th>
+                                <th>Current Run Time</th>
+                                <th>Previous Run Time</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in Model.Rows)
+                            {
+                                <tr>
+                                    <td>@row.Position</td>
+                                    <td>@row.Name</td>
+                                    <td>@row.Description</td>
+                                    <td>@row.QueuedBy</td>
+                                    <td>@(row.QueuedTime?.ToLocalTime().ToString("M/d/yyyy HH:mm:ss") ?? "—")</td>
+                                    <td>@(row.StartTime?.ToLocalTime().ToString("M/d/yyyy HH:mm:ss") ?? "—")</td>
+                                    <td>
+                                        <span class="queue-run-time" data-started-utc="@row.StartTime?.ToString("o")">
+                                            @(row.CurrentRunTime.HasValue ? FormatDuration(row.CurrentRunTime.Value) : "—")
+                                        </span>
+                                    </td>
+                                    <td>@(row.PreviousRunTime.HasValue ? FormatDuration(row.PreviousRunTime.Value) : "—")</td>
+                                    <td class="queue-action">
+                                        <form method="post" asp-page-handler="Cancel" class="d-inline m-0"
+                                              onsubmit="return confirm('Cancel this job? This marks it deleted in Hangfire; it will not forcibly stop work already in progress.');">
+                                            <input type="hidden" name="jobId" value="@row.JobId" />
+                                            <input type="hidden" name="status" value="@Model.Status" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="fa-solid fa-xmark me-1"></i> Cancel
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else if (Model.Status == "Succeeded")
+            {
+                <div class="table-responsive">
+                    <table class="table queue-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Queued By</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                                <th>Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in Model.Rows)
+                            {
+                                <tr>
+                                    <td>@row.Position</td>
+                                    <td>@row.Name</td>
+                                    <td>@row.Description</td>
+                                    <td>@row.QueuedBy</td>
+                                    <td>@(row.StartTime?.ToLocalTime().ToString("M/d/yyyy HH:mm:ss") ?? "—")</td>
+                                    <td>@(row.EndTime?.ToLocalTime().ToString("M/d/yyyy HH:mm:ss") ?? "—")</td>
+                                    <td>@(row.RunDuration.HasValue ? FormatDuration(row.RunDuration.Value) : "—")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else if (Model.Status == "Failed")
+            {
+                <div class="table-responsive">
+                    <table class="table queue-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Queued By</th>
+                                <th>Failed At</th>
+                                <th>Error</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in Model.Rows)
+                            {
+                                <tr>
+                                    <td>@row.Position</td>
+                                    <td>@row.Name</td>
+                                    <td>@row.Description</td>
+                                    <td>@row.QueuedBy</td>
+                                    <td>@(row.EndTime?.ToLocalTime().ToString("M/d/yyyy HH:mm:ss") ?? "—")</td>
+                                    <td><span class="queue-error" title="@row.ErrorMessage">@(row.ErrorMessage ?? "—")</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table queue-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Queued By</th>
+                                <th>Deleted At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in Model.Rows)
+                            {
+                                <tr>
+                                    <td>@row.Position</td>
+                                    <td>@row.Name</td>
+                                    <td>@row.Description</td>
+                                    <td>@row.QueuedBy</td>
+                                    <td>@(row.EndTime?.ToLocalTime().ToString("M/d/yyyy HH:mm:ss") ?? "—")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (Model.Status != "Processing" && Model.TotalPages > 1)
+    {
+        var pageWindowStart = Math.Max(1, Model.Page - 2);
+        var pageWindowEnd = Math.Min(Model.TotalPages, Model.Page + 2);
+        <nav class="d-flex justify-content-between align-items-center mt-2 px-1" aria-label="Queue pagination">
+            <div class="text-muted small">Page @Model.Page of @Model.TotalPages</div>
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item @(Model.Page == 1 ? "disabled" : "")">
+                    <a class="page-link" href="/Administration/Queue?status=@Model.Status&page=@(Model.Page - 1)">Previous</a>
+                </li>
+                @if (pageWindowStart > 1)
+                {
+                    <li class="page-item"><a class="page-link" href="/Administration/Queue?status=@Model.Status&page=1">1</a></li>
+                    if (pageWindowStart > 2)
+                    {
+                        <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+                    }
+                }
+                @for (var p = pageWindowStart; p <= pageWindowEnd; p++)
+                {
+                    <li class="page-item @(p == Model.Page ? "active" : "")">
+                        <a class="page-link" href="/Administration/Queue?status=@Model.Status&page=@p">@p</a>
+                    </li>
+                }
+                @if (pageWindowEnd < Model.TotalPages)
+                {
+                    if (pageWindowEnd < Model.TotalPages - 1)
+                    {
+                        <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+                    }
+                    <li class="page-item"><a class="page-link" href="/Administration/Queue?status=@Model.Status&page=@Model.TotalPages">@Model.TotalPages</a></li>
+                }
+                <li class="page-item @(Model.Page == Model.TotalPages ? "disabled" : "")">
+                    <a class="page-link" href="/Administration/Queue?status=@Model.Status&page=@(Model.Page + 1)">Next</a>
+                </li>
+            </ul>
+        </nav>
+    }
+</div>
+
+@functions {
+    private static string FormatDuration(TimeSpan span)
+    {
+        if (span < TimeSpan.Zero)
+        {
+            span = TimeSpan.Zero;
+        }
+
+        return span.ToString(span.TotalDays >= 1 ? @"d\.hh\:mm\:ss" : @"hh\:mm\:ss");
+    }
+}
+
+@section Scripts {
+    <script>
+        (function () {
+            function pad(n) { return n < 10 ? '0' + n : '' + n; }
+            function format(ms) {
+                if (ms < 0) ms = 0;
+                var totalSeconds = Math.floor(ms / 1000);
+                var hours = Math.floor(totalSeconds / 3600);
+                var minutes = Math.floor((totalSeconds % 3600) / 60);
+                var seconds = totalSeconds % 60;
+                return pad(hours) + ':' + pad(minutes) + ':' + pad(seconds);
+            }
+            function tick() {
+                document.querySelectorAll('.queue-run-time[data-started-utc]').forEach(function (el) {
+                    var started = el.getAttribute('data-started-utc');
+                    if (!started) return;
+                    var startedMs = new Date(started).getTime();
+                    if (isNaN(startedMs)) return;
+                    el.textContent = format(Date.now() - startedMs);
+                });
+            }
+            tick();
+            setInterval(tick, 1000);
+        })();
+    </script>
+}

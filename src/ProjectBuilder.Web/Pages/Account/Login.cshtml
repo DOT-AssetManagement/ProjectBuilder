@@ -1,0 +1,68 @@
+@page
+@using Microsoft.AspNetCore.Mvc.Localization
+@using ProjectBuilder.Localization
+@model ProjectBuilder.Web.Pages.Account.CustomLoginModel
+@inject IHtmlLocalizer<ProjectBuilderResource> L
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@{
+    Layout = "~/Pages/Shared/PBDSSLayout.cshtml";
+    ViewData["Title"] = "Welcome";
+    ViewData["PBVariant"] = "public";
+    var securityType = Configuration["SecurityType"];
+    var isEsec = string.Equals(securityType, "ESEC", System.StringComparison.OrdinalIgnoreCase);
+}
+
+@section Styles {
+    <style>
+        body { overflow: hidden; }
+        main { margin-top: 0; padding: 0; }
+
+        .bg-lite {
+            background-image: url('@Url.Content("~/images/pbdss/background.jpg")');
+            background-repeat: no-repeat; background-size: cover;
+            min-height: calc(100vh - 70px - 44px);
+            position: relative; display: flex; align-items: center; justify-content: center;
+        }
+        .overlay-bg {
+            position: absolute; inset: 0;
+            background-color: rgba(0,0,0,.25);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .welcome-content { position: relative; z-index: 2; text-align: center; color: #fff; }
+        .welcome-content h1 { font-size: 3rem; font-weight: 800; margin-bottom: 12px; }
+        .welcome-content p { font-size: 1.1rem; opacity: .9; }
+    </style>
+}
+
+@section navRight {
+    <div class="navbar_userinfo-container">
+        @if (isEsec)
+        {
+            <a id="EsecLogin" class="btn-signin-nav" href="/ESECAccount/SignIn?login=true" title="Sign in">Sign in</a>
+        }
+        else
+        {
+            <form asp-page="./Login" asp-page-handler="ExternalLogin"
+                  asp-route-returnUrl="@Model.ReturnUrl" asp-route-returnUrlHash="@Model.ReturnUrlHash" method="post">
+                <input type="hidden" asp-for="ReturnUrl" />
+                <input type="hidden" asp-for="ReturnUrlHash" />
+                @foreach (var provider in Model.VisibleExternalProviders)
+                {
+                    <button type="submit" class="btn-signin-nav" name="provider"
+                            value="@provider.AuthenticationScheme" title="Sign in">
+                        @(provider.AuthenticationScheme == "AzureAd" ? "Sign in" : "Sign in")
+                    </button>
+                }
+            </form>
+        }
+    </div>
+}
+
+<div class="bg-lite">
+    <div class="overlay-bg">
+        <div class="welcome-content">
+            <h1>@L["Welcome"]</h1>
+            <p>Please login into your account to view your Libraries.</p>
+        </div>
+    </div>
+</div>

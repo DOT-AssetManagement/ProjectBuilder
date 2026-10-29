@@ -1,0 +1,81 @@
+@page
+@model ProjectBuilder.Web.Pages.SetUp.BridgeToPavements.IndexModel
+@{
+    ViewData["Title"] = "Bridge to Pavements";
+    Layout = "Shared/AdminLayout";
+    ViewData["SubMenu"] = "BridgeToPavements";
+}
+
+@section Styles {
+    <link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet" />
+}
+
+<div class="editscen-content__header"><h1>Bridge to Pavements</h1></div>
+
+<div class="search-bar">
+    <label>Search in Bridge to Pavements</label>
+    <div class="search-input-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="searchInput" placeholder="" />
+    </div>
+    <button class="btn btn-primary btn-sm" id="btnSearch">Search</button>
+    <button class="btn-reset btn-sm" id="btnReset">Reset</button>
+</div>
+
+<div class="table-wrap">
+    <div id="admin-table"></div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
+    <script src="~/js/pbdss/table.js"></script>
+    <script>
+        // This table has 30k+ rows, so — unlike the other SetUp pages — it is not
+        // safe to render everything up front. Tabulator fetches one page at a time
+        // from OnGetTable (Index.cshtml.cs), which pages/filters/sorts at the database
+        // instead of shipping the whole table to the browser on every visit.
+        var currentSearch = '';
+
+        var table = createTable('#admin-table', {
+            remote: true,
+            ajaxURL: '?handler=Table',
+            ajaxParams: function () {
+                var sorters = (this.getSorters && this.getSorters()) || [];
+                return {
+                    search: currentSearch,
+                    sortField: sorters.length ? sorters[0].field : '',
+                    sortDir: sorters.length ? sorters[0].dir : ''
+                };
+            },
+            maxHeightEl: '.table-wrap',
+            paginationSize: 25,
+            layout: 'fitColumns',
+            columns: [
+                { title: 'ID',         field: 'id',        width: 80,  hozAlign: 'right' },
+                { title: 'Bridge ID',  field: 'bridgeId',  minWidth: 140 },
+                { title: 'District',   field: 'district',  minWidth: 100 },
+                { title: 'County',     field: 'county',    minWidth: 100 },
+                { title: 'Route',      field: 'route',     minWidth: 100, formatter: function (cell) {
+                    var v = cell.getValue();
+                    return (v === null || v === undefined || v === '') ? '' : String(v).padStart(4, '0');
+                }},
+                { title: 'Segment',    field: 'segment',   minWidth: 100 },
+                { title: 'Offset',     field: 'offset',    minWidth: 100 },
+                { title: 'Created By', field: 'createdBy', minWidth: 160 },
+                { title: 'Created At', field: 'createdAt', minWidth: 160 }
+            ]
+        });
+
+        function runSearch() {
+            currentSearch = document.getElementById('searchInput').value.trim();
+            table.setPage(1);
+        }
+        document.getElementById('btnSearch').addEventListener('click', runSearch);
+        document.getElementById('searchInput').addEventListener('keypress', function (e) { if (e.key === 'Enter') runSearch(); });
+        document.getElementById('btnReset').addEventListener('click', function () {
+            document.getElementById('searchInput').value = '';
+            currentSearch = '';
+            table.setPage(1);
+        });
+    </script>
+}

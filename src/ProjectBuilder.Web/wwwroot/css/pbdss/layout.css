@@ -1,0 +1,167 @@
+/* ── Reset ── */
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Montserrat,sans-serif;min-height:100vh;display:flex;flex-direction:column;padding-bottom:44px;position:relative}
+a{text-decoration:none}
+li{list-style:none}
+
+/* ── Navbar ── */
+#main-navbar{background:#fff;box-shadow:rgba(14,30,37,.12) 0 2px 4px,rgba(14,30,37,.32) 0 2px 16px;z-index:1000}
+.navbar_maincontainer{display:flex;align-items:center;width:100%;padding:5px;justify-content:flex-start}
+.logos-container{display:flex;justify-content:flex-start;height:70px;margin:0;align-items:center}
+.logos-container img{margin:2px 10px}
+.logos-container .verticalline{height:70px;margin:0 10px}
+.navbar-projectbuilder-link{display:inline-flex;align-items:center;cursor:pointer}
+.navbar-projectbuilder-link:hover{opacity:.85}
+.verticalline{border-left:2px solid rgba(0,0,0,.3)}
+
+/* Nav links */
+.navbar_navigation-container{display:flex;align-items:center;flex-direction:row;height:70px;margin-left:60px;flex:1}
+.navbar_navigation-links{display:flex;align-items:center;flex-direction:row;padding:0;margin:0;height:100%;gap:0}
+.navbar_navigation-link{height:100%;text-decoration:none;position:relative;margin-right:25px;letter-spacing:.5px;font-weight:600;color:#333!important;display:flex;align-items:center}
+.navbar_navigation-link_item{display:flex;align-items:center;justify-content:center;height:100%;flex-direction:row;opacity:1}
+.navbar_navigation-link_item span{font-size:14px}
+.navbar_navigation-link_item .plus-sign{font-size:18px;line-height:1}
+.navbar_navigation-link.active{border-bottom:3px solid rgb(25,53,98);color:#333!important}
+.navbar_navigation-link.active span{font-weight:800}
+.navbar_navigation-link.notactive{border-bottom:0}
+.navbar_navigation-link.notactive:hover{border-bottom:3px solid rgb(25,53,98)}
+
+/* User info */
+.navbar_userinfo-container{display:flex;align-items:center;min-width:150px;margin-right:5px;margin-left:auto}
+.navbar_userinfo-container i{margin:0 8px;font-size:20px;color:#333}
+.navbar_userinfo-container p{margin-right:15px;margin-top:0;font-size:15px;font-weight:800;margin-bottom:0;color:#333}
+.navbar_userinfo-container .navbar-username{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.navbar_userinfo-container .verticalline{border-left:2px solid rgba(0,0,0,.3);height:20px;margin:0 10px}
+.circle{display:flex;justify-content:center;align-items:center;padding:5px;background-color:rgb(39,61,105);width:35px;height:35px;margin-left:5px;border-radius:50%;color:#fff;font-size:16px;font-weight:800}
+.circle:hover{background-color:rgb(101,120,150)!important}
+.circle i{color:#fff;margin:0}
+
+/* Sign-in button (public variant) */
+.btn-signin-nav{background:#1c305c;color:#fff;border:1.5px solid #1c305c;border-radius:6px;padding:7px 20px;font-size:.9rem;font-weight:700;font-family:Montserrat,sans-serif;cursor:pointer}
+.btn-signin-nav:hover{background:#f0f4fb;color:#1c305c}
+
+/* ── Buttons ── */
+.btn-primary,.btn-danger,.btn-success{background:rgb(28,48,92)!important;border:1px solid rgb(28,48,92)!important;font-family:Montserrat,sans-serif;font-size:13px;font-weight:700;padding:7px 18px}
+.btn-primary:hover,.btn-danger:hover,.btn-success:hover{opacity:1;background-color:rgb(94,113,145)!important}
+.btn-reset{background:rgb(25,100,180)!important;border:1px solid rgb(25,100,180)!important;color:#fff;font-family:Montserrat,sans-serif;font-size:13px;font-weight:700;padding:7px 18px;border-radius:6px;cursor:pointer}
+.btn-reset:hover{background:rgb(20,80,150)!important}
+.btn-new{background:rgb(28,48,92)!important;border:1px solid rgb(28,48,92)!important;color:#fff!important;font-family:Montserrat,sans-serif;font-size:13px;font-weight:700;padding:7px 18px;border-radius:6px;cursor:pointer;text-decoration:none;display:inline-block}
+.btn-new:hover{background:rgb(94,113,145)!important;color:#fff!important}
+.btn-guide{background:#fff;border:1px solid #ced4da;color:rgb(28,48,92);border-radius:6px;padding:7px 14px;font-size:13px;font-weight:700;font-family:Montserrat,sans-serif;display:flex;align-items:center;gap:6px;cursor:pointer}
+.btn-guide .q{width:18px;height:18px;background:rgb(28,48,92);color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+
+/* ── Search bar ── */
+.search-bar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.search-bar label{font-size:13px;font-weight:700;color:rgb(28,48,92);white-space:nowrap;margin:0}
+.search-input-wrap{display:flex;align-items:center;border:1px solid #ced4da;border-radius:6px;background:#fff;overflow:hidden;max-width:280px}
+.search-input-wrap i{padding:0 10px;color:#adb5bd;font-size:13px}
+.search-input-wrap input{border:none;outline:none;padding:8px 10px 8px 0;font-size:13px;font-family:Montserrat,sans-serif;width:220px}
+.my-scenarios-check{display:flex;align-items:center;gap:6px;font-size:13px;color:rgb(28,48,92);cursor:pointer;margin-left:4px;user-select:none}
+.my-scenarios-check input{width:15px;height:15px;accent-color:rgb(28,48,92);cursor:pointer}
+.ms-auto-btns{margin-left:auto;display:flex;gap:8px;align-items:center}
+
+/* ── Table wrap ── */
+.table-wrap{background:#fff;border-radius:8px;box-shadow:0 1px 6px rgba(0,0,0,.08);overflow:hidden;flex:1;min-height:0;display:flex;flex-direction:column}
+
+/* ── Tabulator overrides ── */
+.tabulator{border:none;font-family:Montserrat,sans-serif}
+.tabulator .tabulator-header{background:rgb(0,86,179)!important;border-bottom:none}
+.tabulator .tabulator-header .tabulator-col{background:rgb(0,86,179)!important;color:#fff;font-size:14px;font-weight:700;border-right:1px solid rgba(255,255,255,.2)}
+.tabulator .tabulator-header .tabulator-col .tabulator-header-popup-button{color:rgba(255,255,255,.8);font-size:15px;padding:0 4px;position:absolute;top:0;bottom:0;right:4px;display:flex;align-items:center}
+.tabulator .tabulator-header .tabulator-col .tabulator-header-popup-button:hover{color:#fff}
+.tabulator .tabulator-header .tabulator-col .tabulator-col-title{padding-right:18px}
+.tabulator-popup-container{font-family:Montserrat,sans-serif;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.18);border:1px solid #e0e7ef;padding:4px 0;min-width:200px}
+.tabulator-menu .tabulator-menu-item{font-size:14px;padding:8px 16px;color:rgb(28,48,92);display:flex;align-items:center;gap:10px;cursor:pointer}
+.tabulator-menu .tabulator-menu-item:hover{background:#f0f4fb}
+.tabulator-menu .tabulator-menu-item.tabulator-menu-item-submenu::after{content:'\f054';font-family:'Font Awesome 6 Free';font-weight:900;font-size:11px;margin-left:auto;color:#adb5bd}
+.tabulator-menu .tabulator-menu-item-separator{border-top:1px solid #e9ecef;margin:4px 0}
+.col-menu-check{display:flex;align-items:center;gap:8px;width:100%}
+.col-menu-check input[type=checkbox]{width:15px;height:15px;accent-color:rgb(28,48,92);cursor:pointer;flex-shrink:0}
+.tabulator .tabulator-header .tabulator-col .tabulator-col-content{padding:11px 10px;position:relative}
+.tabulator .tabulator-header .tabulator-col .tabulator-col-sorter .tabulator-arrow{border-top-color:rgba(255,255,255,.6);border-bottom-color:rgba(255,255,255,.6)}
+.tabulator .tabulator-tableholder{background:#fff}
+.tabulator .tabulator-row .tabulator-frozen.tabulator-frozen-right{border-left:2px solid #e0e7ef;background:#fff}
+.tabulator .tabulator-header .tabulator-frozen.tabulator-frozen-right{border-left:2px solid rgba(255,255,255,.3)}
+.tabulator .tabulator-row{border-bottom:1px solid #f0f2f5}
+.tabulator .tabulator-row .tabulator-cell{font-size:14px;padding:11px 10px;color:#343a40;border-right:none}
+.tabulator .tabulator-row .tabulator-cell.cell-no-overflow{overflow:visible}
+.tabulator .tabulator-row:hover .tabulator-cell{background:#f0f4fb!important}
+.tabulator .tabulator-footer{border-top:1px solid #e9ecef;background:#fff;padding:8px 14px;font-family:Montserrat,sans-serif;font-size:13px;color:#6c757d}
+.tabulator .tabulator-footer .tabulator-page{font-family:Montserrat,sans-serif;font-size:13px;border:1px solid #dee2e6;border-radius:4px;margin:0 2px;padding:4px 8px;color:rgb(28,48,92)}
+.tabulator .tabulator-footer .tabulator-page.active{background:rgb(28,48,92);color:#fff;border-color:rgb(28,48,92)}
+.tabulator .tabulator-footer .tabulator-page-size{font-family:Montserrat,sans-serif;font-size:13px;border:1px solid #dee2e6;border-radius:4px;padding:4px 6px;color:rgb(28,48,92)}
+
+/* ── Row / cell helpers ── */
+.btn-run{width:28px;height:28px;border-radius:50%;background:#fff;color:rgb(35,62,126);border:1px solid rgb(35,62,126);display:inline-flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;padding:0}
+.btn-run:hover{background:#e8edf7}
+.btn-run:disabled{background:#fff;color:#c3cad6;border-color:#c3cad6;cursor:not-allowed}
+.btn-run:disabled:hover{background:#fff}
+.badge-status{display:inline-block;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:700}
+.s-success{background:#d1fae5;color:#065f46}
+.s-modified{background:#fef3c7;color:#92400e}
+.s-error{background:#fee2e2;color:#991b1b}
+.shared-y{color:rgb(28,48,92);font-weight:700}
+.shared-n{color:#6c757d}
+
+/* ── Actions expand panel ── */
+.btn-actions-toggle{background:rgb(35,62,126);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;font-family:Montserrat,sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn-actions-toggle:hover{background:rgb(25,48,100)}
+.btn-actions-toggle.open{background:rgb(25,48,100)}
+.row-expand-panel{display:none;padding:12px 20px;background:#f4f7fc;border-top:2px solid rgb(0,86,179);position:sticky;left:0}
+.action-bar{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
+.action-item{display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid #d0d7e3;border-radius:6px;padding:7px 16px;font-size:13px;font-weight:600;font-family:Montserrat,sans-serif;color:rgb(28,48,92);cursor:pointer;transition:background .15s}
+.action-item:hover{background:#e8edf7;border-color:rgb(35,62,126)}
+.action-item i{font-size:14px;color:rgb(35,62,126)}
+.action-item.action-delete{color:#991b1b;border-color:#fca5a5}
+.action-item.action-delete i{color:#991b1b}
+.action-item.action-delete:hover{background:#fee2e2}
+.action-item:disabled,.action-item.action-disabled{opacity:.38;cursor:not-allowed;background:#f0f0f0;border-color:#d0d7e3;color:#9aa3b0;pointer-events:none}
+.action-item:disabled i,.action-item.action-disabled i{color:#9aa3b0}
+
+/* ── Tour Guide ── */
+#tour-overlay{position:fixed;inset:0;background:transparent;z-index:9000;display:none;cursor:default}
+#tour-spotlight{position:fixed;background:transparent;box-shadow:0 0 0 9999px rgba(0,0,0,.55);border-radius:6px;pointer-events:none;border:3px solid rgba(255,255,255,.85);z-index:9001;display:none}
+#tour-card{position:fixed;background:#fff;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,.3);padding:24px 28px 20px;width:380px;max-width:90vw;z-index:9200;display:none;font-family:Montserrat,sans-serif}
+#tour-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:15px;color:#adb5bd;cursor:pointer;padding:0;line-height:1}
+#tour-close:hover{color:#333}
+.tour-badge{display:inline-block;background:#f0f4fb;color:rgb(28,48,92);border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;margin-bottom:14px;letter-spacing:.3px}
+#tour-title{font-size:19px;font-weight:800;color:rgb(28,48,92);margin:0 0 10px}
+#tour-text{font-size:13px;color:#555;line-height:1.7;margin:0 0 22px}
+.tour-actions{display:flex;align-items:center;gap:10px}
+#tour-skip{background:none;border:none;color:rgb(28,48,92);font-size:13px;font-weight:600;cursor:pointer;padding:0;font-family:Montserrat,sans-serif}
+#tour-prev{background:#fff;border:1.5px solid #ced4da;color:rgb(28,48,92);border-radius:6px;padding:6px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:Montserrat,sans-serif}
+#tour-next{background:rgb(28,48,92);border:none;color:#fff;border-radius:6px;padding:7px 22px;font-size:13px;font-weight:700;cursor:pointer;font-family:Montserrat,sans-serif;margin-left:auto}
+.tour-action-highlight{background:rgb(0,86,179)!important;color:#fff!important;border-color:rgb(0,86,179)!important}
+.tour-action-highlight i{color:#fff!important}
+
+/* ── Footer ── */
+.app-footer{position:fixed;left:0;bottom:0;z-index:1100;width:100%;border-top:1px solid rgb(214,219,229);background:#fff}
+.app-footer__content{display:flex;align-items:center;justify-content:center;padding:10px 16px;color:rgb(28,48,92);font-size:14px;font-weight:600;text-align:center}
+
+/* ── Permission management modal: theme's brand pink/purple → app blue (matches Save button) ── */
+#PermissionManagementForm .form-check-input:checked,
+#PermissionManagementForm .form-check-input:indeterminate,
+#PermissionManagementForm .form-switch .form-check-input:checked{background-color:rgb(28,48,92)!important;border-color:rgb(28,48,92)!important}
+#PermissionManagementForm .lpx-scroll-pills-container ul li a.active{background-color:rgb(28,48,92)!important;border-color:rgb(28,48,92)!important}
+#PermissionManagementForm .lpx-scroll-pills-container .nav-link{font-size:14px!important;font-weight:600!important;opacity:1!important}
+#PermissionManagementForm .form-check-label{overflow-wrap:break-word;word-break:break-word;white-space:normal}
+
+/* ── Table pagination (LeptonXLite theme brand pink → app blue) ── */
+.pagination .page-item.active .page-link{background-color:rgb(28,48,92)!important;border-color:rgb(28,48,92)!important}
+.pagination .page-item .page-link:hover,
+.pagination .page-item .page-link:focus,
+.pagination .page-item .page-link:active{color:rgb(28,48,92)!important}
+
+/* ── Row-actions dropdown (Roles/Users etc. re-load the theme's global bundle, which
+   reasserts --bs-dropdown-link-active-bg as LeptonXLite brand pink #f72585) → app blue ── */
+.dropdown-item.active,
+.dropdown-item:active{background-color:rgb(28,48,92)!important;color:#fff!important}
+
+/* ── Background-import job status banner (Import MAS/B2P/SuperAssets/Import Screen) ── */
+.job-status-banner{display:none;align-items:center;gap:10px;padding:10px 16px;margin-bottom:16px;border-radius:4px;font-size:14px}
+.job-status-banner.run-status-running{background:#fff3cd;border:1px solid #ffc107;color:#856404}
+.job-status-banner.run-status-success{background:#d4edda;border:1px solid #28a745;color:#155724}
+.job-status-banner.run-status-error{background:#f8d7da;border:1px solid #dc3545;color:#721c24}
+.job-status-banner .run-status-spinner{display:none;width:16px;height:16px;border:3px solid rgba(0,0,0,.2);border-top-color:currentColor;border-radius:50%;animation:job-status-spin .7s linear infinite;flex-shrink:0}
+.job-status-banner .run-status-close{background:none;border:none;cursor:pointer;font-size:18px;line-height:1;padding:0 4px;margin-left:auto;color:inherit}
+@keyframes job-status-spin{to{transform:rotate(360deg)}}

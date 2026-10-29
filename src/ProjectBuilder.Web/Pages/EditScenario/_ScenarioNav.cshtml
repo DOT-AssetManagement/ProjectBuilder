@@ -1,0 +1,211 @@
+@model ProjectBuilder.Web.Pages.EditScenario.EditScenarioPageModelBase
+@using ProjectBuilder.Permissions
+@using Volo.Abp.Authorization.Permissions
+@inject IPermissionChecker PermissionChecker
+@{
+    var active = Model.ActiveMenu;
+    string Cls(string key) => key == active ? "active" : "";
+    var canRun = await PermissionChecker.IsGrantedAsync(ScenarioPermissions.Run);
+}
+
+<nav class="editscen-sidebar" aria-label="Scenario Settings Menu">
+
+    <div class="editscen-sidebar__title">
+        Edit Scenario
+        @if (!string.IsNullOrWhiteSpace(Model.ScenarioName))
+        {
+            <span class="editscen-sidebar__name" title="@Model.ScenarioName">@Model.ScenarioName</span>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.ScenarioNotes))
+        {
+            <span class="editscen-sidebar__status" title="@Model.ScenarioNotes">Status: @Model.ScenarioNotes</span>
+        }
+    </div>
+
+    <ul class="editscen-menu">
+        <li>
+            <a class="@Cls("ScenarioSettings")" data-tour="scenario-settings-nav" asp-page="/EditScenario/ScenarioSettings" asp-route-scenid="@Model.Scenid">
+                <span>Scenario Settings</span><i class="fa-solid fa-circle-check icon-right"></i>
+            </a>
+        </li>
+        <li>
+            <a class="@Cls("AnalysisMethod")" data-tour="scenario-analysis-method-nav" asp-page="/EditScenario/AnalysisMethod" asp-route-scenid="@Model.Scenid">
+                <span>Analysis Method</span><i class="fa-solid fa-circle-check icon-right"></i>
+            </a>
+        </li>
+        <li>
+            <a class="@Cls("Parameters")" data-tour="scenario-parameters-nav" asp-page="/EditScenario/Parameters" asp-route-scenid="@Model.Scenid">
+                <span>Parameters</span><i class="fa-solid fa-circle-check icon-right"></i>
+            </a>
+        </li>
+        <li>
+            <a class="@Cls("BudgetConstraints")" data-tour="scenario-budget-constraints-nav" asp-page="/EditScenario/BudgetConstraints" asp-route-scenid="@Model.Scenid">
+                <span>Budget Constraints</span><i class="fa-solid fa-circle-check icon-right"></i>
+            </a>
+        </li>
+    </ul>
+
+    @if (canRun)
+    {
+        <div class="editscen-sidebar__run">
+            <button type="button" id="runScenarioBtn" class="btn btn-success" data-tour="scenario-run-nav"
+                    data-scenid="@Model.Scenid" data-scenname="@Model.ScenarioName" disabled="@Model.Locked">
+                <i class="fa-solid fa-play me-1"></i> Run Scenario
+            </button>
+        </div>
+    }
+</nav>
+
+<!-- Tour Guide (shared by all 4 Edit Scenario steps — ported from legacy pbweb's scenario wizard "Guide" button) -->
+@Html.AntiForgeryToken()
+<div id="tour-overlay"></div>
+<div id="tour-spotlight"></div>
+<div id="tour-card">
+    <button id="tour-close" aria-label="Close guide"><i class="fa-solid fa-xmark"></i></button>
+    <div class="tour-badge" id="tour-badge">STEP 1 OF 5</div>
+    <h3 id="tour-title"></h3>
+    <p id="tour-text"></p>
+    <div class="tour-actions">
+        <button id="tour-skip">Skip</button>
+        <button id="tour-prev" style="display:none">Previous</button>
+        <button id="tour-next">Next</button>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var tourCurStep = 0;
+        var tourActiveSteps = [];
+
+        var tourAllSteps = [
+            {
+                title: 'Scenario Settings',
+                text: 'Use this section to update the scenario name and planning years.',
+                getTarget: function () { return document.querySelector('[data-tour="scenario-settings-nav"]'); }
+            },
+            {
+                title: 'Analysis Method',
+                text: 'Use this section to build and review the criteria that drive the scenario analysis.',
+                getTarget: function () { return document.querySelector('[data-tour="scenario-analysis-method-nav"]'); }
+            },
+            {
+                title: 'Parameters',
+                text: 'Move here to configure the scenario parameters before running the analysis.',
+                getTarget: function () { return document.querySelector('[data-tour="scenario-parameters-nav"]'); }
+            },
+            {
+                title: 'Budget Constraints',
+                text: 'Open Budget Constraints to set the funding limits and budget rules for this scenario.',
+                getTarget: function () { return document.querySelector('[data-tour="scenario-budget-constraints-nav"]'); }
+            },
+            {
+                title: 'Run Scenario',
+                text: 'When the setup is complete, use Run Scenario to process the scenario.',
+                getTarget: function () { return document.querySelector('[data-tour="scenario-run-nav"]'); }
+            }
+        ];
+
+        function tourSetSpotlight(target) {
+            var sp = document.getElementById('tour-spotlight');
+            if (!target) {
+                sp.style.left = '0'; sp.style.top = '0'; sp.style.width = '0'; sp.style.height = '0';
+                sp.style.border = 'none'; sp.style.borderRadius = '0'; sp.style.display = 'block';
+            } else {
+                var r = target.getBoundingClientRect(), pad = 8;
+                sp.style.left = (r.left - pad) + 'px';
+                sp.style.top = (r.top - pad) + 'px';
+                sp.style.width = (r.width + pad * 2) + 'px';
+                sp.style.height = (r.height + pad * 2) + 'px';
+                sp.style.border = '3px solid rgba(255,255,255,.85)';
+                sp.style.borderRadius = '6px';
+                sp.style.display = 'block';
+            }
+        }
+
+        function tourPositionCard(target) {
+            var card = document.getElementById('tour-card');
+            var cardW = card.offsetWidth || 380;
+            var cardH = card.offsetHeight || 220;
+            var vw = window.innerWidth;
+            var vh = window.innerHeight;
+            var gap = 14;
+            card.style.bottom = '';
+            card.style.transform = 'none';
+            if (!target) {
+                card.style.left = '50%'; card.style.top = '50%';
+                card.style.transform = 'translate(-50%,-50%)'; return;
+            }
+            var rect = target.getBoundingClientRect();
+            var idealLeft = rect.left + rect.width / 2 - cardW / 2;
+            card.style.left = Math.max(10, Math.min(idealLeft, vw - cardW - 10)) + 'px';
+            var spaceBelow = vh - rect.bottom - 44 - gap;
+            var spaceAbove = rect.top - 70 - gap;
+            if (spaceBelow >= cardH) {
+                card.style.top = (rect.bottom + gap) + 'px';
+            } else if (spaceAbove >= cardH) {
+                card.style.top = (rect.top - cardH - gap) + 'px';
+            } else {
+                card.style.left = '50%'; card.style.top = '50%';
+                card.style.transform = 'translate(-50%,-50%)';
+            }
+        }
+
+        function tourShowStep(idx) {
+            var step = tourActiveSteps[idx], total = tourActiveSteps.length;
+            document.getElementById('tour-badge').textContent = 'STEP ' + (idx + 1) + ' OF ' + total;
+            document.getElementById('tour-title').textContent = step.title;
+            document.getElementById('tour-text').textContent = step.text;
+            document.getElementById('tour-next').textContent = idx === total - 1 ? 'Finish' : 'Next';
+            document.getElementById('tour-prev').style.display = idx === 0 ? 'none' : '';
+            var target = step.getTarget ? step.getTarget() : null;
+            tourSetSpotlight(target);
+            tourPositionCard(target);
+        }
+
+        function tourStart() {
+            tourActiveSteps = tourAllSteps.filter(function (s) { return s.getTarget(); });
+            if (!tourActiveSteps.length) return;
+            tourCurStep = 0;
+            document.getElementById('tour-overlay').style.display = 'block';
+            document.getElementById('tour-card').style.display = 'block';
+            tourShowStep(0);
+        }
+
+        function tourEnd() {
+            document.getElementById('tour-overlay').style.display = 'none';
+            document.getElementById('tour-card').style.display = 'none';
+            document.getElementById('tour-spotlight').style.display = 'none';
+        }
+
+        var btnGuide = document.getElementById('btnGuide');
+        if (btnGuide) btnGuide.addEventListener('click', tourStart);
+        document.getElementById('tour-next').addEventListener('click', function () {
+            if (tourCurStep >= tourActiveSteps.length - 1) { tourEnd(); return; }
+            tourCurStep++; tourShowStep(tourCurStep);
+        });
+        document.getElementById('tour-prev').addEventListener('click', function () {
+            if (tourCurStep <= 0) return;
+            tourCurStep--; tourShowStep(tourCurStep);
+        });
+        document.getElementById('tour-skip').addEventListener('click', tourEnd);
+        document.getElementById('tour-close').addEventListener('click', tourEnd);
+        document.getElementById('tour-overlay').addEventListener('click', tourEnd);
+
+    
+        var tourKey = 'edit-scenario-page:v1';
+        function tourAntiToken() { return $('input[name="__RequestVerificationToken"]').first().val(); }
+        function tourMarkSeen() {
+            fetch('?handler=MarkTourSeen&tourKey=' + encodeURIComponent(tourKey), {
+                method: 'POST',
+                headers: { 'RequestVerificationToken': tourAntiToken() }
+            }).catch(function () { });
+        }
+        fetch('?handler=TourSeen&tourKey=' + encodeURIComponent(tourKey))
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data && data.seen) return;
+                setTimeout(function () { tourMarkSeen(); tourStart(); }, 500);
+            })
+            .catch(function () { });
+    });
+</script>

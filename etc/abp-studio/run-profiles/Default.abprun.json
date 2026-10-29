@@ -1,0 +1,13 @@
+﻿{
+  "applications": {
+    "ProjectBuilder.Web": {
+      "type": "dotnet-project",
+      "launchUrl": "https://localhost:44322",
+      "path": "../../../src/ProjectBuilder.Web/ProjectBuilder.Web.csproj",
+      "kubernetesService": ".*-web$",
+      "execution": {
+        "order": 2
+      }
+    }
+  }
+}

@@ -1,0 +1,72 @@
+@page
+@model ProjectBuilder.Web.Pages.Outputs.MapsModel
+@{
+}
+@{
+    Layout = "Shared/OutputsLayout";
+    ViewData["Menu"] = "DSSMenus.Outputs";
+    ViewData["SubMenu"] = "Maps";
+    ViewData["poolId"] = Model.PoolId != Guid.Empty ? Model.PoolId.ToString() : "";
+
+}
+
+
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Maps</h1>
+ 
+    <div class="card mb-4">
+        <div class="card-body">
+
+            <div class="row">
+                <div class="col-md-4">
+                    
+                        <form method="get" class="row">
+                            <div class="form-group col-md-8">
+                                <label for="scenarioSelect">Select Candidate +:</label>
+                                <div class="input-group">
+                                <select class="form-control form-control-sm" id="scenarioSelect" name="poolId">
+                                    <option value=""><strong>-- Select Candidate + --</strong></option>
+                                    @foreach (var pool in Model.Pools)
+                                    {
+                                        @if (pool.Id == Model.PoolId)
+                                        {
+                                            <option value="@pool.Id" selected>@pool.Name</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@pool.Id">@pool.Name</option>
+                                        }
+
+                                    }
+                                </select>
+                                </div>
+                            </div>
+                            <div class="form-group col-md-4" style="margin-top:-2%">
+                                <button type="submit" class="btn btn-primary" style="margin-top: 32px;">Search</button>
+                            </div>
+                        </form>
+                  
+                </div>
+                <div class="col-md-6"></div>
+                <div class="col-md-2">
+                    @if (Model.ScenarioName != null)
+                    {
+                        <span style="font-size: 20px; font-weight: bold;">@Model.ScenarioName</span>
+                    }
+                </div>
+            </div>
+            @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+            {
+                <div class="alert alert-warning mt-3">@Model.ErrorMessage</div>
+            }
+
+            <div id="maps_main-response" style="height:700px;overflow-y: scroll;@(string.IsNullOrEmpty(Model.MapViewerUrl) ? "display:none" : "")">
+                @if (!string.IsNullOrEmpty(Model.MapViewerUrl))
+                {
+                    <iframe src="@Model.MapViewerUrl" width="100%" height="100%" style="border:0"></iframe>
+                }
+            </div>
+        </div>
+    </div>
+
+</div>

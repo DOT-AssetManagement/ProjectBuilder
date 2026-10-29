@@ -1,0 +1,322 @@
+@page
+@model ProjectBuilder.Web.Pages.EditScenario.AnalysisMethodModel
+@{
+    Layout = "~/Pages/Shared/PBDSSLayout.cshtml";
+    ViewData["PBVariant"] = "app";
+    ViewData["PBActivePage"] = "scenarios";
+    ViewData["Title"] = "Analysis Method";
+
+    var attributesJson = System.Text.Json.JsonSerializer.Serialize(Model.Data.FilteringAttributes);
+    var filtersJson = System.Text.Json.JsonSerializer.Serialize(Model.Data.SavedFilters);
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/pbdss/scenarioedit.css" />
+    <style>
+        .nav-tabs .nav-link { color: rgb(28,48,92); font-weight:600; font-size:13px; }
+        .nav-tabs .nav-link.active { color: rgb(0,86,179); font-weight:800; }
+        #outputBox, #rawCriteriaBox { width:100%; resize:none; font-family:monospace; font-size:12px; }
+        .form-select { background-image:none !important; }
+        #cancelCriteriaBtn { font-family: Montserrat, sans-serif; font-size: 13px; font-weight: 700; padding: 7px 18px; }
+    </style>
+}
+
+<partial name="_ScenarioNav" model="Model" />
+
+<div class="editscen-content">
+    <div class="editscen-content__header"><h1>Analysis Method</h1><button class="btn-guide" id="btnGuide"><span class="q">?</span> Guide</button></div>
+
+    <div class="editscen-card">
+        <div class="d-flex justify-content-end gap-2 mb-2">
+            @Html.AntiForgeryToken()
+            <button class="btn btn-success" type="button" id="saveCriteriaBtn">Save</button>
+            <button class="btn btn-secondary" type="button" id="cancelCriteriaBtn">Cancel</button>
+        </div>
+
+        <div id="analysisMethodMessage" class="alert alert-success alert-dismissible d-none" role="alert">
+            <span id="analysisMethodMessageText"></span>
+            <button type="button" class="btn-close" aria-label="Close" onclick="document.getElementById('analysisMethodMessage').classList.add('d-none')"></button>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label for="notes" class="form-label">Notes</label>
+                <input type="text" id="notes" name="notes" class="form-control" value="@Model.Data.Notes" />
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <!-- Criteria Editor -->
+            <div class="col-md-6 border rounded p-3">
+                <div class="form-label fw-bold mb-1">Criteria Editor</div>
+                <ul class="nav nav-tabs mb-3">
+                    <li class="nav-item"><button class="nav-link active" type="button" data-bs-toggle="tab" data-bs-target="#treeView">Tree View</button></li>
+                    <li class="nav-item"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#rawCriteria">Raw Criteria</button></li>
+                </ul>
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="treeView">
+                        <div id="criteriaContainer"></div>
+                        <button class="btn btn-outline-primary btn-sm mt-2" type="button" id="addGroupBtn">Add Group</button>
+                    </div>
+                    <div class="tab-pane fade" id="rawCriteria">
+                        <textarea rows="5" id="rawCriteriaBox" class="form-control" readonly></textarea>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between mt-3">
+                    <button class="btn btn-primary btn-sm" type="button" id="updateSubcriteriaBtn">Update Subcriteria</button>
+                    <button class="btn btn-primary btn-sm" type="button" id="checkOutputBtn">Check Output</button>
+                </div>
+            </div>
+
+            <!-- Output -->
+            <div class="col-md-6 border rounded p-3">
+                <label for="outputBox" class="h6">Output</label>
+                <textarea id="outputBox" class="form-control" rows="10" readonly></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ScenarioRunScript" />
+    <script>
+        var SCENID = @Model.Scenid;
+        let groupCounter = 0;
+        let savedFilters = @Html.Raw(filtersJson);
+        let filteringAttributes = normalizeFilteringAttributes(@Html.Raw(attributesJson));
+
+        function normalizeAttributeType(t) { return typeof t === "string" ? t.trim() : ""; }
+
+        function normalizeFilteringAttributes(attributes) {
+            if (!Array.isArray(attributes)) return [];
+            let typeByName = new Map();
+            let valueAssetByName = new Map();
+            attributes.forEach(a => {
+                let at = normalizeAttributeType(a?.AttributeType);
+                let asset = typeof a?.AssetType === "string" ? a.AssetType.trim() : "";
+                if (!a?.AttributeName || asset === "*") return;
+                if (at && !typeByName.has(a.AttributeName)) typeByName.set(a.AttributeName, at);
+                if (asset && !valueAssetByName.has(a.AttributeName)) valueAssetByName.set(a.AttributeName, asset);
+            });
+            return attributes.map(a => {
+                let at = normalizeAttributeType(a?.AttributeType);
+                let resolvedValueAsset = valueAssetByName.get(a?.AttributeName) || "";
+                if (a?.AssetType !== "*" || !a?.AttributeName) {
+                    return { ...a, ValueAssetType: resolvedValueAsset || a?.AssetType || "" };
+                }
+                if (at && !resolvedValueAsset) return a;
+                return { ...a, AttributeType: typeByName.get(a.AttributeName) || at, ValueAssetType: resolvedValueAsset };
+            });
+        }
+
+        function addGroup() {
+            groupCounter++;
+            let groupId = "group_" + groupCounter;
+            let html = `
+            <div class="border p-2 mt-2" id="${groupId}">
+                <div class="d-flex align-items-center">
+                    <label class="fw-bold">Group</label>
+                    <button class="btn btn-danger btn-sm ms-3 remove-group-btn" type="button" data-group-id="${groupId}">X</button>
+                </div>
+                <div class="conditions mt-2"></div>
+                <button class="btn btn-outline-primary btn-sm mt-2 add-rule-btn" type="button" data-group-id="${groupId}">Add Rule</button>
+            </div>`;
+            document.getElementById("criteriaContainer").insertAdjacentHTML("beforeend", html);
+        }
+
+        function fieldOptions(rule) {
+            return filteringAttributes.map(a =>
+                `<option value="${a.AttributeName}" data-type="${a.AssetType}" data-attributeType="${a.AttributeType}" data-value-asset-type="${a.ValueAssetType || a.AssetType}" ${rule && a.AttributeName === rule.AttributeName && a.AssetType === rule.AssetType ? "selected" : ""}>${a.AssetType} - ${a.AttributeName}</option>`).join('');
+        }
+
+        function addRule(groupId) {
+            let html = `
+            <div class="d-flex align-items-center mt-2 condition">
+                <select class="form-select form-select-sm me-2 field" style="width:40%"><option value="">Choose field...</option>${fieldOptions(null)}</select>
+                <select class="form-select form-select-sm me-2 operator" style="width:20%"><option value="">--</option></select>
+                <input type="text" class="form-control form-control-sm me-2 value" placeholder="Value" style="width:30%">
+                <button class="btn btn-sm btn-danger remove-condition-btn" type="button">X</button>
+            </div>`;
+            document.querySelector("#" + groupId + " .conditions").insertAdjacentHTML("beforeend", html);
+        }
+
+        function loadSavedFilters() {
+            if (!savedFilters || savedFilters.length === 0) return;
+            let grouped = {};
+            savedFilters.forEach(f => { (grouped[f.FilterNo] = grouped[f.FilterNo] || []).push(f); });
+            Object.keys(grouped).forEach(fn => {
+                addGroup();
+                let groupId = "group_" + groupCounter;
+                grouped[fn].forEach(rule => {
+                    let html = `
+                    <div class="d-flex align-items-center mt-2 condition">
+                        <select class="form-select form-select-sm me-2 field" style="width:40%"><option value="">Choose field...</option>${fieldOptions(rule)}</select>
+                        <select class="form-select form-select-sm me-2 operator" style="width:20%">
+                            <option value="=" ${rule.Operation === "=" ? "selected" : ""}>=</option>
+                            <option value="<>" ${rule.Operation === "<>" ? "selected" : ""}><></option>
+                            <option value=">" ${rule.Operation === ">" ? "selected" : ""}>></option>
+                            <option value="<" ${rule.Operation === "<" ? "selected" : ""}><</option>
+                            <option value=">=" ${rule.Operation === ">=" ? "selected" : ""}>>=</option>
+                            <option value="<=" ${rule.Operation === "<=" ? "selected" : ""}><=</option>
+                        </select>
+                        <input type="text" class="form-control form-control-sm me-2 value" value="${rule.TextValue}" style="width:30%">
+                        <button class="btn btn-sm btn-danger remove-condition-btn" type="button">X</button>
+                    </div>`;
+                    let container = document.querySelector("#" + groupId + " .conditions");
+                    container.insertAdjacentHTML("beforeend", html);
+                    let fieldSelect = container.lastElementChild.querySelector(".field");
+                    updateOperators(fieldSelect);
+                    let valueEl = container.lastElementChild.querySelector(".value");
+                    if (valueEl.tagName.toLowerCase() === "select") {
+                        let savedVal = rule.TextValue;
+                        let observer = new MutationObserver(() => {
+                            let opt = [...valueEl.options].find(o => o.value === savedVal);
+                            if (opt) { valueEl.value = savedVal; observer.disconnect(); updateRaw(); }
+                        });
+                        observer.observe(valueEl, { childList: true });
+                    } else { valueEl.value = rule.TextValue; updateRaw(); }
+                });
+            });
+        }
+
+        function updateOperators(fieldSelect) {
+            let selectedOption = fieldSelect.options[fieldSelect.selectedIndex];
+            let type = selectedOption.getAttribute("data-type");
+            let attributeType = normalizeAttributeType(selectedOption.getAttribute("data-attributeType"));
+            let valueAssetType = selectedOption.getAttribute("data-value-asset-type") || type;
+            let shouldLoadDropdown = type === "*" || attributeType === "String" || attributeType === "T";
+            let requestAssetType = type === "*" ? "*" : valueAssetType;
+            let operatorSelect = fieldSelect.parentElement.querySelector(".operator");
+            let valueInput = fieldSelect.parentElement.querySelector(".value");
+            let previousOperator = operatorSelect.value;
+
+            if (shouldLoadDropdown) {
+                let selectEl = document.createElement("select");
+                selectEl.className = valueInput.className;
+                selectEl.style.width = valueInput.style.width;
+                selectEl.classList.add("value");
+                valueInput.parentNode.replaceChild(selectEl, valueInput);
+                $.ajax({
+                    url: '?handler=AttributeValues',
+                    type: 'GET',
+                    data: { scenid: SCENID, assetType: requestAssetType, attributeName: selectedOption.value },
+                    success: function (data) {
+                        selectEl.innerHTML = '<option value="">-- Select --</option>';
+                        (data || []).forEach(v => { let o = document.createElement("option"); o.value = v; o.textContent = v; selectEl.appendChild(o); });
+                    }
+                });
+                operatorSelect.innerHTML = `<option value="=">=</option>`;
+            } else {
+                if (valueInput.tagName.toLowerCase() !== "input") {
+                    let inputEl = document.createElement("input");
+                    inputEl.type = "text"; inputEl.className = valueInput.className; inputEl.style.width = valueInput.style.width;
+                    inputEl.placeholder = "Value"; inputEl.classList.add("value");
+                    valueInput.parentNode.replaceChild(inputEl, fieldSelect.parentElement.querySelector(".value"));
+                }
+                operatorSelect.innerHTML = `
+                    <option value="=">=</option><option value="<>"><></option><option value=">">></option>
+                    <option value="<"><</option><option value=">=">>=</option><option value="<="><=</option>`;
+            }
+
+            if (previousOperator && [...operatorSelect.options].some(o => o.value === previousOperator)) {
+                operatorSelect.value = previousOperator;
+            }
+        }
+
+        function collectRules() {
+            let groups = document.querySelectorAll("#criteriaContainer > div");
+            let allRules = [];
+            let filterNo = 1;
+            groups.forEach(group => {
+                group.querySelectorAll(".condition").forEach(rule => {
+                    let field = rule.querySelector(".field").value;
+                    let op = rule.querySelector(".operator").value;
+                    let value = rule.querySelector(".value").value;
+                    if (field && op && value) {
+                        let assetType = rule.querySelector(".field").selectedOptions[0]?.getAttribute("data-type");
+                        allRules.push({ EntityId: SCENID, FilterNo: filterNo, AssetType: assetType, AttributeName: field, Operation: op, TextValue: value });
+                    }
+                });
+                filterNo++;
+            });
+            return allRules;
+        }
+
+        function buildCriteria() {
+            let groups = document.querySelectorAll("#criteriaContainer > div");
+            let outputParts = [];
+            groups.forEach(group => {
+                let conditions = [];
+                group.querySelectorAll(".condition").forEach(rule => {
+                    let field = rule.querySelector(".field").value;
+                    let op = rule.querySelector(".operator").value;
+                    let value = rule.querySelector(".value").value;
+                    if (field && op && value) {
+                        let attributeType = normalizeAttributeType(rule.querySelector(".field").selectedOptions[0]?.getAttribute("data-attributeType"));
+                        conditions.push(attributeType === "N" ? `[${field}] ${op} ${value}` : `[${field}] ${op} '${value}'`);
+                    }
+                });
+                if (conditions.length > 0) outputParts.push("(" + conditions.join(" AND ") + ")");
+            });
+            return outputParts.join(" OR ");
+        }
+
+        function updateRaw() {
+            let query = buildCriteria();
+            document.getElementById("rawCriteriaBox").value = query;
+            document.getElementById("outputBox").value = query;
+        }
+
+        function checkOutput() {
+            let query = buildCriteria();
+            document.getElementById("rawCriteriaBox").value = query;
+            let outputBox = document.getElementById("outputBox");
+            outputBox.value = query;
+            var token = $('input[name="__RequestVerificationToken"]').val();
+            let rules = collectRules();
+            fetch('?handler=CheckOutput', {
+                method: 'POST',
+                headers: { 'RequestVerificationToken': token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ScenId: SCENID, Filters: rules })
+            }).then(r => r.json()).then(res => {
+                if (res && res.success) outputBox.value = query + "\n\nMatched treatments: " + res.count;
+                else showMessage((res && res.error) || "Could not check output.", false);
+            }).catch(() => showMessage("Could not check output.", false));
+        }
+
+        function showMessage(message, isSuccess) {
+            let box = document.getElementById("analysisMethodMessage");
+            document.getElementById("analysisMethodMessageText").textContent = message;
+            box.classList.remove("d-none", "alert-success", "alert-danger");
+            box.classList.add(isSuccess ? "alert-success" : "alert-danger");
+        }
+
+        function saveCriteria() {
+            updateRaw();
+            var token = $('input[name="__RequestVerificationToken"]').val();
+            let rules = collectRules();
+            fetch('?handler=SaveCriteria', {
+                method: 'POST',
+                headers: { 'RequestVerificationToken': token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ScenId: SCENID, Filters: rules, Notes: $("#notes").val() || "" })
+            }).then(r => r.json()).then(res => {
+                if (res && res.success) showMessage("Criteria saved successfully.", true);
+                else showMessage((res && res.error) || "Could not save criteria.", false);
+            }).catch(() => showMessage("Could not save criteria.", false));
+        }
+
+        document.getElementById("saveCriteriaBtn").addEventListener("click", saveCriteria);
+        document.getElementById("cancelCriteriaBtn").addEventListener("click", function () { window.location.reload(); });
+        document.getElementById("addGroupBtn").addEventListener("click", addGroup);
+        document.getElementById("updateSubcriteriaBtn").addEventListener("click", updateRaw);
+        document.getElementById("checkOutputBtn").addEventListener("click", checkOutput);
+        $(document).on("click", ".remove-group-btn", function () { document.getElementById($(this).data("group-id")).remove(); });
+        $(document).on("click", ".add-rule-btn", function () { addRule($(this).data("group-id")); });
+        $(document).on("click", ".remove-condition-btn", function () { $(this).parent().remove(); });
+        $(document).on("change", ".field", function () { updateOperators(this); });
+
+        if (savedFilters && Array.isArray(savedFilters) && savedFilters.length > 0) {
+            loadSavedFilters();
+        }
+    </script>
+}

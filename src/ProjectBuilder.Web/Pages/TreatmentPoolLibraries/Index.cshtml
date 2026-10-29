@@ -1,0 +1,1140 @@
+@page
+@using System.Linq
+@using System.Text.Json
+@using ProjectBuilder.Models.CandidatePool.Dtos
+@using Volo.Abp.Authorization.Permissions
+@using ProjectBuilder.Permissions
+@model ProjectBuilder.Web.Pages.TreatmentPoolLibraries.IndexModel
+@inject IPermissionChecker PermissionChecker
+@{
+    ViewData["Title"] = "Treatment Pool Libraries";
+    ViewData["PBVariant"] = "app";
+    ViewData["PBActivePage"] = "treatmentpoollibraries";
+    Layout = "~/Pages/Shared/PBDSSLayout.cshtml";
+
+    var canCreate = await PermissionChecker.IsGrantedAsync(TreatmentPoolLibraryPermissions.Create);
+    var canEdit = await PermissionChecker.IsGrantedAsync(TreatmentPoolLibraryPermissions.Edit);
+    var canDelete = await PermissionChecker.IsGrantedAsync(TreatmentPoolLibraryPermissions.Delete);
+    var canImport = await PermissionChecker.IsGrantedAsync(TreatmentPoolLibraryPermissions.Import);
+    var canCopy = await PermissionChecker.IsGrantedAsync(TreatmentPoolLibraryPermissions.Copy);
+    var canTreatments = await PermissionChecker.IsGrantedAsync(TreatmentPoolLibraryPermissions.Treatments.Default);
+    var canEditAny = await PermissionChecker.IsGrantedAsync(AdministrationPermissions.Default);
+
+    var libraryRows = (Model.Pools?.Libraries ?? Enumerable.Empty<CandidatePoolDto>())
+        .Select(item => new
+        {
+            poolId    = item.Id,
+            userId    = item.UserId,
+            name      = item.Name ?? "",
+            description      = item.Description ?? "",
+            descriptionShort = string.Join(" ", (item.Description ?? "").Split(' ').Take(2))
+                               + ((item.Description ?? "").Split(' ').Length > 2 ? "..." : ""),
+            scenarioName      = item.SceName ?? "",
+            treatmentsCount         = item.TreatmentsCount,
+            pavementTreatmentsCount = item.PavementTreatmentsCount,
+            bridgeTreatmentsCount   = item.BridgeTreatmentsCount,
+            isImported    = item.PopulatedAt.HasValue ? "Yes" : "No",
+            shared        = item.IsShared ? "Yes" : "No",
+            isSharedValue = item.IsShared,
+            owner         = item.Owner ?? "",
+            ownerDisplay  = item.UserId != Model.CurrentUserId ? (item.Owner ?? "") : "",
+            importDate    = item.FormattedPopulatedAt ?? "",
+            createdAt     = item.CreatedAt.HasValue ? item.CreatedAt.Value.ToString("yyyy-MM-dd") : "",
+            source        = item.Source ?? "",
+            canEdit       = canEditAny || item.UserId == Model.CurrentUserId,
+            isDeleteable  = item.IsDeleteable
+        })
+        .ToList();
+}
+
+@section Styles {
+    <link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet" />
+    <style>
+        body { overflow: hidden; }
+        main { display: flex; flex-direction: row; margin-top: 0; padding: 0; width: 100%; overflow: hidden; background-color: rgb(248,248,248); height: calc(100vh - 70px - 44px); }
+        .tpl-sidebar { width: 60px; background: #c8d8e8; flex-shrink: 0; height: 100%; }
+        .tpl-content { flex: 1; min-width: 0; padding: 20px 24px; overflow: hidden; height: 100%; display: flex; flex-direction: column; }
+        .tpl-title-bar { flex-shrink: 0; background: #d87d2a; color: #fff; font-weight: 700; padding: 10px 24px; margin: -20px -24px 20px; }
+        #table-tpl { flex: 1; min-height: 0; }
+
+        #overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 9999; justify-content: center; align-items: center; }
+        .overlay-content { text-align: center; color: #fff; }
+        .spinner { border: 6px solid rgba(255,255,255,.3); border-top: 6px solid #fff; border-radius: 50%; width: 50px; height: 50px; animation: spin .8s linear infinite; margin: 0 auto 10px; }
+        @@keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Job status notification banner */
+        #jobStatusBanner { display: none; align-items: center; gap: 10px; padding: 10px 16px; margin-bottom: 10px; border-radius: 4px; font-size: 14px; }
+        #jobStatusBanner.run-status-running { background: #fff3cd; border: 1px solid #ffc107; color: #856404; }
+        #jobStatusBanner.run-status-success { background: #d4edda; border: 1px solid #28a745; color: #155724; }
+        #jobStatusBanner.run-status-error   { background: #f8d7da; border: 1px solid #dc3545; color: #721c24; }
+        .run-status-spinner { width: 16px; height: 16px; border: 3px solid rgba(0,0,0,.2); border-top-color: currentColor; border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
+        .run-status-close { background: none; border: none; cursor: pointer; font-size: 18px; line-height: 1; padding: 0 4px; margin-left: auto; color: inherit; }
+    </style>
+}
+
+<div class="tpl-sidebar"></div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            showJobStatus('success', @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString() ?? "")));
+        });
+    </script>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            showJobStatus('error', @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString() ?? "")));
+        });
+    </script>
+}
+
+<div class="tpl-content">
+
+    <div class="tpl-title-bar">Libraries</div>
+
+    <div class="search-bar">
+        <label>Search in Treatment Pool Libraries</label>
+        <div class="search-input-wrap">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="searchInput" placeholder="" />
+        </div>
+        <button class="btn btn-primary btn-sm" id="btnSearch">Search</button>
+        <button class="btn-reset btn-sm" id="btnReset">Reset</button>
+        <label class="my-scenarios-check">
+            <input type="checkbox" id="myLibraries" /> My Treatment Pool Libraries
+        </label>
+        <div class="ms-auto-btns">
+            <button class="btn-guide" id="btnGuide"><span class="q">?</span> Guide</button>
+            @if (canCreate)
+            {
+            <button class="btn-new" id="createnewlibrarybtn">Create New Treatment Pool Library</button>
+            }
+        </div>
+    </div>
+
+    <div id="jobStatusBanner" role="alert">
+        <span class="run-status-spinner" id="jobStatusSpinner"></span>
+        <span id="jobStatusMessage"></span>
+        <button class="run-status-close" onclick="hideJobStatus()" title="Dismiss">&times;</button>
+    </div>
+
+    <div class="table-wrap">
+        <div id="table-tpl"></div>
+    </div>
+
+</div>
+
+<!-- Create Library Modal -->
+<div class="modal fade" id="CreateNewLibraryForm" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New Treatment Pool Library</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="createlibraryModal" method="post" asp-page-handler="CreateLibrary" novalidate>
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Treatment Pool Library Name</label>
+                        <input type="text" name="Name" id="createlibraryname" maxlength="50" class="form-control" required
+                               oninput="validateLibraryName(this, 'namefeedback', '')" />
+                        <div id="namefeedback" class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Treatment Pool Library Description</label>
+                        <input type="text" name="Description" id="createlibrarydescription" class="form-control" required
+                               oninput="validateLibraryDescription(this, 'descriptionfeedback')" />
+                        <div id="descriptionfeedback" class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="isshared" id="isshared_create" value="true">
+                            <label class="form-check-label" for="isshared_create">Shared</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Library Modal -->
+<div class="modal fade" id="EditLibraryForm" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Treatment Pool Library</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editlibrary" method="post" asp-page-handler="EditLibrary" novalidate>
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="libraryId" id="editlibraryId" />
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Treatment Pool Library Name</label>
+                        <input type="text" name="libraryname" id="editlibraryname" maxlength="50" class="form-control" required
+                               oninput="validateLibraryName(this, 'editnamefeedback', document.getElementById('editlibraryId').value)" />
+                        <div id="editnamefeedback" class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Treatment Pool Library Description</label>
+                        <input type="text" name="librarydescription" id="editlibrarydescription" class="form-control" required
+                               oninput="validateLibraryDescription(this, 'editdescriptionfeedback')" />
+                        <div id="editdescriptionfeedback" class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="isshared" id="editisshared" value="true">
+                            <label class="form-check-label" for="editisshared">Is Shared</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Copy Library Modal -->
+<div class="modal fade" id="CopyLibraryForm" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Copy Treatment Pool Library</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="copylibrary" method="post" asp-page-handler="CreateSharedLibrary" novalidate>
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="libraryId" id="copylibraryId" />
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Treatment Pool Library Name</label>
+                        <input type="text" name="libraryname" id="copylibraryname" class="form-control" required
+                               oninput="validateCopyLibraryName()" />
+                        <div id="CopynNamefeedback" class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Treatment Pool Library Description</label>
+                        <input type="text" name="librarydescription" id="copylibrarydescription" class="form-control" required
+                               oninput="validateLibraryDescription(this, 'copydescriptionfeedback')" />
+                        <div id="copydescriptionfeedback" class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="isshared" id="copyisshared" value="true">
+                            <label class="form-check-label" for="copyisshared">Is Shared</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button name="submitbtn" type="submit" class="btn btn-success">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Modal — scenario attached -->
+<div class="modal fade" id="deletealerttrue" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Treatment Pool Library</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span>Scenario is attached to this Treatment Pool Library — unable to delete.</span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Modal — confirm -->
+<div class="modal fade" id="deletealertfalse" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Treatment Pool Library</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="bi bi-exclamation-octagon-fill text-danger fa-2x me-3"></i>
+                <span>Are you sure you want to delete the selected treatment pool library?</span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <form id="deleteformfalse" method="post" asp-page-handler="DeleteLibrary" style="display:inline;">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="libraryId" id="deletelibraryId" />
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Treatments Modal -->
+<div class="modal fade" id="importtreatment" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Import</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="treatmentimportform" class="needs-validation" method="post" asp-page-handler="ImportTreatments" enctype="multipart/form-data" novalidate>
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Treatment Pool Library</label>
+                        <input class="form-control" type="text" id="candidatepool_name" readonly>
+                        <input type="hidden" name="candidatepoolid" id="candidatepoolid">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Import What?</label>
+                        <select class="form-select" name="importtype">
+                            <option value="B" selected>BAMS</option>
+                            <option value="P">PAMS</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label><input type="radio" name="option" value="deleteAll" checked onchange="updateFromScratch()"> Delete All
+                            <input type="checkbox" id="fromScratch" name="fromScratch" checked value="true" hidden /></label>&nbsp;&nbsp;
+                        <label><input type="radio" name="option" value="keepUserCreated" onchange="updateFromScratch()"> Keep User Created</label>&nbsp;&nbsp;
+                        <label><input type="radio" name="option" value="keepAll" onchange="updateFromScratch()"> Keep All
+                            <input type="checkbox" id="keepAll" name="keepAll" value="false" hidden /></label>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Excel File</label>
+                        <input class="form-control" type="file" id="excelfile" name="excelfile" required accept=".xlsx,.xls">
+                        <div id="excelvalidation" class="invalid-feedback">Field is required</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tab Name</label>
+                        <input class="form-control" type="text" name="tabname" id="tabname" autocomplete="off">
+                        <select class="form-select" name="tabname" id="tabnameselect" hidden disabled></select>
+                        <div id="tabnamehint" class="form-text"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Import</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="overlay">
+    <div class="overlay-content">
+        <div class="spinner"></div>
+        <div class="overlay-text">Please wait...</div>
+    </div>
+</div>
+
+<!-- Tour Guide -->
+<div id="tour-overlay"></div>
+<div id="tour-spotlight"></div>
+<div id="tour-card">
+    <button id="tour-close" aria-label="Close guide"><i class="fa-solid fa-xmark"></i></button>
+    <div class="tour-badge" id="tour-badge">STEP 1 OF 3</div>
+    <h3 id="tour-title"></h3>
+    <p id="tour-text"></p>
+    <div class="tour-actions">
+        <button id="tour-skip">Skip</button>
+        <button id="tour-prev" style="display:none">Previous</button>
+        <button id="tour-next">Next</button>
+    </div>
+</div>
+
+<form id="antiforgery-form" method="post" style="display:none;">
+    @Html.AntiForgeryToken()
+</form>
+
+@section Scripts {
+    <script src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
+    <script src="~/js/pbdss/table.js"></script>
+    <script src="~/js/pbdss/tabname-autofill.js"></script>
+    <script>
+        var tableData     = @Html.Raw(JsonSerializer.Serialize(libraryRows));
+        var currentUserId = @Html.Raw(JsonSerializer.Serialize(Model.CurrentUserId));
+
+        function showOverlay() { document.getElementById('overlay').style.display = 'flex'; }
+        function hideOverlay() { document.getElementById('overlay').style.display = 'none'; }
+        function go(url) { showOverlay(); setTimeout(function () { window.location.href = url; }, 600); }
+        function antiToken() { return $('input[name="__RequestVerificationToken"]').first().val(); }
+
+        // ── Action handlers ──
+
+        function openEdit(d) {
+            $.ajax({
+                type: 'POST',
+                url: '?handler=GetLibrary',
+                data: JSON.stringify(d.poolId),
+                contentType: 'application/json',
+                headers: { 'RequestVerificationToken': antiToken() },
+                success: function (r) {
+                    document.getElementById('editlibraryId').value    = r.id          ?? r.Id          ?? '';
+                    document.getElementById('editlibraryname').value  = r.name        ?? r.Name        ?? '';
+                    document.getElementById('editlibrarydescription').value = r.description ?? r.Description ?? '';
+                    document.getElementById('editisshared').checked   = !!(r.isShared ?? r.IsShared);
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('EditLibraryForm')).show();
+                },
+                error: function () { alert('Unable to load library. Please try again.'); }
+            });
+        }
+
+        var _importLibraryName = '';
+
+        function openImport(d) {
+            _importLibraryName = d.name || '';
+            document.getElementById('candidatepool_name').value = d.name;
+            document.getElementById('candidatepoolid').value = d.poolId;
+            document.getElementById('treatmentimportform').classList.remove('was-validated');
+            // Defensively re-enable: this is the actual retry entry point, so every
+            // fresh open should be ready to submit regardless of how the previous
+            // attempt ended.
+            var importSubmitBtn = document.querySelector('#treatmentimportform [type=submit]');
+            if (importSubmitBtn) importSubmitBtn.disabled = false;
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('importtreatment')).show();
+        }
+
+        function openDelete(d) {
+            document.getElementById('deletelibraryId').value = d.poolId;
+            if (d.isDeleteable) {
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('deletealertfalse')).show();
+            } else {
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('deletealerttrue')).show();
+            }
+        }
+
+        function openCopy(d) {
+            document.getElementById('copylibraryId').value = d.poolId;
+            document.getElementById('copylibraryname').value = '';
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('CopyLibraryForm')).show();
+        }
+
+        // ── Table ──
+
+        var actions = [
+            @if (canEdit) { <text>{ label: 'Edit', icon: 'fa-regular fa-pen-to-square', disabled: function (d) { return !d.canEdit; }, onClick: function (d) { openEdit(d); } },</text> }
+            @if (canImport) { <text>{ label: 'Import', icon: 'fa-solid fa-file-import', disabled: function (d) { return !d.canEdit; }, onClick: function (d) { openImport(d); } },</text> }
+            @if (canDelete) { <text>{ label: 'Delete', icon: 'fa-regular fa-trash-can', type: 'delete', disabled: function (d) { return !d.canEdit; }, onClick: function (d) { openDelete(d); } },</text> }
+            @if (canCopy) { <text>{ label: 'Copy', icon: 'fa-regular fa-copy', onClick: function (d) { openCopy(d); } },</text> }
+            @if (canTreatments) { <text>{ label: 'Treatments', icon: 'fa-solid fa-flask', onClick: function (d) { go('/Treatments/Index/' + d.poolId); } }</text> }
+        ];
+
+        var table = createTable('#table-tpl', {
+            data: tableData,
+            maxHeightEl: '.table-wrap',
+            actions: actions,
+            columns: [
+                { title: 'Name',                 field: 'name',                    minWidth: 200, headerSort: false },
+                { title: 'Description',          field: 'descriptionShort',        minWidth: 180, headerSort: false },
+                { title: 'Scenario',             field: 'scenarioName',            minWidth: 160, headerSort: false },
+                { title: 'Number of Treatments', field: 'treatmentsCount',         minWidth: 180, hozAlign: 'right', headerSort: false },
+                { title: 'Pavement Count',       field: 'pavementTreatmentsCount', minWidth: 145, hozAlign: 'right', headerSort: false },
+                { title: 'Bridge Count',         field: 'bridgeTreatmentsCount',   minWidth: 130, hozAlign: 'right', headerSort: false },
+                { title: 'Is Imported',          field: 'isImported',              minWidth: 120, headerSort: false },
+                { title: 'Shared',               field: 'shared',                  minWidth: 100, headerSort: false },
+                { title: 'Owner',                field: 'ownerDisplay',            minWidth: 160, headerSort: false },
+                { title: 'Import Date',          field: 'importDate',              minWidth: 150, headerSort: false },
+                { title: 'Date Created',         field: 'createdAt',               minWidth: 150, headerSort: false },
+                { title: 'Source',               field: 'source',                  minWidth: 110, headerSort: false }
+            ]
+        });
+
+        // ── Name / description validation ──
+        function validateLibraryDescription(input, feedbackId) {
+            var feedback = document.getElementById(feedbackId);
+            if (!input.value.trim()) {
+                input.classList.add('is-invalid');
+                if (feedback) feedback.innerText = 'Field is required';
+                return false;
+            }
+            input.classList.remove('is-invalid');
+            if (feedback) feedback.innerText = '';
+            return true;
+        }
+
+        function validateCopyLibraryName() {
+            var input = document.getElementById('copylibraryname');
+            var feedback = document.getElementById('CopynNamefeedback');
+            var name = input.value.trim();
+            if (!name) {
+                input.classList.add('is-invalid');
+                feedback.innerText = 'Field is required';
+                return false;
+            }
+            if (!/[a-zA-Z0-9]/.test(name)) {
+                input.classList.add('is-invalid');
+                feedback.innerText = 'Name must contain at least one letter or number';
+                return false;
+            }
+            validateLibraryName(input, 'CopynNamefeedback', '');
+            return !input.classList.contains('is-invalid') || feedback.innerText !== 'Name already exists';
+        }
+
+        var _nameCheckSeq = {};
+
+        function validateLibraryName(input, feedbackId, libraryid) {
+            var name     = input.value.trim();
+            var feedback = document.getElementById(feedbackId);
+            if (!name) {
+                input.classList.add('is-invalid');
+                feedback.innerText = 'Field is required';
+                return;
+            }
+            if (!/[a-zA-Z0-9]/.test(name)) {
+                input.classList.add('is-invalid');
+                feedback.innerText = 'Name must contain at least one letter or number';
+                return;
+            }
+            var seq = (_nameCheckSeq[feedbackId] = (_nameCheckSeq[feedbackId] || 0) + 1);
+            $.ajax({
+                type: 'POST',
+                url: '?handler=CheckLibraryName',
+                data: { libraryname: name, libraryid: libraryid },
+                headers: { 'RequestVerificationToken': antiToken() },
+                success: function () {
+                    if (seq !== _nameCheckSeq[feedbackId]) return;
+                    input.classList.remove('is-invalid');
+                    feedback.innerText = '';
+                },
+                error: function (xhr) {
+                    if (seq !== _nameCheckSeq[feedbackId]) return;
+                    if (xhr.status === 400) {
+                        input.classList.add('is-invalid');
+                        feedback.innerText = 'Name already exists';
+                    }
+                }
+            });
+        }
+
+        // Create form — validate name and description before submit
+        document.getElementById('createlibraryModal').addEventListener('submit', function (e) {
+            var nameInput = document.getElementById('createlibraryname');
+            var descInput = document.getElementById('createlibrarydescription');
+            var name = nameInput.value.trim();
+            var valid = true;
+            if (!name) {
+                nameInput.classList.add('is-invalid');
+                document.getElementById('namefeedback').innerText = 'Field is required';
+                valid = false;
+            } else if (!/[a-zA-Z0-9]/.test(name)) {
+                nameInput.classList.add('is-invalid');
+                document.getElementById('namefeedback').innerText = 'Name must contain at least one letter or number';
+                valid = false;
+            }
+            if (!descInput.value.trim()) {
+                descInput.classList.add('is-invalid');
+                valid = false;
+            }
+            if (!valid || nameInput.classList.contains('is-invalid')) {
+                e.preventDefault();
+            }
+        });
+
+        // Edit form — validate and submit via AJAX so the page stays on the Treatment Pool Libraries screen
+        document.getElementById('editlibrary').addEventListener('submit', function (e) {
+            e.preventDefault();
+            var nameInput = document.getElementById('editlibraryname');
+            var descInput = document.getElementById('editlibrarydescription');
+            var libraryname = nameInput.value.trim();
+            var librarydescription = descInput.value.trim();
+            nameInput.value = libraryname;
+            descInput.value = librarydescription;
+            var valid = true;
+            if (!libraryname) {
+                nameInput.classList.add('is-invalid');
+                document.getElementById('editnamefeedback').innerText = 'Field is required';
+                valid = false;
+            } else if (!/[a-zA-Z0-9]/.test(libraryname)) {
+                nameInput.classList.add('is-invalid');
+                document.getElementById('editnamefeedback').innerText = 'Name must contain at least one letter or number';
+                valid = false;
+            }
+            if (!librarydescription) {
+                descInput.classList.add('is-invalid');
+                document.getElementById('editdescriptionfeedback').innerText = 'Field is required';
+                valid = false;
+            }
+            if (!valid || nameInput.classList.contains('is-invalid')) return;
+
+            var form = this;
+            var token = antiToken();
+            var submitBtn = form.querySelector('[type=submit]');
+            submitBtn.disabled = true;
+
+            $.ajax({
+                type: 'POST',
+                url: '?handler=CheckLibraryName',
+                data: { libraryname: libraryname, libraryid: document.getElementById('editlibraryId').value },
+                headers: { 'RequestVerificationToken': token },
+                success: function () {
+                    $.ajax({
+                        type: 'POST',
+                        url: '?handler=EditLibrary',
+                        data: $(form).serialize(),
+                        headers: { 'RequestVerificationToken': token },
+                        success: function (res) {
+                            bootstrap.Modal.getOrCreateInstance(document.getElementById('EditLibraryForm')).hide();
+                            submitBtn.disabled = false;
+                            var message = (res && res.message) ? res.message : 'Treatment Pool Library updated successfully.';
+                            showJobStatus('success', message);
+                            var libraryId = document.getElementById('editlibraryId').value;
+                            var isShared = document.getElementById('editisshared').checked;
+                            var words = librarydescription.split(/\s+/).filter(Boolean);
+                            var descShort = words.slice(0, 2).join(' ') + (words.length > 2 ? '...' : '');
+                            var updatedFields = {
+                                name: libraryname,
+                                description: librarydescription,
+                                descriptionShort: descShort,
+                                shared: isShared ? 'Yes' : 'No',
+                                isSharedValue: isShared
+                            };
+                            table.getRows().forEach(function (row) {
+                                if (String(row.getData().poolId) === String(libraryId)) {
+                                    row.update(updatedFields);
+                                }
+                            });
+                            var row = tableData.find(function (x) { return String(x.poolId) === String(libraryId); });
+                            if (row) {
+                                Object.assign(row, updatedFields);
+                            }
+                        },
+                        error: function (xhr) {
+                            submitBtn.disabled = false;
+                            var msg = xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'Unable to update. Please try again.';
+                            alert(msg);
+                        }
+                    });
+                },
+                error: function () {
+                    nameInput.classList.add('is-invalid');
+                    document.getElementById('editnamefeedback').innerText = 'Name already exists';
+                    submitBtn.disabled = false;
+                }
+            });
+        });
+
+        // ── Auto-filter / auto-open from query string (navigated from Scenarios page) ──
+        (function () {
+            var params   = new URLSearchParams(window.location.search);
+            var search   = params.get('search');
+            var importId = params.get('importId');
+            var libId    = params.get('libId');
+
+            if (libId) {
+                // Exact library (navigated from a scenario): match by id, not a
+                // "like" name search, so e.g. "Test20260620" doesn't also show
+                // "Test20260620-Copy".
+                var match = tableData.find(function (x) { return String(x.poolId).toLowerCase() === libId.toLowerCase(); });
+                document.getElementById('searchInput').value = match ? match.name : (search || '');
+                table.setFilter(function (data) { return String(data.poolId).toLowerCase() === libId.toLowerCase(); });
+            } else if (search) {
+                document.getElementById('searchInput').value = search;
+                table.setFilter('name', 'like', search);
+            }
+
+            if (importId) {
+                var lib = tableData.find(function (x) { return String(x.poolId).toLowerCase() === importId.toLowerCase(); });
+                if (lib) {
+                    setTimeout(function () { openImport(lib); }, 400);
+                }
+            }
+        })();
+
+        // ── Search (client-side) ──
+        function applySearch() {
+            var v = document.getElementById('searchInput').value.trim();
+            var mine = document.getElementById('myLibraries').checked;
+            table.clearFilter();
+            var filters = [];
+            if (v) {
+                filters.push([
+                    { field: 'name',         type: 'like', value: v },
+                    { field: 'description',  type: 'like', value: v },
+                    { field: 'scenarioName', type: 'like', value: v }
+                ]);
+            }
+            if (mine) filters.push({ field: 'userId', type: '=',    value: currentUserId });
+            if (filters.length) table.setFilter(filters);
+            table.pbSaveFilters({ search: v, mine: mine });
+        }
+
+        // Restore the filter saved before navigating away — or before Create/Edit/Delete's
+        // plain-form full navigation, or Copy/Import's reload once their background job
+        // succeeds — all of which otherwise reset the search box and "My Treatment Pool
+        // Libraries" checkbox back to blank.
+        (function restoreLibraryFilterState() {
+            var params = new URLSearchParams(window.location.search);
+            // Don't clobber a filter the URL itself is directing (navigated from Scenarios page).
+            if (params.get('search') || params.get('importId') || params.get('libId')) return;
+
+            var saved = table.pbSavedFilters;
+            if (!saved) return;
+
+            document.getElementById('searchInput').value = saved.search || '';
+            document.getElementById('myLibraries').checked = !!saved.mine;
+            applySearch();
+        })();
+
+        document.getElementById('btnSearch').addEventListener('click', applySearch);
+        document.getElementById('searchInput').addEventListener('keypress', function (e) { if (e.key === 'Enter') applySearch(); });
+        document.getElementById('myLibraries').addEventListener('change', applySearch);
+        document.getElementById('btnReset').addEventListener('click', function () {
+            document.getElementById('searchInput').value = '';
+            applySearch();
+        });
+
+        // ── Create new ──
+        // Button only renders for users with Create permission — guard so its
+        // absence doesn't throw and skip every handler registered after it
+        // (same landmine fixed on the Scenarios page).
+        var createLibraryBtn = document.getElementById('createnewlibrarybtn');
+        if (createLibraryBtn) createLibraryBtn.addEventListener('click', function () {
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('CreateNewLibraryForm')).show();
+        });
+
+        // ── Modal cleanup ──
+        document.getElementById('CreateNewLibraryForm').addEventListener('hidden.bs.modal', function () {
+            var form = document.getElementById('createlibraryModal');
+            form.reset();
+            form.classList.remove('was-validated');
+            document.getElementById('createlibraryname').classList.remove('is-invalid');
+            document.getElementById('createlibrarydescription').classList.remove('is-invalid');
+        });
+
+        document.getElementById('EditLibraryForm').addEventListener('hidden.bs.modal', function () {
+            var form = document.getElementById('editlibrary');
+            form.reset();
+            form.classList.remove('was-validated');
+            document.getElementById('editlibraryname').classList.remove('is-invalid');
+            document.getElementById('editlibrarydescription').classList.remove('is-invalid');
+        });
+
+        // Offer the picked workbook's worksheet names as Tab Name choices.
+        var _tabNameAutofill = pbTabNameAutofill.attach({
+            fileInput: 'excelfile',
+            tabInput: 'tabname',
+            tabSelect: 'tabnameselect',
+            onStatus: function (message) { document.getElementById('tabnamehint').textContent = message; }
+        });
+
+        document.getElementById('importtreatment').addEventListener('hidden.bs.modal', function () {
+            document.getElementById('treatmentimportform').reset();
+            _tabNameAutofill.reset();
+            updateFromScratch();
+        });
+
+        document.getElementById('CopyLibraryForm').addEventListener('hidden.bs.modal', function () {
+            var form = document.getElementById('copylibrary');
+            form.reset();
+            form.classList.remove('was-validated');
+            document.getElementById('copylibraryname').classList.remove('is-invalid');
+            document.getElementById('CopynNamefeedback').innerText = 'Field is required';
+            document.getElementById('copylibrarydescription').classList.remove('is-invalid');
+        });
+
+        // ── Copy form AJAX submit ──
+        document.getElementById('copylibrary').addEventListener('submit', function (e) {
+            e.preventDefault();
+            var nameInput = document.getElementById('copylibraryname');
+            var descInput = document.getElementById('copylibrarydescription');
+            var libraryname = nameInput.value.trim();
+            var librarydescription = descInput.value.trim();
+            nameInput.value = libraryname;
+            descInput.value = librarydescription;
+            if (!validateCopyLibraryName()) return;
+            if (!validateLibraryDescription(descInput, 'copydescriptionfeedback')) return;
+            if (!this.checkValidity()) { this.classList.add('was-validated'); return; }
+            var form = this;
+            var token = antiToken();
+            var submitBtn = form.querySelector('[type=submit]');
+            submitBtn.disabled = true;
+
+            $.ajax({
+                type: 'POST', url: '?handler=CheckLibraryName',
+                data: { libraryname: libraryname, libraryid: '' },
+                headers: { 'RequestVerificationToken': token },
+                success: function () {
+                    document.getElementById('CopynNamefeedback').innerText = '';
+                    document.getElementById('copylibraryname').classList.remove('is-invalid');
+                    $.ajax({
+                        type: 'POST', url: '?handler=CreateSharedLibrary',
+                        data: $(form).serialize(),
+                        headers: { 'RequestVerificationToken': token },
+                        success: function (res) {
+                            bootstrap.Modal.getOrCreateInstance(document.getElementById('CopyLibraryForm')).hide();
+                            form.reset(); submitBtn.disabled = false;
+                            var label = libraryname ? '"' + libraryname + '"' : 'Library';
+                            sessionStorage.setItem('tplPendingJobId', res.jobId);
+                            sessionStorage.setItem('tplPendingJobName', libraryname);
+                            sessionStorage.setItem('tplPendingJobType', 'copy');
+                            showJobStatus('running', label + ' copy running in the background…');
+                            pollLibraryJob(res.jobId, libraryname, 'copy');
+                        },
+                        error: function (xhr) {
+                            submitBtn.disabled = false;
+                            var msg = xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'Unable to copy. Please try again.';
+                            alert(msg);
+                        }
+                    });
+                },
+                error: function () {
+                    document.getElementById('copylibraryname').classList.add('is-invalid');
+                    document.getElementById('CopynNamefeedback').innerText = 'Name already exists';
+                    submitBtn.disabled = false;
+                }
+            });
+        });
+
+        // ── fromScratch / keepAll sync ──
+        function updateFromScratch() {
+            var sel = document.querySelector('input[name="option"]:checked');
+            if (!sel) return;
+            var fs = document.getElementById('fromScratch'), ka = document.getElementById('keepAll');
+            if (sel.value === 'deleteAll')      { fs.checked = true;  fs.value = true;  ka.value = false; ka.checked = false; }
+            else if (sel.value === 'keepUserCreated') { fs.value = true;  fs.checked = true;  ka.value = true;  ka.checked = true; }
+            else if (sel.value === 'keepAll')   { fs.value = false; fs.checked = false; ka.value = true;  ka.checked = true; }
+        }
+        document.addEventListener('change', function (e) { if (e.target.name === 'option') updateFromScratch(); });
+
+        function showJobStatus(state, message) {
+            var banner  = document.getElementById('jobStatusBanner');
+            var spinner = document.getElementById('jobStatusSpinner');
+            banner.className = 'run-status-banner run-status-' + state;
+            document.getElementById('jobStatusMessage').textContent = message;
+            spinner.style.display = (state === 'running') ? 'block' : 'none';
+            banner.style.display = 'flex';
+        }
+
+        function hideJobStatus() {
+            if (_tplPollTimer) { clearInterval(_tplPollTimer); _tplPollTimer = null; }
+            document.getElementById('jobStatusBanner').style.display = 'none';
+        }
+
+        function checkfilesize() {
+            var excelfile = document.getElementById('excelfile');
+            var file = excelfile.files[0];
+            var feedback = document.getElementById('excelvalidation');
+            if (!file) return false;
+
+            var fileSizeLimit = 128 * 1024 * 1024;
+            var allowedExtensions = /\.(xls|xlsx)$/i;
+            if (!allowedExtensions.test(file.name)) {
+                excelfile.classList.add('is-invalid');
+                feedback.textContent = 'Please upload a valid Excel file with .xls or .xlsx extension.';
+                return false;
+            }
+            if (file.size > fileSizeLimit) {
+                excelfile.classList.add('is-invalid');
+                feedback.textContent = 'The excel file must be under 128Mb in size.';
+                return false;
+            }
+            excelfile.classList.remove('is-invalid');
+            return true;
+        }
+
+        function parseImportError(result) {
+            if (!result) return 'Import failed. Please try again.';
+            if (typeof result === 'string') return result;
+            if (result.error) return result.error;
+            if (Array.isArray(result)) return result.join('<br>');
+            if (result.value && Array.isArray(result.value)) return result.value.join('<br>');
+            return 'Import failed. Please try again.';
+        }
+
+        document.getElementById('treatmentimportform').addEventListener('submit', async function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            updateFromScratch();
+
+            var form = this;
+            form.classList.remove('was-validated');
+            document.getElementById('excelvalidation').textContent = 'Field is required';
+
+            if (!form.checkValidity() || !checkfilesize()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
+            var formData = new FormData(form);
+            var submitBtn = form.querySelector('[type=submit]');
+            var libraryName = _importLibraryName;
+            var label = libraryName ? '"' + libraryName + '"' : 'Library';
+            submitBtn.disabled = true;
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('importtreatment')).hide();
+            showOverlay();
+
+            try {
+                var response = await fetch(form.action, { method: 'POST', body: formData });
+                var result = null;
+                try { result = await response.json(); } catch (e) { /* non-json body */ }
+
+                hideOverlay();
+
+                if (response.ok && result && result.jobId) {
+                    // Re-enable now (matching the Copy form's flow below) rather than
+                    // leaving it disabled until the background job finishes: if that
+                    // job later fails, pollLibraryJob has no reference to this button
+                    // to re-enable it, so the next retry's Import button stayed
+                    // disabled forever until a full page reload.
+                    submitBtn.disabled = false;
+                    sessionStorage.setItem('tplPendingJobId', result.jobId);
+                    sessionStorage.setItem('tplPendingJobName', libraryName);
+                    sessionStorage.setItem('tplPendingJobType', 'import');
+                    showJobStatus('running', label + ' import running in the background…');
+                    pollLibraryJob(result.jobId, libraryName, 'import');
+                } else {
+                    showJobStatus('error', parseImportError(result));
+                    submitBtn.disabled = false;
+                }
+            } catch (error) {
+                hideOverlay();
+                showJobStatus('error', 'Unexpected error. Please try again.');
+                submitBtn.disabled = false;
+            }
+        });
+
+        // ── Background job polling (Copy & Import) ──
+        var _tplPollTimer = null;
+
+        function pollLibraryJob(jobId, libraryName, jobType) {
+            if (_tplPollTimer) clearInterval(_tplPollTimer);
+            var label  = libraryName ? '"' + libraryName + '"' : (jobType === 'copy' ? 'Library' : 'Import');
+            var header = jobType === 'copy' ? 'Copy Library' : 'Import';
+            _tplPollTimer = setInterval(function () {
+                $.get('?handler=JobStatus', { jobId: jobId }, function (res) {
+                    if (res.status === 'Succeeded') {
+                        clearInterval(_tplPollTimer); _tplPollTimer = null;
+                        sessionStorage.removeItem('tplPendingJobId');
+                        sessionStorage.removeItem('tplPendingJobName');
+                        sessionStorage.removeItem('tplPendingJobType');
+                        var msg = jobType === 'copy'
+                            ? label + ' copied successfully.'
+                            : label + ' import completed successfully.';
+                        sessionStorage.setItem('tplJobSuccess', msg);
+                        location.reload();
+                    } else if (res.status === 'Failed') {
+                        clearInterval(_tplPollTimer); _tplPollTimer = null;
+                        sessionStorage.removeItem('tplPendingJobId');
+                        sessionStorage.removeItem('tplPendingJobName');
+                        sessionStorage.removeItem('tplPendingJobType');
+                        var errMsg = (jobType === 'copy' ? 'Copy failed: ' : 'Import failed: ') + (res.message || 'Unknown error');
+                        showJobStatus('error', errMsg);
+                    }
+                    // Enqueued / Processing — keep polling
+                });
+            }, 3000);
+        }
+
+        // On every page load: resume polling if a job was running before a manual refresh,
+        // or show a success banner stored just before the last auto-reload.
+        (function () {
+            var successMsg = sessionStorage.getItem('tplJobSuccess');
+            if (successMsg) {
+                sessionStorage.removeItem('tplJobSuccess');
+                showJobStatus('success', successMsg);
+                return;
+            }
+            var pendingJobId = sessionStorage.getItem('tplPendingJobId');
+            if (pendingJobId) {
+                var pendingName = sessionStorage.getItem('tplPendingJobName') || '';
+                var pendingType = sessionStorage.getItem('tplPendingJobType') || 'copy';
+                var label = pendingName ? '"' + pendingName + '"' : (pendingType === 'copy' ? 'Library' : 'Import');
+                showJobStatus('running', label + ' is still running in the background…');
+                pollLibraryJob(pendingJobId, pendingName, pendingType);
+            }
+        })();
+
+        // ── Tour Guide (ported from the legacy /CandidatePools page tour) ──
+        var tourCurStep = 0;
+        var tourActiveSteps = [];
+        var tourHighlightedAction = null;
+
+        var tourAllSteps = [
+            {
+                requiresData: false,
+                title: 'Create New Treatment Pool Library',
+                text: 'Create a new treatment pool library here before importing or organizing treatments.',
+                getTarget: function () { return document.getElementById('createnewlibrarybtn'); }
+            },
+            {
+                requiresData: true,
+                title: 'Library Actions',
+                text: 'Open the actions menu to edit, copy or import.',
+                getTarget: function () {
+                    var rows = table.getRows();
+                    return rows.length ? rows[0].getElement().querySelector('.btn-actions-toggle') : null;
+                }
+            },
+            {
+                requiresData: true,
+                openActions: true,
+                title: 'Open Treatments',
+                text: 'Use Treatments to open the selected library and manage its treatment records.',
+                getTarget: function () {
+                    var rows = table.getRows();
+                    if (!rows.length) return null;
+                    var panel = rows[0].getElement().querySelector('.row-expand-panel');
+                    return panel ? panel.querySelector('[data-action="Treatments"]') : null;
+                }
+            }
+        ];
+
+        function tourClosePanel() {
+            table.getRows().forEach(function (r) {
+                var p = r.getElement().querySelector('.row-expand-panel');
+                if (p) p.style.display = 'none';
+                var b = r.getElement().querySelector('.btn-actions-toggle');
+                if (b) { b.classList.remove('open'); var ic = b.querySelector('i'); if (ic) { ic.className = 'fa-solid fa-chevron-down'; ic.style.fontSize = '10px'; } }
+                r.normalizeHeight();
+            });
+        }
+
+        function tourOpenPanel() {
+            var rows = table.getRows(); if (!rows.length) return;
+            var row = rows[0];
+            var panel = row.getElement().querySelector('.row-expand-panel');
+            if (panel) panel.style.display = 'block';
+            var btn = row.getElement().querySelector('.btn-actions-toggle');
+            if (btn) { btn.classList.add('open'); var ic = btn.querySelector('i'); if (ic) { ic.className = 'fa-solid fa-chevron-up'; ic.style.fontSize = '10px'; } }
+            row.normalizeHeight();
+        }
+
+        function tourSetSpotlight(target) {
+            var sp = document.getElementById('tour-spotlight');
+            if (!target) {
+                sp.style.left = '0'; sp.style.top = '0'; sp.style.width = '0'; sp.style.height = '0';
+                sp.style.border = 'none'; sp.style.borderRadius = '0'; sp.style.display = 'block';
+            } else {
+                var r = target.getBoundingClientRect(), pad = 8;
+                sp.style.left = (r.left - pad) + 'px';
+                sp.style.top = (r.top - pad) + 'px';
+                sp.style.width = (r.width + pad * 2) + 'px';
+                sp.style.height = (r.height + pad * 2) + 'px';
+                sp.style.border = '3px solid rgba(255,255,255,.85)';
+                sp.style.borderRadius = '6px';
+                sp.style.display = 'block';
+            }
+        }
+
+        function tourPositionCard(target) {
+            var card = document.getElementById('tour-card');
+            var cardW = card.offsetWidth || 380;
+            var cardH = card.offsetHeight || 220;
+            var vw = window.innerWidth;
+            var vh = window.innerHeight;
+            var gap = 14;
+            card.style.bottom = '';
+            card.style.transform = 'none';
+            if (!target) {
+                card.style.left = '50%'; card.style.top = '50%';
+                card.style.transform = 'translate(-50%,-50%)'; return;
+            }
+            var rect = target.getBoundingClientRect();
+            var idealLeft = rect.left + rect.width / 2 - cardW / 2;
+            card.style.left = Math.max(10, Math.min(idealLeft, vw - cardW - 10)) + 'px';
+            var spaceBelow = vh - rect.bottom - 44 - gap;
+            var spaceAbove = rect.top - 70 - gap;
+            if (spaceBelow >= cardH) {
+                card.style.top = (rect.bottom + gap) + 'px';
+            } else if (spaceAbove >= cardH) {
+                card.style.top = (rect.top - cardH - gap) + 'px';
+            } else {
+                card.style.left = '50%'; card.style.top = '50%';
+                card.style.transform = 'translate(-50%,-50%)';
+            }
+        }
+
+        function tourShowStep(idx) {
+            if (tourHighlightedAction) { tourHighlightedAction.classList.remove('tour-action-highlight'); tourHighlightedAction = null; }
+            tourClosePanel();
+            var step = tourActiveSteps[idx], total = tourActiveSteps.length;
+            document.getElementById('tour-badge').textContent = 'STEP ' + (idx + 1) + ' OF ' + total;
+            document.getElementById('tour-title').textContent = step.title;
+            document.getElementById('tour-text').textContent = step.text;
+            document.getElementById('tour-next').textContent = idx === total - 1 ? 'Finish' : 'Next';
+            document.getElementById('tour-prev').style.display = idx === 0 ? 'none' : '';
+            if (step.openActions) tourOpenPanel();
+            var target = step.getTarget ? step.getTarget() : null;
+            if (step.openActions && target) { target.classList.add('tour-action-highlight'); tourHighlightedAction = target; }
+            tourSetSpotlight(target);
+            tourPositionCard(target);
+        }
+
+        function tourStart() {
+            var hasData = table.getDataCount() > 0;
+            tourActiveSteps = tourAllSteps.filter(function (s) { return !s.requiresData || hasData; });
+            if (!tourActiveSteps.length) return;
+            tourCurStep = 0;
+            document.getElementById('tour-overlay').style.display = 'block';
+            document.getElementById('tour-card').style.display = 'block';
+            tourShowStep(0);
+        }
+
+        function tourEnd() {
+            if (tourHighlightedAction) { tourHighlightedAction.classList.remove('tour-action-highlight'); tourHighlightedAction = null; }
+            tourClosePanel();
+            document.getElementById('tour-overlay').style.display = 'none';
+            document.getElementById('tour-card').style.display = 'none';
+            document.getElementById('tour-spotlight').style.display = 'none';
+        }
+
+        document.getElementById('btnGuide').addEventListener('click', tourStart);
+        document.getElementById('tour-next').addEventListener('click', function () {
+            if (tourCurStep >= tourActiveSteps.length - 1) { tourEnd(); return; }
+            tourCurStep++; tourShowStep(tourCurStep);
+        });
+        document.getElementById('tour-prev').addEventListener('click', function () {
+            if (tourCurStep <= 0) return;
+            tourCurStep--; tourShowStep(tourCurStep);
+        });
+        document.getElementById('tour-skip').addEventListener('click', tourEnd);
+        document.getElementById('tour-close').addEventListener('click', tourEnd);
+        document.getElementById('tour-overlay').addEventListener('click', tourEnd);
+
+        var tourKey = 'treatment-pool-libraries-page:v1';
+        function tourMarkSeen() {
+            fetch('?handler=MarkTourSeen&tourKey=' + encodeURIComponent(tourKey), {
+                method: 'POST',
+                headers: { 'RequestVerificationToken': antiToken() }
+            }).catch(function () { });
+        }
+        var tourAutoStarted = false;
+        var tourShouldAutoStart = false;
+        function tourAutoStart() {
+            if (tourAutoStarted || !tourShouldAutoStart) return;
+            tourAutoStarted = true;
+            tourMarkSeen();
+            tourStart();
+        }
+        table.on('tableBuilt', function () { setTimeout(tourAutoStart, 300); });
+        setTimeout(tourAutoStart, 1500);
+        fetch('?handler=TourSeen&tourKey=' + encodeURIComponent(tourKey))
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                tourShouldAutoStart = !(data && data.seen);
+                tourAutoStart();
+            })
+            .catch(function () { });
+    </script>
+}

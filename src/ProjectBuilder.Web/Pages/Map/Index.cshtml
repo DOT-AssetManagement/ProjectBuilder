@@ -1,0 +1,120 @@
+@page
+@model ProjectBuilder.Web.Pages.Map.IndexModel
+@{
+    Layout = "~/Pages/Shared/PBDSSLayout.cshtml";
+    ViewData["PBVariant"] = "app";
+    ViewData["Title"] = "Map";
+    var scenarioId = Model.ScenarioId;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://js.arcgis.com/4.33/esri/themes/light/main.css" crossorigin="anonymous" />
+    <link rel="stylesheet" href="~/css/map/gismap.css" asp-append-version="true" />
+}
+
+<div class="map-page">
+    <div id="map-loading" class="map-loading">
+        <div class="map-loading-card" role="status" aria-live="polite">
+            <p id="map-loading-message" class="map-loading-message">Fetching scenario data…</p>
+            <p class="map-loading-hint">Please wait while scenario data and map features are loaded.</p>
+            <div class="map-loading-progress" aria-hidden="true">
+                <div id="map-loading-progress-bar" class="map-loading-progress-bar"></div>
+            </div>
+            <p id="map-loading-percent" class="map-loading-percent">5%</p>
+        </div>
+    </div>
+    @Html.AntiForgeryToken()
+
+    <div id="scenario-strip" class="gis-scenario-strip" hidden>
+        <a href="/Projects?scenid=@scenarioId&fromscenario=true" class="gis-back-btn gis-back-btn--inline">
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><polyline points="14 5 8 12 14 19"/></svg>
+            Back to Outputs
+        </a>
+        <span id="scenario-strip-text"></span>
+    </div>
+
+    <aside id="map-filter" class="gis-filter" aria-label="Map filters">
+        <div class="gis-filter-head">
+            <button type="button" id="gis-filter-collapse" class="gis-filter-collapse" aria-expanded="true" aria-label="Collapse filters">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="15 6 9 12 15 18"/><polyline points="20 6 14 12 20 18"/></svg>
+            </button>
+            <span class="gis-filter-head-title">Filters</span>
+        </div>
+        <div class="gis-filter-tools" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="7" r="2.1"/><circle cx="15" cy="12" r="2.1"/><circle cx="8" cy="17" r="2.1"/></svg>
+        </div>
+        <div class="gis-filter-body" id="gis-filter-body">
+            <div id="gis-filter-sections"></div>
+            <div class="gis-filter-actions">
+                <button type="button" id="gis-filter-clear" class="gis-btn gis-filter-clear">Clear All Filters</button>
+                <button type="button" id="gis-mapkey-toggle" class="gis-btn gis-mapkey-toggle">Map Key</button>
+            </div>
+            <div id="map-key" class="gis-mapkey" hidden aria-label="Map key"></div>
+        </div>
+    </aside>
+
+    <div id="map-project-search" class="gis-project-search" aria-label="Search project ID"></div>
+
+    <div id="map-view"></div>
+    <div id="map-tooltip-root" class="gis-map-tooltip-root" aria-live="polite"></div>
+
+    <div id="map-key-band" class="gis-key-band" role="status" aria-live="polite" hidden>
+        <span class="gis-key-band-text" id="map-key-band-text"></span>
+        <button type="button" class="gis-key-band-close" id="map-key-band-close" aria-label="Dismiss notice">&times;</button>
+    </div>
+
+    <div id="map-toolbar-zone" class="gis-map-toolbar-zone">
+        <div id="map-ratings-road" class="gis-ratings-popup" hidden aria-label="Road condition ratings"></div>
+        <div id="map-ratings-bridge" class="gis-ratings-popup" hidden aria-label="Bridge condition ratings"></div>
+        <div id="map-ratings-mpms" class="gis-ratings-popup" hidden aria-label="MPMS project status"></div>
+        <div id="map-toolbar" class="gis-map-toolbar" aria-label="Map layers toolbar">
+            <div class="gis-map-toolbar-row">
+                <div class="gis-toolbar-btn gis-toolbar-btn--primary gis-toolbar-layers">
+                    <img src="~/images/map/layers.png" alt="" width="25" height="25" />
+                    <span>Layers</span>
+                </div>
+                <div id="map-toolbar-panel" class="gis-map-toolbar-panel" hidden>
+                    <div class="gis-basemap-anchor">
+                        <button type="button" id="map-toolbar-basemap" class="gis-toolbar-btn gis-toolbar-btn--basemap" aria-label="Choose map type" aria-haspopup="dialog" aria-expanded="false" aria-controls="map-basemap-picker">
+                            <span class="gis-toolbar-basemap-label">Map type</span>
+                        </button>
+                        <div id="map-basemap-picker" class="gis-basemap-picker" hidden aria-hidden="true"></div>
+                    </div>
+                    <button type="button" id="map-toolbar-road" class="gis-toolbar-btn gis-toolbar-btn--layer gis-toolbar-btn--pavement" aria-label="Toggle pavement inventory layer">
+                        <img src="~/images/map/road.png" alt="" width="25" height="25" />
+                        <span>Pavement</span>
+                        <span class="gis-toolbar-spinner" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" id="map-toolbar-bridge" class="gis-toolbar-btn gis-toolbar-btn--layer gis-toolbar-btn--bridge" aria-label="Toggle bridge inventory layer">
+                        <svg class="gis-toolbar-plus" viewBox="70 72 142 140" aria-hidden="true"><path fill="#fff" d="M130.39,200.54v-117.92h20.01v117.92h-20.01ZM81.44,151.58v-20.01h117.92v20.01h-117.92Z"/></svg>
+                        <span>Bridge</span>
+                        <span class="gis-toolbar-spinner" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" id="map-toolbar-mpms" class="gis-toolbar-btn gis-toolbar-btn--layer gis-toolbar-btn--mpms" aria-label="Toggle MPMS layer">
+                        <img src="~/images/map/icons/MPMS%205.svg" alt="" width="25" height="25" />
+                        <span>MPMS</span>
+                        <span class="gis-toolbar-spinner" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" id="map-toolbar-unselected" class="gis-toolbar-btn gis-toolbar-btn--layer gis-toolbar-btn--unfunded" aria-label="Toggle unselected/not-funded projects layer">
+                        <img src="~/images/map/icons/unfunded-toolbar.png" alt="" width="25" height="25" />
+                        <span>Unfunded</span>
+                        <span class="gis-toolbar-spinner" aria-hidden="true"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <aside id="inventory-info-panel" class="gis-inventory-panel" hidden aria-label="Inventory feature details"></aside>
+
+    <aside id="project-panel" class="gis-panel" hidden aria-label="Project details"></aside>
+
+    <div id="project-treatments-bar" class="gis-ptbar" hidden></div>
+</div>
+
+@section Scripts {
+    <script>
+        window.__SCENARIO_ID__ = @scenarioId;
+    </script>
+    <script type="module" src="~/js/map/map.js" asp-append-version="true"></script>
+}

@@ -1,75 +1,58 @@
-# ProjectBuilder 4.0 — README
+﻿# ProjectBuilder
 
-### Table of Contents
+## About this solution
 
-- [Overview](#overview)
-- [Core Features](#core-features)
-- [Architecture](#architecture)
-- [Prerequisites](#prerequisites)
-- [Contributing](#contributing)
-- [License](#license)
-- [Contacts](#contacts)
+This is a layered startup solution based on [Domain Driven Design (DDD)](https://docs.abp.io/en/abp/latest/Domain-Driven-Design) practises. All the fundamental ABP modules are already installed. Check the [Application Startup Template](https://abp.io/docs/latest/startup-templates/application/index) documentation for more info.
 
-### Overview
+### Pre-requirements
 
-**ProjectBuilder** is a C#/.NET, SQL Server-backed web application designed to help PennDOT optimize capital projects. It accomplishes this by:
+* [.NET9.0+ SDK](https://dotnet.microsoft.com/download/dotnet)
+* [Node v18 or 20](https://nodejs.org/en)
 
-* **Bundling** asset-level treatments (pavement, bridges, etc.) into candidate projects based on configurable business rules.
-* **Optimizing** the selection and timing of these projects across annual Pavement, Bridge, and Open budgets using a mixed-integer linear program (LP) with a refined cutting-plane method.
+### Configurations
 
-The core platform relies on **Windows Server**, **SQL Server**, the open-source **SYMPHONY** solver, and an **ESRI SDK** map interface integrated via a data gateway.
+The solution comes with a default configuration that works out of the box. However, you may consider to change the following configuration before running your solution:
 
----
+* Check the `ConnectionStrings` in `appsettings.json` files under the `ProjectBuilder.Web` and `ProjectBuilder.DbMigrator` projects and change it if you need.
 
-### Core Features
+### Before running the application
 
-* Treatment bundling with geographic, temporal, and compatibility rules.
-* Multi-year and multi-asset project handling, including modeling indirect costs (Design/ROW/Utilities).
-* Scenario management with features for copying, running, and adjusting budget parameters.
-* Import and export functionality to and from BAMS/PAMS via Excel.
-* A map interface for visualizing and editing projects and work items.
-* Administrative interfaces for managing system data, users, and roles.
+* Run `abp install-libs` command on your solution folder to install client-side package dependencies. This step is automatically done when you create a new solution, if you didn't especially disabled it. However, you should run it yourself if you have first cloned this solution from your source control, or added a new client-side package dependency to your solution.
+* Run `ProjectBuilder.DbMigrator` to create the initial database. This step is also automatically done when you create a new solution, if you didn't especially disabled it. This should be done in the first run. It is also needed if a new database migration is added to the solution later.
 
----
+#### Generating a Signing Certificate
 
-### Architecture
+In the production environment, you need to use a production signing certificate. ABP Framework sets up signing and encryption certificates in your application and expects an `openiddict.pfx` file in your application.
 
-* **Backend:** ASP.NET (C#) with SQL Server.
-* **Optimization:** An LP formulation with a relaxed integer pass and cuts for fractional solutions.
-* **Mapping:** An ESRI SDK Mapping application embedded into the .NET repo.
-* **Deployment OS:** Windows Server.
+To generate a signing certificate, you can use the following command:
 
----
+```bash
+dotnet dev-certs https -v -ep openiddict.pfx -p 4669ad2c-0771-4e4f-bb37-f91e27c1fd8f
+```
 
-### Prerequisites
+> `4669ad2c-0771-4e4f-bb37-f91e27c1fd8f` is the password of the certificate, you can change it to any password you want.
 
-To run this application, you'll need the following:
+It is recommended to use **two** RSA certificates, distinct from the certificate(s) used for HTTPS: one for encryption, one for signing.
 
-* Windows Server with IIS.
-* .NET 8+ SDK.
-* SQL Server 2019+ (engine + tools).
-* Access to the SYMPHONY solver binaries.
+For more information, please refer to: [https://documentation.openiddict.com/configuration/encryption-and-signing-credentials.html#registering-a-certificate-recommended-for-production-ready-scenarios](https://documentation.openiddict.com/configuration/encryption-and-signing-credentials.html#registering-a-certificate-recommended-for-production-ready-scenarios)
 
----
+> Also, see the [Configuring OpenIddict](https://docs.abp.io/en/abp/latest/Deployment/Configuring-OpenIddict#production-environment) documentation for more information.
 
-## Contributing
-We welcome issues and pull requests! To contribute, follow these steps:
+### Solution structure
 
-- Fork the repository.
-- Create a feature branch for your changes.
-- Commit your changes with clear, descriptive messages.
-- Open a pull request and describe the changes you've made and the reasoning behind them.
+This is a layered monolith application that consists of the following applications:
 
----
+* `ProjectBuilder.DbMigrator`: A console application which applies the migrations and also seeds the initial data. It is useful on development as well as on production environment.
+* `ProjectBuilder.Web`: ASP.NET Core MVC / Razor Pages application that is the essential web application of the solution.
 
-## License
-This repository includes a LICENSE file. Please refer to this file for the specific terms and conditions.
 
----
+## Deploying the application
 
-## Contacts
-For program information and collaboration inquiries, you can reach out to:
+Deploying an ABP application is not different than deploying any .NET or ASP.NET Core application. However, there are some topics that you should care about when you are deploying your applications. You can check ABP's [Deployment documentation](https://docs.abp.io/en/abp/latest/Deployment/Index) and ABP Commercial's [Deployment documentation](https://abp.io/docs/latest/startup-templates/application/deployment?UI=MVC&DB=EF&Tiered=No) before deploying your application.
 
-PennDOT Asset Management
-Justin Bruner, P.E. — jbruner@pa.gov
+### Additional resources
 
+You can see the following resources to learn more about your solution and the ABP Framework:
+
+* [Web Application Development Tutorial](https://abp.io/docs/latest/tutorials/book-store/part-1)
+* [Application Startup Template](https://abp.io/docs/latest/startup-templates/application/index)

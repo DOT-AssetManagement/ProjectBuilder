@@ -1,0 +1,662 @@
+@page
+@using System.Linq
+@using System.Collections.Generic
+@model ProjectBuilder.Web.Pages.ProjectTreatments.ListModel
+@{
+    ViewData["Title"] = "Project Treatments";
+    ViewData["PBVariant"] = "app";
+    ViewData["PBActivePage"] = "scenarios";
+    Layout = "~/Pages/Shared/PBDSSLayout.cshtml";
+    var currentYear = DateTime.Today.Year;
+}
+
+@section Styles {
+    <link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/pbdss/scenarioedit.css" />
+    <style>
+        .pt-content {
+            flex: 1;
+            min-width: 0;
+            padding: 20px 24px;
+            overflow: hidden;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        #table-pt { flex: 1; min-height: 0; }
+        .pt-title { font-family: Montserrat, sans-serif; font-weight: 700; font-size: 18px; color: #fff; background: #d87d2a; padding: 10px 24px; margin: -20px -24px 14px; }
+
+        /* This table has many wide columns and scrolls horizontally; the row-expand
+           panel spans that full scrollable width, so plain centering puts its
+           buttons off-screen. Sticky-center the action bar within whatever
+           portion of the row is currently visible instead. */
+        #table-pt .action-bar {
+            position: sticky;
+            left: 50%;
+            transform: translateX(-50%);
+            width: max-content;
+        }
+
+        #overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 9999; justify-content: center; align-items: center; }
+        .overlay-content { text-align: center; color: #fff; }
+        .spinner { border: 6px solid rgba(255,255,255,.3); border-top: 6px solid #fff; border-radius: 50%; width: 50px; height: 50px; animation: spin .8s linear infinite; margin: 0 auto 10px; }
+        @@keyframes spin { to { transform: rotate(360deg); } }
+
+        .trt-modal .modal-header { background: rgb(28,48,92); color: #fff; }
+        .trt-modal .modal-header .btn-close { filter: invert(1) grayscale(100%) brightness(200%); }
+        .trt-modal .modal-title { font-family: Montserrat, sans-serif; font-weight: 700; font-size: 18px; }
+        .trt-section { border: 1px solid #d6dce6; border-radius: 8px; padding: 14px 16px 6px; margin-bottom: 14px; }
+        .trt-section > .trt-section-title { font-family: Montserrat, sans-serif; font-weight: 700; color: rgb(28,48,92); font-size: 13px; text-transform: uppercase; letter-spacing: .4px; border-bottom: 2px solid rgb(28,48,92); padding-bottom: 6px; margin-bottom: 12px; }
+        .trt-modal label.form-label { font-size: 12px; font-weight: 600; color: #344563; margin-bottom: 2px; }
+        .trt-modal .form-control, .trt-modal .form-select { font-size: 13px; }
+        .trt-modal .form-control:disabled, .trt-modal .form-control[readonly] { background-color: #eef1f5; }
+    </style>
+}
+
+<partial name="~/Pages/Projects/_AnalysisNav.cshtml" model="Model" />
+
+<div class="pt-content">
+
+    <div class="pt-title">Project Treatments - @Model.ScenarioName</div>
+
+    <div class="search-bar" id="treatmentFilterBar">
+        <select class="form-select form-select-sm" id="filterAssetType" style="width:auto;">
+            <option value="">Select Asset Type</option>
+        </select>
+        <select class="form-select form-select-sm" id="filterDistrict" style="width:auto;">
+            <option value="">Select District</option>
+        </select>
+        <select class="form-select form-select-sm" id="filterCounty" style="width:auto;">
+            <option value="">Select County</option>
+        </select>
+        <select class="form-select form-select-sm" id="filterRoute" style="width:auto;">
+            <option value="">Select Route</option>
+        </select>
+        <select class="form-select form-select-sm" id="filterSection" style="width:auto;">
+            <option value="">Select Section</option>
+        </select>
+        <select class="form-select form-select-sm" id="filterYear" style="width:auto;">
+            <option value="">Select Year</option>
+        </select>
+        <button class="btn btn-primary btn-sm" id="btnApplyFilter">Filter</button>
+        <button class="btn-reset btn-sm" id="btnResetFilter">Reset</button>
+        <div class="ms-auto-btns">
+            <button class="btn-guide" id="btnGuide" type="button"><span class="q">?</span> Guide</button>
+            <a href="/Projects?scenid=@Model.Scenid&fromscenario=true" class="btn btn-secondary btn-sm">
+                <i class="fa-solid fa-arrow-left me-1"></i>Back to Projects
+            </a>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <div id="table-pt"></div>
+    </div>
+
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Treatment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body d-flex align-items-center">
+                <i class="fa-solid fa-triangle-exclamation text-danger fa-2x me-3"></i>
+                <span>Are you sure you want to delete the selected treatment?</span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="confirmDelete" class="btn btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Treatment Modal -->
+<div class="modal fade trt-modal" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Project Treatment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editForm" novalidate>
+                <input type="hidden" name="Id" id="e_id" />
+                <input type="hidden" name="ScenarioId" value="@Model.Scenid" />
+                <input type="hidden" name="AssetType" id="e_assetType" />
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- Treatment Information -->
+                        <div class="col-md-6">
+                            <div class="trt-section">
+                                <div class="trt-section-title">Treatment Information</div>
+                                <div class="row g-2">
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Asset Type</label>
+                                        <input type="text" class="form-control" id="e_assetTypeText" readonly />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Treatment</label>
+                                        <input type="text" class="form-control" id="e_treatment" readonly />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Treatment Type</label>
+                                        <select class="form-select" name="Category" id="e_treatmentType">
+                                            <option value="">Select Treatment Type</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Priority Order</label>
+                                        <select class="form-select" name="PriorityOrder" id="e_priorityOrder" required>
+                                            <option value="0">0</option>
+                                            <option value="1">1</option>
+                                            <option value="2">2</option>
+                                            <option value="3">3</option>
+                                            <option value="4">4</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-sm-6 mt-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="e_isCommitted">
+                                            <label class="form-check-label" for="e_isCommitted">Is Committed</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Location Information — District/County/Route/Section/BRKey/BMS ID are
+                             read-only; Interstate/Direction are editable (matches legacy). -->
+                        <div class="col-md-6">
+                            <div class="trt-section">
+                                <div class="trt-section-title">Location Information</div>
+                                <div class="row g-2">
+                                    <div class="col-sm-6">
+                                        <label class="form-label">District</label>
+                                        <input type="text" class="form-control" id="e_district" readonly />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">County</label>
+                                        <input type="text" class="form-control" id="e_county" readonly />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Route</label>
+                                        <input type="text" class="form-control" id="e_route" readonly />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Section</label>
+                                        <input type="text" class="form-control" id="e_section" readonly />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Interstate</label>
+                                        <select class="form-select" name="Interstate" id="e_interstate">
+                                            <option value="">Select</option>
+                                            <option value="true">Yes</option>
+                                            <option value="false">No</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Direction</label>
+                                        <select class="form-select" name="Direction" id="e_direction">
+                                            <option value="">Select</option>
+                                            <option value="1">South / West</option>
+                                            <option value="0">North / East</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-sm-6 trt-bridge-field-edit" style="display:none;">
+                                        <label class="form-label">BRKey</label>
+                                        <input type="text" class="form-control" id="e_brkey" readonly />
+                                    </div>
+                                    <div class="col-sm-6 trt-bridge-field-edit" style="display:none;">
+                                        <label class="form-label">BMS ID</label>
+                                        <input type="text" class="form-control" id="e_bridgeId" readonly />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- Timing -->
+                        <div class="col-md-6">
+                            <div class="trt-section">
+                                <div class="trt-section-title">Timing</div>
+                                <div class="row g-2">
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Minimum Year</label>
+                                        <input type="number" min="1000" max="9999" class="form-control" name="MinYear" id="e_minYear" required />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Maximum Year</label>
+                                        <input type="number" min="1000" max="9999" class="form-control" name="MaxYear" id="e_maxYear" required />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Preferred Year</label>
+                                        <select class="form-select" name="PreferredYear" id="e_preferredYear" required>
+                                            <option value="">Select Preferred Year</option>
+                                            @for (int y = currentYear; y <= 2050; y++)
+                                            {
+                                                <option value="@y">@y</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Costs -->
+                        <div class="col-md-6">
+                            <div class="trt-section">
+                                <div class="trt-section-title">Costs</div>
+                                <div class="row g-2">
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Construction Cost</label>
+                                        <input type="number" step="any" min="0" class="form-control trt-costcalc-edit" name="DirectCost" id="e_cost" required />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Indirect Cost Row</label>
+                                        <input type="number" step="any" min="0" class="form-control trt-costcalc-edit" name="IndirectCostRow" id="e_icRow" />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Indirect Cost Utilities</label>
+                                        <input type="number" step="any" min="0" class="form-control trt-costcalc-edit" name="IndirectCostUtilities" id="e_icUtil" />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Indirect Cost Design</label>
+                                        <input type="number" step="any" min="0" class="form-control trt-costcalc-edit" name="IndirectCostDesign" id="e_icDesign" />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Indirect Cost Others</label>
+                                        <input type="number" step="any" min="0" class="form-control trt-costcalc-edit" name="IndirectCostOther" id="e_icOther" />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Total Cost</label>
+                                        <input type="number" step="any" class="form-control" id="e_totalCost" readonly />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Benefit</label>
+                                        <input type="number" step="any" class="form-control" name="Benefit" id="e_benefit" readonly />
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label">Risk</label>
+                                        <input type="number" step="any" class="form-control" name="Risk" id="e_risk" readonly />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Notification toast -->
+<div class="position-fixed top-0 end-0 p-3" style="z-index:11000;margin-top:80px;">
+    <div id="mainnotificationmessage" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header text-white bg-primary">
+            <i class="bi bi-info-circle-fill fa-lg me-2"></i>
+            <strong class="me-auto"></strong>
+            <small>now</small>
+            <button type="button" class="btn-close text-white" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body"></div>
+    </div>
+</div>
+
+<div id="overlay">
+    <div class="overlay-content">
+        <div class="spinner"></div>
+        <div class="overlay-text">Please wait...</div>
+    </div>
+</div>
+
+<form id="antiforgery-form" method="post" style="display:none;">
+    @Html.AntiForgeryToken()
+</form>
+
+@section Scripts {
+    <script src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
+    <script src="~/js/pbdss/table.js"></script>
+    <script>
+        var currentScenId = @Model.Scenid;
+        var ptDistricts   = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Districts));
+        var ptYears       = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Years));
+
+        function showOverlay() { document.getElementById('overlay').style.display = 'flex'; }
+        function hideOverlay() { document.getElementById('overlay').style.display = 'none'; }
+        function antiToken()   { return $('input[name="__RequestVerificationToken"]').first().val(); }
+
+        function displaynotification(header, message, state, autohide) {
+            var note = bootstrap.Toast.getOrCreateInstance(document.getElementById('mainnotificationmessage'));
+            var headercontainer = note._element.querySelector('.toast-header');
+            note._config.autohide = !!autohide;
+            $(note._element.querySelector('.toast-body')).html(message);
+            $(note._element.querySelector('.me-auto')).text(header);
+            headercontainer.classList.remove('bg-success', 'bg-danger', 'bg-primary');
+            headercontainer.classList.add(state === 'S' ? 'bg-success' : state === 'E' ? 'bg-danger' : 'bg-primary');
+            note.show();
+        }
+
+        var usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
+        function money(cell)       { var v = cell.getValue(); return (v == null || v === '') ? '' : usd.format(v); }
+        function assetTypeFmt(cell){ var v = cell.getValue(); return v === 'B' ? 'Bridge' : v === 'P' ? 'Pavement' : 'Others'; }
+        function sourceFmt(cell)   { var v = cell.getRow().getData().assetType; return v === 'B' ? 'BAMS' : v === 'P' ? 'PAMS' : 'DecisionSpace'; }
+        function routeFmt(cell)    { var v = cell.getValue(); return (v == null) ? '' : v.toString().padStart(4, '0'); }
+        function interstateFmt(cell){ return cell.getValue() ? 'Y' : 'N'; }
+        function directionFmt(cell) { return cell.getValue() ? 'South / West' : 'North / East'; }
+        function riskFmt(cell)      { var v = cell.getValue(); return (v == null) ? '' : Number(v).toFixed(2); }
+        function yesNoFmt(cell)     { return cell.getValue() ? 'Yes' : 'No'; }
+
+        var currentDeleteId = null;
+
+        // ── Filter bar — Asset Type is a fixed 3-value set (matches assetTypeFmt/sourceFmt: B/P/
+        //    everything else), District/Year are scenario-wide and loaded up front, County/Route/
+        //    Section cascade via ajax off the scenario's own treatments. The grid itself is
+        //    server-paginated, so filtering happens on the server (via ajaxParams) rather than
+        //    client-side over an already-loaded row set. ──
+        var ptSavedState  = PBTableState.load(location.pathname + location.search);
+        var ptSaved       = (ptSavedState && ptSavedState.filters) || null;
+        var ptFilterState = {
+            assetType: (ptSaved && ptSaved.assetType) || '',
+            district:  (ptSaved && ptSaved.district)  || '',
+            countyId:  (ptSaved && ptSaved.countyId)  || '',
+            route:     (ptSaved && ptSaved.route)     || '',
+            section:   (ptSaved && ptSaved.section)   || '',
+            year:      (ptSaved && ptSaved.year)      || ''
+        };
+
+        function ptPopulateSelect($select, placeholder, options) {
+            $select.empty().append(new Option(placeholder, ''));
+            options.forEach(function (o) { $select.append(new Option(o.text, o.value)); });
+        }
+
+        function ptFetchJson(handler, params) {
+            return $.getJSON('?handler=' + handler, params);
+        }
+
+        function ptRefreshAssetTypeOptions() {
+            ptPopulateSelect($('#filterAssetType'), 'Select Asset Type',
+                [{ value: 'B', text: 'Bridge' }, { value: 'P', text: 'Pavement' }, { value: 'O', text: 'Others' }]);
+        }
+
+        function ptRefreshDistrictOptions() {
+            ptPopulateSelect($('#filterDistrict'), 'Select District',
+                (ptDistricts || []).filter(function (d) { return d !== null && d !== undefined; })
+                    .map(function (d) { return { value: d, text: 'District ' + d }; }));
+        }
+
+        function ptRefreshYearOptions() {
+            ptPopulateSelect($('#filterYear'), 'Select Year',
+                (ptYears || []).filter(function (y) { return y !== null && y !== undefined; })
+                    .map(function (y) { return { value: y, text: String(y) }; }));
+        }
+
+        function ptRefreshCountyOptions() {
+            return ptFetchJson('Counties', { scenarioId: currentScenId, district: ptFilterState.district }).then(function (counties) {
+                ptPopulateSelect($('#filterCounty'), 'Select County',
+                    (counties || []).map(function (c) { return { value: c.countyId, text: c.countyName || c.countyId }; }));
+            });
+        }
+
+        function ptRefreshRouteOptions() {
+            return ptFetchJson('Routes', { scenarioId: currentScenId, district: ptFilterState.district, county: ptFilterState.countyId }).then(function (routes) {
+                ptPopulateSelect($('#filterRoute'), 'Select Route',
+                    (routes || []).filter(function (r) { return r !== null && r !== undefined; })
+                        .map(function (r) { return { value: r, text: String(r).padStart(4, '0') }; }));
+            });
+        }
+
+        function ptRefreshSectionOptions() {
+            return ptFetchJson('Sections', { scenarioId: currentScenId, district: ptFilterState.district, county: ptFilterState.countyId, route: ptFilterState.route }).then(function (sections) {
+                ptPopulateSelect($('#filterSection'), 'Select Section',
+                    (sections || []).filter(Boolean).map(function (s) { return { value: s, text: s }; }));
+            });
+        }
+
+        var table = createTable('#table-pt', {
+            remote: true,
+            ajaxURL: '?handler=TreatmentsPage',
+            // sortMode:'remote' makes Tabulator itself overwrite a "sort" param with its own array-of-objects shape, so these use non-colliding names instead.
+            ajaxParams: function () {
+                var sorters = (this.getSorters && this.getSorters()) || [];
+                return {
+                    scenid:    currentScenId,
+                    assetType: ptFilterState.assetType,
+                    district:  ptFilterState.district,
+                    countyId:  ptFilterState.countyId,
+                    route:     ptFilterState.route,
+                    section:   ptFilterState.section,
+                    year:      ptFilterState.year,
+                    sortField: sorters.length ? sorters[0].field : '',
+                    sortDir:   sorters.length ? sorters[0].dir   : ''
+                };
+            },
+            maxHeightEl: '.table-wrap',
+            paginationSize: 20,
+            actions: [
+                { label: 'Edit',   icon: 'fa-solid fa-pen-to-square', onClick: function(d) { openEdit(d); } },
+                { label: 'Delete', icon: 'fa-solid fa-trash',         type: 'delete', onClick: function(d) { currentDeleteId = d.id; bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteModal')).show(); } }
+            ],
+            columns: [
+                { title: 'Asset Type',              field: 'assetType',             minWidth: 110, headerSort: false, formatter: assetTypeFmt },
+                { title: 'Source',                  field: 'assetType',             minWidth: 120, headerSort: false, formatter: sourceFmt },
+                { title: 'District',                field: 'district',              width: 95,  hozAlign: 'right', headerSort: false },
+                { title: 'County',                  field: 'county',                minWidth: 130, headerSort: false },
+                { title: 'Route',                   field: 'route',                 width: 90,  hozAlign: 'right', headerSort: false, formatter: routeFmt },
+                { title: 'Section',                 field: 'section',               minWidth: 110, headerSort: false },
+                { title: 'BRKey',                   field: 'brkey',                 minWidth: 110, headerSort: false },
+                { title: 'BMS ID',                  field: 'bridgeId',              minWidth: 110, headerSort: false },
+                { title: 'Treatment',               field: 'treatment',             minWidth: 180, headerSort: false },
+                { title: 'Interstate',              field: 'interstate',            width: 105, hozAlign: 'center', headerSort: false, formatter: interstateFmt },
+                { title: 'Direction',               field: 'direction',             minWidth: 130, headerSort: false, formatter: directionFmt },
+                { title: 'Cost',                    field: 'cost',                  minWidth: 130, hozAlign: 'right', headerSort: false, formatter: money },
+                { title: 'Benefit',                 field: 'benefit',               minWidth: 130, hozAlign: 'right', headerSort: false, formatter: money },
+                { title: 'Risk',                    field: 'risk',                  width: 90,  hozAlign: 'right', headerSort: false, formatter: riskFmt },
+                { title: 'Preferred Year',          field: 'preferredYear',         width: 130, hozAlign: 'right', headerSort: false },
+                { title: 'Min. Year',               field: 'minYear',               width: 110, hozAlign: 'right', headerSort: false },
+                { title: 'Max. Year',               field: 'maxYear',               width: 110, hozAlign: 'right', headerSort: false },
+                { title: 'Is Committed',            field: 'isCommitted',           width: 120, hozAlign: 'center', headerSort: false, formatter: yesNoFmt },
+                { title: 'Treatment Type',          field: 'category',              minWidth: 170, headerSort: false },
+                { title: 'Indirect Cost Design',    field: 'indirectCostDesign',    minWidth: 165, hozAlign: 'right', headerSort: false, formatter: money },
+                { title: 'Indirect Cost Row',       field: 'indirectCostRow',       minWidth: 160, hozAlign: 'right', headerSort: false, formatter: money },
+                { title: 'Indirect Cost Utilities', field: 'indirectCostUtilities', minWidth: 180, hozAlign: 'right', headerSort: false, formatter: money },
+                { title: 'Indirect Cost Other',     field: 'indirectCostOther',     minWidth: 165, hozAlign: 'right', headerSort: false, formatter: money }
+            ]
+        });
+
+        // Combined filter (dropdowns) — jump to page 1, which re-fetches using the current ptFilterState via ajaxParams above.
+        function applyAllFilters() {
+            table.pbSaveFilters(ptFilterState);
+            table.setPage(1);
+        }
+
+        $('#filterAssetType').on('change', function () { ptFilterState.assetType = this.value; });
+        $('#filterDistrict').on('change', function () {
+            ptFilterState.district = this.value;
+            ptFilterState.countyId = ptFilterState.route = ptFilterState.section = '';
+            ptRefreshCountyOptions();
+            ptPopulateSelect($('#filterRoute'), 'Select Route', []);
+            ptPopulateSelect($('#filterSection'), 'Select Section', []);
+        });
+        $('#filterCounty').on('change', function () {
+            ptFilterState.countyId = this.value;
+            ptFilterState.route = ptFilterState.section = '';
+            ptRefreshRouteOptions();
+            ptPopulateSelect($('#filterSection'), 'Select Section', []);
+        });
+        $('#filterRoute').on('change', function () {
+            ptFilterState.route = this.value;
+            ptFilterState.section = '';
+            ptRefreshSectionOptions();
+        });
+        $('#filterSection').on('change', function () { ptFilterState.section = this.value; });
+        $('#filterYear').on('change', function () { ptFilterState.year = this.value; });
+
+        $('#btnApplyFilter').on('click', applyAllFilters);
+        $('#btnResetFilter').on('click', function () {
+            ptFilterState = { assetType: '', district: '', countyId: '', route: '', section: '', year: '' };
+            $('#filterAssetType, #filterDistrict, #filterYear').val('');
+            ptPopulateSelect($('#filterCounty'), 'Select County', []);
+            ptPopulateSelect($('#filterRoute'), 'Select Route', []);
+            ptPopulateSelect($('#filterSection'), 'Select Section', []);
+            applyAllFilters();
+        });
+
+        ptRefreshAssetTypeOptions();
+        ptRefreshDistrictOptions();
+        ptRefreshYearOptions();
+
+        // Syncs the dropdown UI to the pre-seeded ptFilterState (already used by the table's
+        // first ajax request via ajaxParams); does not itself trigger another fetch.
+        (function restoreFilterUi() {
+            if (!ptSaved) return;
+
+            $('#filterAssetType').val(ptFilterState.assetType);
+            $('#filterDistrict').val(ptFilterState.district);
+            ptRefreshCountyOptions()
+                .then(function () {
+                    $('#filterCounty').val(ptFilterState.countyId);
+                    return ptRefreshRouteOptions();
+                })
+                .then(function () {
+                    $('#filterRoute').val(ptFilterState.route);
+                    return ptRefreshSectionOptions();
+                })
+                .then(function () {
+                    $('#filterSection').val(ptFilterState.section);
+                });
+
+            $('#filterYear').val(ptFilterState.year);
+        })();
+
+        // ── Delete confirm ──
+        $('#confirmDelete').on('click', function() {
+            bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+            if (!currentDeleteId) return;
+            showOverlay();
+            $.ajax({
+                type: 'POST',
+                url:  '?handler=Delete',
+                data: { treatmentId: currentDeleteId, scenarioId: @Model.Scenid },
+                headers: { 'RequestVerificationToken': antiToken() },
+                success: function(res) {
+                    if (res && res.success) { location.reload(); }
+                    else { hideOverlay(); displaynotification('Delete', 'Unable to delete treatment.', 'E', true); }
+                },
+                error: function(xhr) { hideOverlay(); displaynotification('Delete', xhr.responseText || 'Unable to delete treatment.', 'E', true); }
+            });
+        });
+
+        function calcTotal() {
+            var total = 0;
+            $('.trt-costcalc-edit').each(function() { var v = parseFloat($(this).val()); if (!isNaN(v)) total += v; });
+            $('#e_totalCost').val(total ? total.toFixed(2) : '');
+        }
+
+        // Treatment Type options are Category-attribute values scoped to the treatment's own
+        // (fixed, read-only) asset type — fetched fresh per open since they're library-wide,
+        // not tied to any one row.
+        function fillEditTreatmentTypeOptions(assetType, selectedValue) {
+            var $select = $('#e_treatmentType');
+            $select.find('option:not(:first)').remove();
+            if (!assetType) return;
+            $.getJSON('?handler=TreatmentTypeCategories', { scenarioId: @Model.Scenid, assetType: assetType }, function(data) {
+                (data || []).forEach(function(c) { $select.append(new Option(c, c)); });
+                if (selectedValue) $select.val(selectedValue);
+            });
+        }
+
+        function applyEditCommittedState() {
+            if ($('#e_isCommitted').is(':checked')) {
+                $('#e_priorityOrder').val('0').prop('disabled', true);
+                $('#e_minYear').val($('#e_preferredYear').val()).prop('disabled', true).prop('required', false);
+                $('#e_maxYear').val($('#e_preferredYear').val()).prop('disabled', true).prop('required', false);
+            } else {
+                if (!$('#e_priorityOrder').val()) $('#e_priorityOrder').val('4');
+                $('#e_priorityOrder').prop('disabled', false);
+                $('#e_minYear, #e_maxYear').prop('disabled', false).prop('required', true);
+            }
+        }
+
+        // ── Open Edit ──
+        function openEdit(d) {
+            var form = document.getElementById('editForm');
+            form.reset();
+            $('#e_id').val(d.id);
+            $('#e_assetType').val(d.assetType || '');
+            $('#e_assetTypeText').val(d.assetType === 'B' ? 'Bridge' : d.assetType === 'P' ? 'Pavement' : 'Others');
+            $('#e_treatment').val(d.treatment || '');
+            fillEditTreatmentTypeOptions(d.assetType, d.category);
+            $('#e_priorityOrder').val(d.priorityOrder != null ? String(d.priorityOrder) : '4');
+            $('#e_district').val(d.district != null ? d.district : '');
+            $('#e_county').val(d.county || '');
+            $('#e_route').val(d.route != null ? d.route.toString().padStart(4, '0') : '');
+            $('#e_section').val(d.section || '');
+            $('#e_interstate').val(d.interstate === true ? 'true' : d.interstate === false ? 'false' : '');
+            $('#e_direction').val(d.direction != null ? String(d.direction) : '');
+            $('.trt-bridge-field-edit').toggle(d.assetType === 'B');
+            $('#e_brkey').val(d.brkey || '');
+            $('#e_bridgeId').val(d.bridgeId != null ? d.bridgeId : '');
+            $('#e_preferredYear').val(d.preferredYear != null ? String(d.preferredYear) : '');
+            $('#e_minYear').val(d.minYear != null ? d.minYear : '');
+            $('#e_maxYear').val(d.maxYear != null ? d.maxYear : '');
+            $('#e_isCommitted').prop('checked', d.isCommitted === true);
+            $('#e_cost').val(d.cost != null ? Number(d.cost).toFixed(2) : '');
+            $('#e_icRow').val(d.indirectCostRow != null ? Number(d.indirectCostRow).toFixed(2) : '');
+            $('#e_icUtil').val(d.indirectCostUtilities != null ? Number(d.indirectCostUtilities).toFixed(2) : '');
+            $('#e_icDesign').val(d.indirectCostDesign != null ? Number(d.indirectCostDesign).toFixed(2) : '');
+            $('#e_icOther').val(d.indirectCostOther != null ? Number(d.indirectCostOther).toFixed(2) : '');
+            $('#e_benefit').val(d.benefit != null ? Number(d.benefit).toFixed(2) : '');
+            $('#e_risk').val(d.risk != null ? Number(d.risk).toFixed(2) : '');
+            applyEditCommittedState();
+            calcTotal();
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('editModal')).show();
+        }
+
+        $('#e_isCommitted').on('change', applyEditCommittedState);
+        $('#e_preferredYear').on('change', function() {
+            if ($('#e_isCommitted').is(':checked')) {
+                $('#e_minYear').val($(this).val());
+                $('#e_maxYear').val($(this).val());
+            }
+        });
+        $('.trt-costcalc-edit').on('input', calcTotal);
+
+        // ── Edit submit ──
+        $('#editForm').on('submit', function(e) {
+            e.preventDefault();
+            var form = this;
+            if (!form.checkValidity()) { form.classList.add('was-validated'); return; }
+            var data = new FormData(form);
+            var isCommitted = $('#e_isCommitted').is(':checked');
+            data.set('IsCommitted', isCommitted);
+            if (isCommitted) {
+                var preferred = $('#e_preferredYear').val();
+                data.set('PriorityOrder', '0');
+                data.set('MinYear', preferred);
+                data.set('MaxYear', preferred);
+            }
+            showOverlay();
+            fetch('?handler=Edit', { method: 'POST', body: data, headers: { 'RequestVerificationToken': antiToken() } })
+                .then(function(r) { return r.json(); })
+                .then(function(res) {
+                    if (res && res.success) {
+                        bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+                        displaynotification('Edit Treatment', res.message || 'Treatment updated.', 'S', true);
+                        setTimeout(function() { location.reload(); }, 1200);
+                    } else {
+                        hideOverlay();
+                        displaynotification('Edit Treatment', (res && res.message) || 'Could not update treatment.', 'E', true);
+                    }
+                })
+                .catch(function() { hideOverlay(); displaynotification('Error', 'Unexpected error.', 'E', true); });
+        });
+    </script>
+}

@@ -1,0 +1,55 @@
+@page
+@model ProjectBuilder.Web.Pages.Outputs.IndexModel
+@{
+}
+@{
+    Layout = "Shared/OutputsLayout";
+    ViewData["Menu"] = "DSSMenus.Outputs";
+}
+
+
+<div class="col-md-3" style="float:right;margin-top:2%">
+    @if (Model.ScenarioName != null)
+    {
+        <span style="font-size: 20px; font-weight: bold;">Scenario Name:@Model.ScenarioName</span>
+    }
+</div>
+
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Maps</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+        <li class="breadcrumb-item active">Maps</li>
+    </ol>
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <a href="/Outputs/Maps">
+                    <center>
+                        <h4>Maps</h4>
+                    </center>
+                    <img src="~/images/maps.png" alt="Logo" class="img-fluid" style="width:100%">
+                    </a>
+                </div>
+                <div class="col-md-6">
+                    <a href="/Outputs/Charts/ProjectsAndGoalsFlowDiagram">
+                    <center>
+                        <h4>Charts</h4>
+                    </center>
+                    <img src="~/images/charts.png" alt="Logo" class="img-fluid" style="width:100%">
+                    </a>
+                </div>
+                <div class="col-md-12">
+                    <a href="/Outputs/Projects">
+                    <center>
+                        <h4>Projects</h4>
+                    </center>
+                    <img src="~/images/projects.png" alt="Logo" class="img-fluid" style="width:100%">
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>

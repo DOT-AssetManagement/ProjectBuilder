@@ -1,0 +1,248 @@
+@page
+@using Volo.Abp.Authorization.Permissions
+@using ProjectBuilder.Permissions
+@inject IPermissionChecker PermissionChecker
+@model ProjectBuilder.Web.Pages.Outputs.Reports.WorkCandidateDetailModel
+@{
+    Layout = "Shared/OutputsLayout";
+    ViewData["Menu"] = "DSSMenus.Outputs";
+    ViewData["SubMenu"] = "Reports";
+    ViewData["SubSubMenu"] = "WorkCandidateDetail";
+    ViewData["poolId"] = Model.PoolId != Guid.Empty ? Model.PoolId.ToString() : "";
+    var canExport = await PermissionChecker.IsGrantedAsync(ReportsPermissions.Reports.WorkCandidateDetailExport);
+}
+<link href="https://unpkg.com/tabulator-tables/dist/css/tabulator.min.css" rel="stylesheet">
+<link href="~/css/tabulator_bootstrap5.css" rel="stylesheet">
+<script type="text/javascript" src="https://unpkg.com/tabulator-tables/dist/js/tabulator.min.js"></script>
+
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Work Candidate Detail</h1>
+    
+    <div class="row">
+        <div class="col-md-6 text-nowrap">
+            @if (Model.PoolName != null)
+            {
+                <span>Candidate + Name: </span> <span style="font-size: 14px; font-weight: bold;">@Model.PoolName</span>
+            }
+        </div>
+        <div class="col-md-4"></div>
+        <div class="col-md-2 d-flex justify-content-end align-items-start">
+            @if (canExport && Model.PoolName != null)
+            {
+                <a class="btn btn-primary btn-sm" href="/Outputs/Reports/WorkCandidateDetail?handler=Export&poolId=@Model.PoolId">Export to Excel</a>
+            }
+        </div>
+    </div>
+    <div class="no-data-message alert alert-warning">
+        Please Select Pool to See Data
+    </div>
+
+    <div class="card mb-4" style="margin-top:1%; display:none;">
+        <div class="card-body">
+
+            <div class="table-container">
+                <div id="projectCandidateTable"></div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+
+<style>
+    .no-data-message {
+        text-align: center;
+        padding: 20px;
+        border-radius: 5px;
+    }
+
+    .tabulator-col-group .tabulator-col-title {
+        text-align: center;
+    }
+
+    .tabulator-header .tabulator-col-group-title {
+        text-align: center;
+        border: 1px solid #ccc;
+    }
+
+    .tabulator-header .tabulator-col-group, .tabulator-header, .tabulator-col {
+        border: 1px solid #ccc;
+    }
+
+    .text-right {
+        text-align: right;
+    }
+
+    .wrap-text {
+        white-space: normal !important;
+        word-wrap: break-word;
+    }
+
+    .tabulator .tabulator-header{
+        background: #669999 !important;
+    }
+
+    /* The "Columns" submenu can be longer than the viewport (many columns) and
+       gets shifted up off-screen. Cap its height and let it scroll instead. */
+    .tabulator-menu {
+        max-height: 60vh;
+        overflow-y: auto;
+    }
+</style>
+
+@if (Model.PoolName != null)
+{
+    <script>
+        function stripHTMLTags(str) {
+            var doc = new DOMParser().parseFromString(str, 'text/html');
+            return doc.body.textContent || "";
+        }
+      
+        var headerMenu = function (e, clickedColumn) {
+            var menu = [];
+
+            // Sorting is provided through the header (⋮) menu; native header-click sort
+            // is disabled via columnDefaults.headerSort below.
+            menu.push({
+                label: "<i class='fa-solid fa-arrow-up-wide-short'></i> Sort Ascending",
+                action: function (ev) { ev.stopPropagation(); clickedColumn.getTable().setSort(clickedColumn.getField(), "asc"); }
+            });
+            menu.push({
+                label: "<i class='fa-solid fa-arrow-down-wide-short'></i> Sort Descending",
+                action: function (ev) { ev.stopPropagation(); clickedColumn.getTable().setSort(clickedColumn.getField(), "desc"); }
+            });
+            menu.push({ separator: true });
+
+            var columns = this.getColumns();
+            var subMenu = [];
+
+            columns.forEach(column => {
+                let icon = document.createElement("i");
+                icon.classList.add("fas");
+                icon.classList.add(column.isVisible() ? "fa-check-square" : "fa-square");
+
+                let label = document.createElement("span");
+                let title = document.createElement("span");
+
+                title.textContent = " " + stripHTMLTags(column.getDefinition().title);
+
+                label.appendChild(icon);
+                label.appendChild(title);
+
+                subMenu.push({
+                    label: label,
+                    action: function (e) {
+                        e.stopPropagation();
+
+                        column.toggle();
+
+                        // Change menu item icon
+                        if (column.isVisible()) {
+                            icon.classList.remove("fa-square");
+                            icon.classList.add("fa-check-square");
+                        } else {
+                            icon.classList.remove("fa-check-square");
+                            icon.classList.add("fa-square");
+                        }
+                    }
+                });
+            });
+
+            // Group the column show/hide checkboxes under a "Columns" submenu.
+            menu.push({ label: "<i class='fa-solid fa-table-columns'></i> Columns", menu: subMenu });
+
+            return menu;
+        };
+
+
+        function formatMoneyWithDecimal(value) {
+            if (!isNaN(value) && value) {
+                return parseFloat(value).toLocaleString('en-US', { maximumFractionDigits: 2 });
+            }
+            return value;
+        }
+
+        function formatMoney(value) {
+            if (!isNaN(value) && value) {
+                return parseFloat(value).toLocaleString('en-US', { maximumFractionDigits: 0 });
+            }
+            return value;
+        }
+
+
+        $(document).ready(function () {
+            var tableData = @Html.Raw(@Model.jsonResult);
+
+            if (tableData.length > 0) {
+                $(".no-data-message").hide();
+
+                // Show the card
+                document.querySelector('.card').style.display = 'block';
+
+                // Initialize the Tabulator table
+                var table = new Tabulator("#projectCandidateTable", {
+                    layout: "fitDataFill",
+                    resizableColumnFit: true,
+                    columnDefaults: { headerSort: false },
+                    data: tableData,
+                    pagination: "local",
+                    paginationSize: 10,
+                    paginationSizeSelector: [5, 10, 25],
+                    movableColumns: true,
+                    paginationCounter: "rows",
+                    height: "700px",
+                    columns: [
+                        { title: "<div style='padding:10px;text-align:center;'>Description</div>", field: "Description", headerMenu: headerMenu, width: "30%", formatter: "textarea" },
+                        {
+                            title: "<div style='padding:10px;text-align:center;'>Cost<br>($Thousand)</div>", field: "Cost000", headerMenu: headerMenu, hozAlign: "right", formatter: function (cell, formatterParams, onRendered) {
+                                return formatMoney(cell.getValue());
+                            }
+                        },
+                        {
+                            title: "Score by Goal", columns: [
+                                {
+                                    title: "Safety", field: "SafetyScore", headerMenu: headerMenu, hozAlign: "right", formatter: function (cell, formatterParams, onRendered) {
+                                        return formatMoneyWithDecimal(cell.getValue());
+                                    }
+                                },
+                                {
+                                    title: "Mobility", field: "MobilityScore", headerMenu: headerMenu, hozAlign: "right", formatter: function (cell, formatterParams, onRendered) {
+                                        return formatMoneyWithDecimal(cell.getValue());
+                                    }
+                                },
+                                {
+                                    title: "Equity", field: "EquityScore", headerMenu: headerMenu, hozAlign: "right", formatter: function (cell, formatterParams, onRendered) {
+                                        return formatMoneyWithDecimal(cell.getValue());
+                                    }
+                                },
+                                {
+                                    title: "Resilience", field: "ResilienceScore", headerMenu: headerMenu, hozAlign: "right", formatter: function (cell, formatterParams, onRendered) {
+                                        return formatMoneyWithDecimal(cell.getValue());
+                                    }
+                                },
+                                {
+                                    title: "Condition", field: "ConditionScore", headerMenu: headerMenu, hozAlign: "right", formatter: function (cell, formatterParams, onRendered) {
+                                        return formatMoneyWithDecimal(cell.getValue());
+                                    }
+                                }]
+                        },
+                        {
+                            title: "Benefit", field: "Benefit000", headerMenu: headerMenu, hozAlign: "right", formatter: function (cell, formatterParams, onRendered) {
+                                return formatMoneyWithDecimal(cell.getValue());
+                            }
+                        },
+                        {
+                            title: "<div style='padding:10px;text-align:center;'>Relative Efficiency<br> (Projects)</div>", field: "RelativeEfficiency", width:"20%", headerMenu: headerMenu, hozAlign: "right", formatter: function (cell, formatterParams, onRendered) {
+                                return formatMoneyWithDecimal(cell.getValue());
+                            }
+                        },
+        
+
+                    ],
+                });
+            } else {
+                $(".no-data-message").html("No projects were found for this candidate +.").show();
+            }
+        });
+    </script>
+}

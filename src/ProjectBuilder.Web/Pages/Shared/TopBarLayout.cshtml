@@ -1,0 +1,56 @@
+﻿@section scripts {
+    <abp-script src="/Pages/Index.js" />
+}
+@section styles {
+    <abp-style src="/Pages/Index.css" />
+    <link href='https://unpkg.com/css.gg@2.0.0/icons/css/image.css' rel='stylesheet'>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DSS</title>
+    <link href="~/css/styles.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+   
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet">
+    <style>
+        body {
+            background-color: #2e314d;
+            font-family: Montserrat !important;
+        }
+    </style>
+    @RenderSection("styles", required: false)
+</head>
+<body>
+    <nav class="sb-topnav navbar navbar-expand navbar-dark bg-white">
+
+        <a class="navbar-brand" href="#">
+            <img src="~/images/logo/leptonx/pennsylvania-logo.png" alt="Logo" class="img-fluid" />
+        </a>
+        <a class="navbar-brand" href="/Pools/Index">
+            <img src="~/images/logo/DSS-LOGO.jpg" alt="Logo" class="img-fluid" />
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+           
+            <ul class="navbar-nav justify-content-end">
+                <li class="nav-item dropdown">
+                    @await Component.InvokeAsync("TenantInfo")
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                        <li><a class="dropdown-item" href="/Account/Logout">Logout</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+
+
+
+    @RenderBody()
+</body>
+</html>

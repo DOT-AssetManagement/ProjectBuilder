@@ -1,0 +1,49 @@
+﻿@page
+@model ProjectBuilder.Web.Pages.ErrorPage.ErrorModel
+@{
+    Layout = "Layout/TopBarLayout";
+}
+
+<div class="modal fade" id="globalExceptionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog" style="margin-top: 80px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Alert</h5>
+                <button type="button" class="btn-close"
+                        data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-flex gap-2 flex-column align-items-center text-center">
+                <i class="bi bi-info-circle-fill text-primary" style="font-size: 2rem;"></i>
+                <div>
+                    @if (!string.IsNullOrWhiteSpace(Model.ErrorDetails))
+                    {
+                        <p class="mb-0 text-muted">@Model.ErrorDetails</p>
+                    }
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="goToScenarioPage()">
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function goToScenarioPage() {
+        window.location.href = '/Scenarios/Index';
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+        var modalElement = document.getElementById('globalExceptionModal');
+        var modal = new bootstrap.Modal(modalElement);
+        modal.show();
+
+        modalElement.addEventListener('hidden.bs.modal', function () {
+        goToScenarioPage();
+        });
+        });
+    </script>
+}

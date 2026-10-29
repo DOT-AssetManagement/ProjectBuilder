@@ -1,0 +1,82 @@
+@page
+@model ProjectBuilder.Web.Pages.SetUp.MaintainableAssetsSegmentation.IndexModel
+@{
+    ViewData["Title"] = "Maintainable Assets Segmentation";
+    Layout = "Shared/AdminLayout";
+    ViewData["SubMenu"] = "MaintainableAssetsSegmentation";
+}
+
+@section Styles {
+    <link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet" />
+}
+
+<div class="editscen-content__header"><h1>Maintainable Assets Segmentation</h1></div>
+
+<div class="search-bar">
+    <label>Search in Maintainable Assets Segmentation</label>
+    <div class="search-input-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="searchInput" placeholder="" />
+    </div>
+    <button class="btn btn-primary btn-sm" id="btnSearch">Search</button>
+    <button class="btn-reset btn-sm" id="btnReset">Reset</button>
+</div>
+
+<div class="table-wrap">
+    <div id="admin-table"></div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
+    <script src="~/js/pbdss/table.js"></script>
+    <script>
+        // This table has 700k+ rows, so — like BridgeToPavements — it is not safe to
+        // render everything up front. Tabulator fetches one page at a time from
+        // OnGetTable (Index.cshtml.cs), which pages/filters/sorts at the database.
+        var currentSearch = '';
+
+        var table = createTable('#admin-table', {
+            remote: true,
+            ajaxURL: '?handler=Table',
+            ajaxParams: function () {
+                var sorters = (this.getSorters && this.getSorters()) || [];
+                return {
+                    search: currentSearch,
+                    sortField: sorters.length ? sorters[0].field : '',
+                    sortDir: sorters.length ? sorters[0].dir : ''
+                };
+            },
+            maxHeightEl: '.table-wrap',
+            paginationSize: 25,
+            layout: 'fitDataStretch',
+            columns: [
+                { title: 'District',      field: 'district',      minWidth: 90 },
+                { title: 'County',        field: 'countyId',      minWidth: 90 },
+                { title: 'Route',         field: 'route',         minWidth: 90 },
+                { title: 'Asset',         field: 'asset',         minWidth: 100 },
+                { title: 'Direction',     field: 'direction',     minWidth: 90 },
+                { title: 'From Section',  field: 'fromSection',    minWidth: 110 },
+                { title: 'To Section',    field: 'toSection',      minWidth: 110 },
+                { title: 'Area',          field: 'area',           minWidth: 90 },
+                { title: 'Interstate',    field: 'interstate',     minWidth: 90 },
+                { title: 'Lanes',         field: 'lanes',          minWidth: 80 },
+                { title: 'Width',         field: 'width',          minWidth: 80 },
+                { title: 'Length',        field: 'length',         minWidth: 90 },
+                { title: 'Surface',       field: 'surfaceName',    minWidth: 120 },
+                { title: 'Risk',          field: 'risk',           minWidth: 90 }
+            ]
+        });
+
+        function runSearch() {
+            currentSearch = document.getElementById('searchInput').value.trim();
+            table.setPage(1);
+        }
+        document.getElementById('btnSearch').addEventListener('click', runSearch);
+        document.getElementById('searchInput').addEventListener('keypress', function (e) { if (e.key === 'Enter') runSearch(); });
+        document.getElementById('btnReset').addEventListener('click', function () {
+            document.getElementById('searchInput').value = '';
+            currentSearch = '';
+            table.setPage(1);
+        });
+    </script>
+}

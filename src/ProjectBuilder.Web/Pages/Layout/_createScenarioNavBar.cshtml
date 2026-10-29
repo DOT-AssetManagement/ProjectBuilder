@@ -1,0 +1,66 @@
+
+@{
+    var scenid = ViewContext.HttpContext.Request.Query["scenid"].FirstOrDefault();
+    var activeMenu = ViewData["ActiveMenu"]?.ToString() ?? "";
+
+    var action = ViewContext.RouteData.Values["action"]?.ToString();
+}
+
+
+<nav id="sidebarMenu" class="sidenavbar expanded" aria-label="Scenario Configuration Menu">
+
+    <div class="accordion-collapse collapse show" id="ScenarioSettings-collapsable" aria-labelledby="ScenarioSettings"
+         data-bs-parent="#ScenarioSettings" role="region">
+        <ul>
+            <li>
+                <a id="scenarioSettings" href="#" class="accordianlink createScenarioMenu">
+                    <span class="accordianspan">Scenario Settings</span> <i class="fa-solid fa-circle-exclamation icon-right"></i>
+                </a>
+            </li>
+            <li>
+                <a id="treatmentCandidateSettings" href="#" class="accordianlink createScenarioMenu">
+                    <span class="accordianspan">Treatment Pool Library</span> <i class="fa-solid fa-circle-exclamation icon-right"></i>
+                </a>
+            </li>
+            <li>
+                <a id="scenarioParametersSettings" href="#" class="accordianlink createScenarioMenu">
+                    <span class="accordianspan">Parameters</span> <i class="fa-solid fa-circle-exclamation icon-right"></i>
+                </a>
+            </li>
+            <li>
+                <a id="budgetConstraintsSettings" href="#" class="accordianlink createScenarioMenu">
+                    <span class="accordianspan">Budget Constraints</span> <i class="fa-solid fa-circle-exclamation icon-right"></i>
+                </a>
+            </li>
+            <li class="" style="padding:5px;">
+                <button type="button" id="createScenarioBtn" class="btn btn-success" style="width:90%;" aria-label="Create New Scenario">
+                    Create Scenario
+                </button>
+            </li>
+        </ul>
+    </div>
+</nav>
+
+
+<script nonce="@Context.Items["CSPNonce"]">
+    $(function () {
+    var activeMenu = "@activeMenu";
+    if (activeMenu) {
+    var el = document.getElementById(activeMenu);
+    if (el) {
+    $(el).addClass("selected");
+    $(el).addClass("sideMenuActive");
+    }
+    }
+    });
+
+    function collapsearea() {
+    if (!$(this).hasClass('collapsed')) {
+    $(this).children('i').removeClass('collapse-chevron-down');
+    $(this).children('i').addClass('collapse-chevron-up');
+    } else {
+    $(this).children('i').removeClass('collapse-chevron-up');
+    $(this).children('i').addClass('collapse-chevron-down');
+    }
+    }
+</script>

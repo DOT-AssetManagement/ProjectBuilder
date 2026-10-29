@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\..\common.props" />
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <RootNamespace>ProjectBuilder</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ProjectBuilder.Domain\ProjectBuilder.Domain.csproj" />
+    <ProjectReference Include="..\ProjectBuilder.Engine\ExcelWrapper\ExcelWrapper.csproj" />
+    <ProjectReference Include="..\ProjectBuilder.Engine\GisJsonHandler\GisJsonHandler.csproj" />
+    <ProjectReference Include="..\ProjectBuilder.Engine\PBLogic\PBLogic.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="EPPlus" Version="7.6.0" />
+    <PackageReference Include="AutoMapper" Version="16.2.0" />
+    <PackageReference Include="Volo.Abp.AutoMapper" Version="10.5.0" />
+    <PackageReference Include="Volo.Abp.EntityFrameworkCore.SqlServer" Version="10.5.0" />
+    <PackageReference Include="Volo.Abp.PermissionManagement.EntityFrameworkCore" Version="10.5.0" />
+    <PackageReference Include="Volo.Abp.SettingManagement.EntityFrameworkCore" Version="10.5.0" />
+    <PackageReference Include="Volo.Abp.BackgroundJobs.EntityFrameworkCore" Version="10.5.0" />
+    <PackageReference Include="Volo.Abp.AuditLogging.EntityFrameworkCore" Version="10.5.0" />
+    <PackageReference Include="Volo.Abp.FeatureManagement.EntityFrameworkCore" Version="10.5.0" />
+    <PackageReference Include="Volo.Abp.BlobStoring.Database.EntityFrameworkCore" Version="10.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Volo.Abp.OpenIddict.EntityFrameworkCore" Version="10.5.0" />
+    <PackageReference Include="Volo.Abp.Identity.EntityFrameworkCore" Version="10.5.0" />
+    <PackageReference Include="Volo.Abp.TenantManagement.EntityFrameworkCore" Version="10.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.7">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      <PrivateAssets>compile; contentFiles; build; buildMultitargeting; buildTransitive; analyzers; native</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

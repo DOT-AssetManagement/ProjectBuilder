@@ -1,0 +1,105 @@
+@page
+@using System.Linq
+@model ProjectBuilder.Web.Pages.SetUp.OtherParameter.ListModel
+@{
+    ViewData["Title"] = "Other Parameters";
+    Layout = "Shared/AdminLayout";
+    ViewData["SubMenu"] = "OtherParameter";
+
+    var rows = Model.OtherParameters.Select(p => new {
+        code        = p.Code,
+        description = p.Description,
+        val         = p.Val,
+        createdBy   = p.CreatedBy,
+        createdAt   = p.CreatedAt
+    }).ToList();
+}
+
+@section Styles {
+    <link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet" />
+}
+
+<div class="editscen-content__header">
+    <h1>Other Parameters</h1>
+    <a href="/SetUp/OtherParameter/Create" class="btn btn-primary btn-sm">Add New</a>
+</div>
+
+<div class="search-bar">
+    <label>Search in Other Parameters</label>
+    <div class="search-input-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="searchInput" placeholder="" />
+    </div>
+    <button class="btn btn-primary btn-sm" id="btnSearch">Search</button>
+    <button class="btn-reset btn-sm" id="btnReset">Reset</button>
+</div>
+
+<div class="table-wrap">
+    <div id="admin-table"></div>
+</div>
+
+<!-- Delete form -->
+<form id="deleteForm" method="post" asp-page-handler="Delete" style="display:none">
+    @Html.AntiForgeryToken()
+    <input type="hidden" id="deleteCode" name="code" />
+</form>
+
+@section Scripts {
+    <script src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
+    <script src="~/js/pbdss/table.js"></script>
+    <script>
+        var tableData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(rows));
+
+        var table = createTable('#admin-table', {
+            data: tableData,
+            maxHeightEl: '.table-wrap',
+            actions: [
+                {
+                    label: 'Edit', icon: 'fa-solid fa-pen',
+                    onClick: function (d) {
+                        window.location.href = '/SetUp/OtherParameter/Edit?code=' + encodeURIComponent(d.code);
+                    }
+                },
+                {
+                    label: 'Delete', icon: 'fa-solid fa-trash', type: 'delete',
+                    onClick: function (d) {
+                        if (confirm('Delete other parameter "' + d.code + '"?')) {
+                            document.getElementById('deleteCode').value = d.code;
+                            document.getElementById('deleteForm').submit();
+                        }
+                    }
+                }
+            ],
+            columns: [
+                { title: 'Code',        field: 'code',        minWidth: 140, headerSort: false },
+                { title: 'Description', field: 'description', minWidth: 240, headerSort: false },
+                { title: 'Value',       field: 'val',          width: 120, hozAlign: 'right', headerSort: false },
+                { title: 'Created By',  field: 'createdBy',    minWidth: 160, headerSort: false },
+                { title: 'Created At',  field: 'createdAt',    minWidth: 160, headerSort: false }
+            ]
+        });
+
+        function applySearchFilter() {
+            var v = document.getElementById('searchInput').value.trim().toLowerCase();
+            table.clearFilter();
+            if (v) table.setFilter(function (d) { return Object.values(d).some(function (x) { return String(x).toLowerCase().includes(v); }); });
+            table.pbSaveFilters({ search: v });
+        }
+        document.getElementById('btnSearch').addEventListener('click', applySearchFilter);
+        document.getElementById('searchInput').addEventListener('keypress', function (e) { if (e.key === 'Enter') document.getElementById('btnSearch').click(); });
+        document.getElementById('btnReset').addEventListener('click', function () {
+            document.getElementById('searchInput').value = '';
+            table.clearFilter();
+            table.pbSaveFilters({ search: '' });
+        });
+
+        // Restore a filter saved before navigating away, or before an edit/delete post-back.
+        (function restoreSearchFilter() {
+            var saved = table.pbSavedFilters;
+            if (saved && saved.search) {
+                document.getElementById('searchInput').value = saved.search;
+                applySearchFilter();
+            }
+        })();
+    </script>
+}

@@ -1,0 +1,519 @@
+@page
+@model ProjectBuilder.Web.Pages.Outputs.Charts.ProjectEfficiencyAndCostModel
+@{
+}
+@{
+    Layout = "Shared/OutputsLayout";
+    ViewData["Menu"] = "DSSMenus.Outputs";
+    ViewData["SubMenu"] = "Charts";
+    ViewData["SubSubMenu"] = "ProjectEfficiencyAndCost";
+    ViewData["poolId"] = Model.PoolId != Guid.Empty ? Model.PoolId.ToString() : "";
+}
+
+<style>
+    #pecControls .form-label { font-size: 12px; color: rgb(94,113,145); margin-bottom: 4px; }
+    #pecControls .btn.pec-toggle-active { background: rgb(28,48,92); border-color: rgb(28,48,92); color: #fff; font-weight: 600; }
+
+    #pecChips .pec-chip {
+        display: inline-flex; align-items: center; gap: 6px; background: #eef2f9; color: rgb(28,48,92);
+        border: 1px solid #c3d6ef; border-radius: 999px; padding: 3px 6px 3px 12px; font-size: 12.5px; font-weight: 600;
+    }
+    #pecChips .pec-chip button {
+        border: 0; background: #fff; border-radius: 50%; width: 18px; height: 18px; cursor: pointer;
+        color: rgb(28,48,92); line-height: 1; font-size: 12px;
+    }
+    #pecChips .pec-chip button:hover { background: rgb(28,48,92); color: #fff; }
+
+    #pecChartWrap { position: relative; }
+    svg#pecSvg { display: block; width: 100%; height: auto; touch-action: none; }
+    .pec-axis-title { font-size: 12.5px; fill: #12233f; font-weight: 600; }
+    .pec-axis-sub { font-size: 11px; fill: #7c8ba3; }
+    .pec-tick { font-size: 11px; fill: #4a5c78; }
+    .pec-cat-label { font-size: 11.5px; fill: #4a5c78; cursor: pointer; }
+    .pec-cat-label:hover { fill: rgb(28,48,92); font-weight: 600; }
+    .pec-cat-label.pec-on { fill: rgb(28,48,92); font-weight: 700; }
+    .pec-axis-line { stroke: #12233f; stroke-width: 1; }
+    .pec-tick-line { stroke: #dfe5ee; stroke-width: 1; }
+    path.pec-thread { fill: none; stroke-width: 1.15; opacity: .55; cursor: pointer; transition: opacity .12s, stroke-width .12s; }
+    path.pec-thread.pec-dim { opacity: .07; stroke: #8a94a6 !important; }
+    path.pec-thread.pec-hot { stroke-width: 2.6; opacity: 1; }
+    path.pec-thread.pec-pin { stroke-width: 2.2; opacity: 1; }
+    .pec-hitline { fill: none; stroke: transparent; stroke-width: 12; cursor: pointer; }
+    .pec-brush-rect { fill: rgba(28,48,92,.12); stroke: rgb(28,48,92); stroke-width: 1; }
+    .pec-brush-hit { fill: transparent; cursor: crosshair; }
+    .pec-node { stroke: #fff; stroke-width: 1; }
+    .pec-val-lbl { font-size: 10.5px; fill: rgb(28,48,92); font-weight: 700; }
+
+    #pecTip {
+        position: absolute; pointer-events: none; background: rgb(28,48,92); color: #fff; border-radius: 4px;
+        padding: 8px 10px; font-size: 12px; line-height: 1.5; box-shadow: 0 8px 22px rgba(11,37,89,.28);
+        opacity: 0; transition: opacity .12s; max-width: 290px; z-index: 20;
+    }
+    #pecTip.pec-show { opacity: 1; }
+    #pecTip b { display: block; font-size: 12.5px; margin-bottom: 3px; }
+    #pecTip span { color: #b9cdea; }
+
+    #pecLegend .pec-legend-k {
+        display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: #4a5c78;
+        background: none; border: 0; cursor: pointer; padding: 2px 4px; border-radius: 4px;
+    }
+    #pecLegend .pec-legend-k:hover { background: #eef2f7; }
+    #pecLegend .pec-legend-k[aria-pressed="false"] { opacity: .4; }
+    #pecLegend .pec-sw { width: 22px; height: 3px; border-radius: 2px; display: inline-block; }
+
+    .pec-stats { border: 1px solid #dfe5ee; border-top: none; }
+    .pec-stat { padding: 12px 16px; border-right: 1px solid #dfe5ee; border-top: 1px solid #dfe5ee; }
+    .pec-stat:nth-child(4n) { border-right: none; }
+    @@media (max-width: 767.98px) { .pec-stat:nth-child(2n) { border-right: none; } }
+    .pec-stat .pec-lbl { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #7c8ba3; }
+    .pec-stat .pec-val { display: block; font-size: 19px; font-weight: 600; color: rgb(28,48,92); margin-top: 2px; letter-spacing: -.01em; }
+    .pec-stat .pec-sub { font-size: 12px; color: #4a5c78; }
+</style>
+
+<div class="container-fluid px-4">
+    <h1 class="mt-4">
+        Project Efficiency And Cost
+        <span class="text-muted fs-6 fw-normal ms-2" id="pecCtx"></span>
+    </h1>
+
+    <div class="card mb-4">
+        <div class="card-body">
+
+            @if (Model.PoolId != Guid.Empty && (Model.ProjectCandidates == null || Model.ProjectCandidates.Count == 0))
+            {
+                <div class="alert alert-warning">No projects were found for this candidate +.</div>
+            }
+
+            @if (Model.PoolId != Guid.Empty && Model.ProjectCandidates != null && Model.ProjectCandidates.Count > 0)
+            {
+                <div class="d-flex flex-wrap align-items-end gap-4 pb-3 mb-3 border-bottom" id="pecControls">
+                    <div>
+                        <label for="pecSort" class="form-label">Order projects by</label>
+                        <select id="pecSort" class="form-select form-select-sm" style="min-width:230px">
+                            <option value="eff">Relative efficiency (high to low)</option>
+                            <option value="cost">Total cost (high to low)</option>
+                            <option value="value">Score per $1M (high to low)</option>
+                            <option value="name">Description (A&ndash;Z)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <div class="form-label" id="pecShapeLbl">Line shape</div>
+                        <div class="btn-group btn-group-sm" role="group" aria-labelledby="pecShapeLbl">
+                            <button type="button" class="btn btn-outline-secondary pec-toggle-active" data-shape="straight" aria-pressed="true">Straight</button>
+                            <button type="button" class="btn btn-outline-secondary" data-shape="curved" aria-pressed="false">Curved</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="form-label" id="pecScaleLbl">Cost scale</div>
+                        <div class="btn-group btn-group-sm" role="group" aria-labelledby="pecScaleLbl">
+                            <button type="button" class="btn btn-outline-secondary pec-toggle-active" data-scale="linear" aria-pressed="true">Linear</button>
+                            <button type="button" class="btn btn-outline-secondary" data-scale="log" aria-pressed="false">Log</button>
+                        </div>
+                    </div>
+
+                    <div class="ms-auto">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="pecResetBtn">Reset view</button>
+                    </div>
+                </div>
+
+                <div id="pecChips" class="d-flex flex-wrap gap-2 align-items-center mb-2"></div>
+
+                <div id="pecChartWrap">
+                    <svg id="pecSvg" role="img" aria-label="Chart connecting each project's description to its relative efficiency and total cost"></svg>
+                    <div id="pecTip" role="status"></div>
+                </div>
+
+                <div class="d-flex flex-wrap align-items-center gap-3 pt-3 mt-2 border-top" id="pecLegend">
+                    <button type="button" class="pec-legend-k" data-band="high" aria-pressed="true"><span class="pec-sw" style="background:#0f7b6c"></span> High efficiency (0.67&ndash;1.00)</button>
+                    <button type="button" class="pec-legend-k" data-band="mid" aria-pressed="true"><span class="pec-sw" style="background:#b06f13"></span> Moderate (0.34&ndash;0.66)</button>
+                    <button type="button" class="pec-legend-k" data-band="low" aria-pressed="true"><span class="pec-sw" style="background:#8a94a6"></span> Low (0.00&ndash;0.33)</button>
+                    <span class="ms-auto text-muted small" id="pecPinNote">No pinned projects</span>
+                </div>
+
+                <div class="row row-cols-2 row-cols-md-4 g-0 pec-stats mt-3" id="pecStats"></div>
+            }
+
+        </div>
+    </div>
+
+</div>
+
+@if (Model.PoolId != Guid.Empty && Model.ProjectCandidates != null && Model.ProjectCandidates.Count > 0)
+{
+<div id="pecData" hidden data-rows="@Model.json" data-pool-name="@Model.PoolName"></div>
+<script>
+(function () {
+    "use strict";
+
+    // Data arrives through Razor-encoded attributes, so it is never parsed as script
+    var dataHolder = document.getElementById("pecData");
+    var rawRows = JSON.parse(dataHolder.dataset.rows || "[]");
+    var poolName = dataHolder.dataset.poolName || "";
+
+    // Encodes text for innerHTML by letting the browser serialize a text node
+    function escapeHtml(value) {
+        var holder = document.createElement("p");
+        holder.appendChild(document.createTextNode(String(value == null ? "" : value)));
+        return holder.innerHTML;
+    }
+
+    /* ============================== data ============================== */
+    var data = rawRows.map(function (r) {
+        var eff = typeof r.RelativeEfficiency === "number" ? r.RelativeEfficiency : 0;
+        var cost = typeof r.TotalCost === "number" ? r.TotalCost : 0;
+        var score = typeof r.TotalScore === "number" ? r.TotalScore : 0;
+        return {
+            id: r.Id,
+            label: r.Description || "(untitled project)",
+            eff: eff,
+            cost: cost,
+            score: score,
+            value: cost > 0 ? Math.round((score / (cost / 1e6)) * 10) / 10 : 0,
+            county: r.CountyName || "",
+            type: r.AssetType || ""
+        };
+    });
+
+    /* ============================== state ============================== */
+    var state = {
+        data: data,
+        sort: "eff",
+        shape: "straight",
+        costScale: "linear",
+        bands: { high: true, mid: true, low: true },
+        brush: { eff: null, cost: null },
+        pinned: new Set(),
+        hover: null
+    };
+
+    var $ = function (s) { return document.querySelector(s); };
+    var all = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
+    var svg = $("#pecSvg");
+    var tip = $("#pecTip");
+    var NS = "http://www.w3.org/2000/svg";
+
+    var fmtMoney = function (n) { return "$" + Math.round(n).toLocaleString("en-US"); };
+    var fmtShort = function (n) {
+        return n >= 1e6 ? "$" + (n / 1e6).toFixed(n % 1e6 === 0 ? 0 : 1) + "M"
+             : n >= 1e3 ? "$" + Math.round(n / 1e3) + "K" : "$" + Math.round(n);
+    };
+    var band = function (e) { return e >= 0.67 ? "high" : e >= 0.34 ? "mid" : "low"; };
+    var bandColor = { high: "#0f7b6c", mid: "#b06f13", low: "#8a94a6" };
+
+    function el(tag, attrs, text) {
+        var n = document.createElementNS(NS, tag);
+        for (var k in attrs) n.setAttribute(k, attrs[k]);
+        if (text != null) n.textContent = text;
+        return n;
+    }
+    function linScale(d0, d1, r0, r1) {
+        var f = function (v) { return r0 + (v - d0) / (d1 - d0 || 1) * (r1 - r0); };
+        f.invert = function (p) { return d0 + (p - r0) / (r1 - r0 || 1) * (d1 - d0); };
+        f.d0 = d0; f.d1 = d1; f.kind = "linear";
+        return f;
+    }
+    function logScale(d0, d1, r0, r1) {
+        var a = Math.log10(Math.max(1, d0)), b = Math.log10(Math.max(10, d1));
+        var f = function (v) { return r0 + (Math.log10(Math.max(1, v)) - a) / (b - a) * (r1 - r0); };
+        f.invert = function (p) { return Math.pow(10, a + (p - r0) / (r1 - r0 || 1) * (b - a)); };
+        f.d0 = d0; f.d1 = d1; f.kind = "log";
+        return f;
+    }
+    function niceMax(v) {
+        if (v <= 0) return 1;
+        var p = Math.pow(10, Math.floor(Math.log10(v)));
+        return Math.ceil(v / (p / 2)) * (p / 2);
+    }
+    var clamp = function (v, a, b) { return Math.max(a, Math.min(b, v)); };
+    var truncate = function (s, n) { return s.length > n ? s.slice(0, n - 1) + "…" : s; };
+
+    /* ============================== derive ============================== */
+    function sorted() {
+        var cmp = {
+            eff: function (a, b) { return b.eff - a.eff; },
+            cost: function (a, b) { return b.cost - a.cost; },
+            value: function (a, b) { return b.value - a.value; },
+            name: function (a, b) { return a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: "base" }); }
+        }[state.sort];
+        return state.data.slice().sort(cmp);
+    }
+    function passes(d) {
+        if (!state.bands[band(d.eff)]) return false;
+        var be = state.brush.eff, bc = state.brush.cost;
+        if (be && (d.eff < be[0] || d.eff > be[1])) return false;
+        if (bc && (d.cost < bc[0] || d.cost > bc[1])) return false;
+        return true;
+    }
+
+    /* ============================== chart ============================== */
+    function drawChart() {
+        var rows = sorted();
+        var wrapW = $("#pecChartWrap").clientWidth || 900;
+        var W = Math.max(660, wrapW - 20);
+        var rowH = 24;
+        var H = Math.max(340, rows.length * rowH + 96);
+        var m = { top: 46, right: 30, bottom: 28, left: Math.min(320, Math.max(200, W * 0.30)) };
+        var iw = W - m.left - m.right;
+        var ih = H - m.top - m.bottom;
+
+        var xCat = m.left, xEff = m.left + iw / 2, xCost = m.left + iw;
+        var costMax = niceMax(Math.max.apply(null, state.data.map(function (d) { return d.cost; })) * 1.02);
+        var costMin = Math.min.apply(null, state.data.map(function (d) { return d.cost; }));
+        var yEff = linScale(0, 1, m.top + ih, m.top);
+        var yCost = state.costScale === "log"
+            ? logScale(Math.max(1000, Math.pow(10, Math.floor(Math.log10(Math.max(1, costMin))))), costMax, m.top + ih, m.top)
+            : linScale(0, costMax, m.top + ih, m.top);
+        var yCat = function (i) { return rows.length === 1 ? m.top + ih / 2 : m.top + (i * ih) / (rows.length - 1); };
+
+        svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+        svg.style.height = H + "px";
+        while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+        svg.appendChild(el("text", { x: xCat, y: 20, "text-anchor": "end", "class": "pec-axis-title" }, "Description"));
+        svg.appendChild(el("text", { x: xEff, y: 20, "text-anchor": "middle", "class": "pec-axis-title" }, "Relative Efficiency"));
+        svg.appendChild(el("text", { x: xCost, y: 20, "text-anchor": "middle", "class": "pec-axis-title" }, "Total Cost"));
+        svg.appendChild(el("text", { x: xCat, y: 35, "text-anchor": "end", "class": "pec-axis-sub" }, rows.length + " projects" + (poolName ? " · " + poolName : "")));
+        svg.appendChild(el("text", { x: xEff, y: 35, "text-anchor": "middle", "class": "pec-axis-sub" }, "0 = least efficient, 1 = most"));
+        svg.appendChild(el("text", { x: xCost, y: 35, "text-anchor": "middle", "class": "pec-axis-sub" }, state.costScale === "log" ? "programmed dollars (log)" : "programmed dollars"));
+
+        drawAxis(xEff, yEff, 5, function (v) { return v.toFixed(1); }, m.top, ih, false);
+        drawAxis(xCost, yCost, 4, function (v) { return Math.round(v).toLocaleString("en-US"); }, m.top, ih, state.costScale === "log");
+
+        var gLines = el("g", {});
+        svg.appendChild(gLines);
+        var nodes = el("g", {});
+
+        rows.forEach(function (d, i) {
+            var y0 = yCat(i), y1 = yEff(d.eff), y2 = yCost(d.cost);
+            var dd = state.shape === "curved"
+                ? "M" + xCat + "," + y0 +
+                  "C" + (xCat + (xEff - xCat) * .5) + "," + y0 + " " + (xCat + (xEff - xCat) * .5) + "," + y1 + " " + xEff + "," + y1 +
+                  "C" + (xEff + (xCost - xEff) * .5) + "," + y1 + " " + (xEff + (xCost - xEff) * .5) + "," + y2 + " " + xCost + "," + y2
+                : "M" + xCat + "," + y0 + "L" + xEff + "," + y1 + "L" + xCost + "," + y2;
+
+            var ok = passes(d);
+            var isPin = state.pinned.has(d.id), isHot = state.hover === d.id;
+            var p = el("path", {
+                d: dd,
+                "class": "pec-thread" + (ok ? "" : " pec-dim") + (isPin ? " pec-pin" : "") + (isHot ? " pec-hot" : ""),
+                stroke: bandColor[band(d.eff)]
+            });
+            var hit = el("path", { d: dd, "class": "pec-hitline" });
+            gLines.appendChild(p);
+            gLines.appendChild(hit);
+
+            var txt = el("text", {
+                x: xCat - 10, y: y0 + 4, "text-anchor": "end",
+                "class": "pec-cat-label" + (isPin ? " pec-on" : ""), tabindex: "0", role: "button"
+            }, truncate(d.label, Math.floor(m.left / 6.2)));
+            txt.appendChild(el("title", {}, d.label + " — efficiency " + d.eff.toFixed(2) + ", " + fmtMoney(d.cost)));
+            svg.appendChild(txt);
+            svg.appendChild(el("line", { x1: xCat - 6, x2: xCat, y1: y0, y2: y0, "class": "pec-tick-line" }));
+
+            if (ok && (isPin || isHot)) {
+                nodes.appendChild(el("circle", { cx: xEff, cy: y1, r: 3.4, "class": "pec-node", fill: bandColor[band(d.eff)] }));
+                nodes.appendChild(el("circle", { cx: xCost, cy: y2, r: 3.4, "class": "pec-node", fill: bandColor[band(d.eff)] }));
+                nodes.appendChild(el("text", { x: xCost + 8, y: y2 + 3.5, "class": "pec-val-lbl" }, fmtShort(d.cost)));
+                nodes.appendChild(el("text", { x: xEff + 8, y: y1 - 6, "class": "pec-val-lbl" }, d.eff.toFixed(2)));
+            }
+
+            [hit, txt].forEach(function (n) {
+                n.addEventListener("mouseenter", function (e) { showTip(d, e); });
+                n.addEventListener("mousemove", moveTip);
+                n.addEventListener("mouseleave", hideTip);
+                n.addEventListener("click", function () { togglePin(d.id); });
+                n.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); togglePin(d.id); } });
+            });
+        });
+        svg.appendChild(nodes);
+
+        drawBrush(xEff, yEff, "eff", m.top, ih);
+        drawBrush(xCost, yCost, "cost", m.top, ih);
+    }
+
+    function drawAxis(x, y, n, fmt, top, ih, isLog) {
+        svg.appendChild(el("line", { x1: x, x2: x, y1: top, y2: top + ih, "class": "pec-axis-line" }));
+        var vals = [];
+        if (isLog) {
+            for (var v = y.d0; v <= y.d1; v *= 10) vals.push(v);
+            if (vals[vals.length - 1] < y.d1) vals.push(y.d1);
+        } else {
+            for (var i = 0; i <= n; i++) vals.push(y.d0 + (y.d1 - y.d0) * i / n);
+        }
+        vals.forEach(function (v) {
+            var py = y(v);
+            svg.appendChild(el("line", { x1: x - 4, x2: x, y1: py, y2: py, "class": "pec-axis-line" }));
+            svg.appendChild(el("text", { x: x - 8, y: py + 4, "text-anchor": "end", "class": "pec-tick" }, fmt(v)));
+        });
+    }
+
+    function drawBrush(x, y, key, top, ih) {
+        var g = el("g", {});
+        var b = state.brush[key];
+        if (b) {
+            var yTop = Math.min(y(b[1]), y(b[0])), yBot = Math.max(y(b[1]), y(b[0]));
+            g.appendChild(el("rect", { x: x - 9, y: yTop, width: 18, height: Math.max(2, yBot - yTop), "class": "pec-brush-rect", rx: 2 }));
+        }
+        var hit = el("rect", { x: x - 11, y: top, width: 22, height: ih, "class": "pec-brush-hit" });
+        g.appendChild(hit);
+        svg.appendChild(g);
+
+        var start = null;
+        hit.addEventListener("pointerdown", function (ev) {
+            ev.preventDefault();
+            hit.setPointerCapture(ev.pointerId);
+            start = svgY(ev);
+            state.brush[key] = null;
+        });
+        hit.addEventListener("pointermove", function (ev) {
+            if (start == null) return;
+            var now = svgY(ev);
+            var hi = y.invert(Math.min(start, now)), lo = y.invert(Math.max(start, now));
+            state.brush[key] = [clamp(lo, y.d0, y.d1), clamp(hi, y.d0, y.d1)];
+            render();
+        });
+        hit.addEventListener("pointerup", function (ev) {
+            if (start != null && Math.abs(svgY(ev) - start) <= 4) { state.brush[key] = null; render(); }
+            start = null;
+        });
+    }
+    function svgY(ev) {
+        var r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal;
+        return (ev.clientY - r.top) * (vb.height / r.height);
+    }
+
+    /* ============================== tooltip / pins ============================== */
+    function showTip(d, ev) {
+        state.hover = d.id;
+        tip.innerHTML = "<b>" + escapeHtml(d.label) + "</b>" +
+            "<span>Relative efficiency</span> " + d.eff.toFixed(2) + "<br>" +
+            "<span>Total score</span> " + d.score.toFixed(1) + "<br>" +
+            "<span>Total cost</span> " + fmtMoney(d.cost) + "<br>" +
+            "<span>Score per $1M</span> " + d.value.toFixed(1) +
+            (d.county || d.type ? "<br><span>" + escapeHtml([d.county, d.type].filter(Boolean).join(" · ")) + "</span>" : "");
+        tip.classList.add("pec-show");
+        moveTip(ev);
+        drawChart();
+    }
+    function moveTip(ev) {
+        var r = $("#pecChartWrap").getBoundingClientRect();
+        var x = ev.clientX - r.left + 16;
+        var y = ev.clientY - r.top + 12;
+        if (x + 300 > r.width) x = ev.clientX - r.left - 306;
+        tip.style.left = Math.max(6, x) + "px";
+        tip.style.top = y + "px";
+    }
+    function hideTip() {
+        tip.classList.remove("pec-show");
+        state.hover = null;
+        drawChart();
+    }
+    function togglePin(id) {
+        if (state.pinned.has(id)) state.pinned.delete(id); else state.pinned.add(id);
+        render();
+    }
+
+    /* ============================== chips / stats ============================== */
+    function drawChips() {
+        var wrap = $("#pecChips");
+        var items = [];
+        if (state.brush.eff) items.push(["eff", "Efficiency " + state.brush.eff[0].toFixed(2) + " – " + state.brush.eff[1].toFixed(2)]);
+        if (state.brush.cost) items.push(["cost", "Cost " + fmtShort(state.brush.cost[0]) + " – " + fmtShort(state.brush.cost[1])]);
+        Object.keys(state.bands).forEach(function (b) { if (!state.bands[b]) items.push(["band:" + b, "Hiding " + b + " efficiency"]); });
+        if (state.pinned.size) items.push(["pins", state.pinned.size + " pinned"]);
+
+        if (!items.length) {
+            wrap.innerHTML = '<span class="text-muted small">Drag along the Relative Efficiency or Total Cost axis to filter. Click a line or label to pin it, hover for full detail.</span>';
+            return;
+        }
+        wrap.innerHTML = items.map(function (i) {
+            return '<span class="pec-chip">' + i[1] + '<button type="button" data-clear="' + i[0] + '" aria-label="Remove filter">✕</button></span>';
+        }).join("");
+        all("#pecChips [data-clear]").forEach(function (b) {
+            b.addEventListener("click", function () {
+                var k = b.dataset.clear;
+                if (k === "eff" || k === "cost") state.brush[k] = null;
+                else if (k === "pins") state.pinned.clear();
+                else state.bands[k.split(":")[1]] = true;
+                render();
+            });
+        });
+    }
+
+    function drawStats(shown) {
+        var total = shown.reduce(function (s, d) { return s + d.cost; }, 0);
+        var avg = shown.length ? shown.reduce(function (s, d) { return s + d.eff; }, 0) / shown.length : 0;
+        var best = shown.slice().sort(function (a, b) { return b.value - a.value; })[0];
+        var cards = [
+            ["Projects shown", shown.length + " of " + state.data.length, poolName || "—"],
+            ["Programmed cost", fmtShort(total), fmtMoney(total)],
+            ["Mean relative efficiency", avg.toFixed(2), avg >= 0.6 ? "Above program target 0.60" : "Below program target 0.60"],
+            ["Best score per $1M", best ? best.value.toFixed(1) : "—", best ? truncate(best.label, 28) + " · " + fmtShort(best.cost) : "No projects in view"]
+        ];
+        $("#pecStats").innerHTML = cards.map(function (c) {
+            return '<div class="col pec-stat"><span class="pec-lbl">' + escapeHtml(c[0]) + '</span><strong class="pec-val">' + escapeHtml(c[1]) + '</strong><em class="pec-sub">' + escapeHtml(c[2]) + '</em></div>';
+        }).join("");
+    }
+
+    function syncChrome(shown) {
+        all("#pecLegend .pec-legend-k").forEach(function (b) { b.setAttribute("aria-pressed", String(state.bands[b.dataset.band])); });
+        $("#pecPinNote").textContent = state.pinned.size
+            ? state.pinned.size + " pinned · click again to release"
+            : "No pinned projects";
+        $("#pecCtx").textContent = shown.length + " of " + state.data.length + " projects in view";
+    }
+
+    function render() {
+        drawChart();
+        var shown = state.data.filter(passes);
+        drawChips();
+        drawStats(shown);
+        syncChrome(shown);
+    }
+
+    /* ============================== events ============================== */
+    $("#pecSort").addEventListener("change", function () { state.sort = this.value; render(); });
+    $("#pecResetBtn").addEventListener("click", function () {
+        state.brush = { eff: null, cost: null };
+        state.bands = { high: true, mid: true, low: true };
+        state.pinned.clear();
+        state.sort = "eff"; $("#pecSort").value = "eff";
+        render();
+    });
+    all("[data-shape]").forEach(function (b) {
+        b.addEventListener("click", function () {
+            state.shape = b.dataset.shape;
+            all("[data-shape]").forEach(function (x) {
+                x.setAttribute("aria-pressed", String(x === b));
+                x.classList.toggle("pec-toggle-active", x === b);
+            });
+            drawChart();
+        });
+    });
+    all("[data-scale]").forEach(function (b) {
+        b.addEventListener("click", function () {
+            state.costScale = b.dataset.scale;
+            all("[data-scale]").forEach(function (x) {
+                x.setAttribute("aria-pressed", String(x === b));
+                x.classList.toggle("pec-toggle-active", x === b);
+            });
+            state.brush.cost = null;
+            render();
+        });
+    });
+    all("#pecLegend .pec-legend-k").forEach(function (b) {
+        b.addEventListener("click", function () { state.bands[b.dataset.band] = !state.bands[b.dataset.band]; render(); });
+    });
+    document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") { state.brush = { eff: null, cost: null }; state.pinned.clear(); render(); }
+    });
+
+    var rz;
+    window.addEventListener("resize", function () { clearTimeout(rz); rz = setTimeout(drawChart, 120); });
+
+    render();
+})();
+</script>
+}

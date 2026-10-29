@@ -1,0 +1,45 @@
+@model ProjectBuilder.Web.Pages.Shared.PoolCandidatesNavViewModel
+@{
+    var active = Model.ActiveMenu;
+    string Cls(string key) => key == active ? "active" : "";
+}
+
+<nav class="editscen-sidebar" aria-label="Candidate + Settings Menu">
+
+    <div class="editscen-sidebar__title">
+        Candidate +
+        @if (!string.IsNullOrWhiteSpace(Model.PoolName))
+        {
+            <span class="editscen-sidebar__name" title="@Model.PoolName">@Model.PoolName</span>
+        }
+    </div>
+
+    <ul class="editscen-menu">
+        @if (Model.CanWorkCandidates)
+        {
+            <li>
+                <a class="@Cls("WorkCandidates")" href="/WorkCandidates?id=@Model.PoolId">
+                    <span>Work Candidates</span><i class="fa-solid fa-circle-check icon-right"></i>
+                </a>
+            </li>
+        }
+        @if (Model.CanConfiguration)
+        {
+            <li>
+                <a class="@Cls("Configuration")" href="/Pools/PoolScoreParameters?poolId=@Model.PoolId">
+                    <span>Configuration</span><i class="fa-solid fa-circle-check icon-right"></i>
+                </a>
+            </li>
+        }
+    </ul>
+
+    @if (Model.CanRun)
+    {
+        <div class="editscen-sidebar__run">
+            <button type="button" id="runPoolScenarioBtn" class="btn btn-success"
+                    data-poolid="@Model.PoolId" data-poolname="@Model.PoolName">
+                <i class="fa-solid fa-play me-1"></i> Run
+            </button>
+        </div>
+    }
+</nav>

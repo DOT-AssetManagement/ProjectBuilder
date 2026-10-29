@@ -1,0 +1,72 @@
+@page
+ @model ProjectBuilder.Web.Pages.Outputs.Charts.ProjectToScoreArcMapping
+@{
+    Layout = "Shared/OutputsLayout";
+    ViewData["Title"] = "Project to Score Arc Mapping";
+    ViewData["Menu"] = "DSSMenus.Outputs";
+    ViewData["SubMenu"] = "Charts";
+    ViewData["SubSubMenu"] = "ProjectToScoreArcMapping";
+    ViewData["poolId"] = Model.PoolId != Guid.Empty ? Model.PoolId.ToString() : "";
+}
+
+<style>
+    #arc-tooltip {
+        position: absolute;
+        text-align: center;
+        padding: 8px;
+        font: 12px sans-serif;
+        background: white;
+        border: 1px solid #000;
+        border-radius: 8px;
+        pointer-events: none;
+        visibility: hidden; // starts out hidden
+        opacity: 0;
+        transition: opacity 0.3s, visibility 0s linear 0.3s;
+    }
+
+    #arc-tooltip.visible {
+        opacity: 1;
+        visibility: visible;
+        transition-delay: 0s;
+    }
+
+    .chord.highlighted {
+        opacity: 1;
+        filter: brightness(65%);
+        stroke-width: 7px;
+    }
+</style>
+
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Projects And Goals Flow Diagram</h1>
+   
+    <div class="card mb-4">
+        <div class="card-body">
+
+            @if (Model.PoolId != Guid.Empty && (Model.ProjectCandidates == null || Model.ProjectCandidates.Count == 0))
+            {
+                <div class="alert alert-warning">No projects were found for this candidate +.</div>
+            }
+        </div>
+        <div id="arc-tooltip"></div>
+        <div id="chord-tooltip"></div>
+
+
+    <div id="arcDiagram" style="width: 100%; height: 1000px; overflow: visible"></div>
+</div>
+
+
+@if (Model.PoolId != Guid.Empty && Model.ProjectCandidates != null && Model.ProjectCandidates.Count > 0)
+{
+<div id="chartData" hidden data-json="@Model.json"></div>
+<script>
+    var jsonString = document.getElementById('chartData').dataset.json || '[]';
+    arcData = JSON.parse(jsonString);
+    //var arcData =
+     //   { "Projects": [{ "id": 1, "scores": [{ "score1": 12 }, { "score2": 15 }, { "score3": 18 }, { "score4": 25 }, { "score5": 30 }] }, { "id": 2, "scores": [{ "score1": 10 }, { "score2": 20 }, { "score3": 22 }, { "score4": 28 }, { "score5": 35 }] }, { "id": 3, "scores": [{ "score1": 12 }, { "score2": 15 }, { "score3": 18 }, { "score4": 25 }, { "score5": 30 }] }, { "id": 4, "scores": [{ "score1": 12 }, { "score2": 15 }, { "score3": 18 }, { "score4": 25 }, { "score5": 30 }] }, { "id": 5, "scores": [{ "score1": 12 }, { "score2": 15 }, { "score3": 18 }, { "score4": 25 }, { "score5": 30 }] }] };
+</script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://d3js.org/d3-chord.v2.min.js"></script>
+<script src="~/js/arcdiagram.js"></script>
+}
+
